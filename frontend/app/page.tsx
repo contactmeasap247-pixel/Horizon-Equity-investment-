@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import {
@@ -28,6 +28,12 @@ import {
   Gem,
   Lock,
   Briefcase,
+  UserPlus,
+  Wallet,
+  BarChart3,
+  CheckCircle2,
+  Eye,
+  Headphones,
 } from "lucide-react";
 
 /* ──────────────────────────────────────────
@@ -155,8 +161,15 @@ const legalContents: Record<string, { title: string; content: string }> = {
   }
 };
 
+const currencyBadgeClass: Record<string, string> = {
+  BTC: "badge-btc",
+  ETH: "badge-eth",
+  USDT: "badge-usdt",
+  SOL: "badge-sol",
+};
+
 /* ──────────────────────────────────────────
-   SVG CHART COMPONENT
+   SVG CHART COMPONENT (Demo Mode)
    ────────────────────────────────────────── */
 
 interface ChartProps {
@@ -199,7 +212,7 @@ function MarketOverviewChart({ points }: ChartProps) {
           y1={height * pct}
           x2={width}
           y2={height * pct}
-          stroke="rgba(30, 53, 82, 0.2)"
+          stroke="rgba(30, 53, 82, 0.25)"
           strokeDasharray="4 4"
         />
       ))}
@@ -210,11 +223,57 @@ function MarketOverviewChart({ points }: ChartProps) {
 }
 
 /* ──────────────────────────────────────────
+   TRADINGVIEW WIDGET COMPONENT
+   ────────────────────────────────────────── */
+
+function TradingViewWidget() {
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!containerRef.current) return;
+    // Clear any existing content
+    containerRef.current.innerHTML = "";
+
+    const script = document.createElement("script");
+    script.src = "https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js";
+    script.type = "text/javascript";
+    script.async = true;
+    script.innerHTML = JSON.stringify({
+      autosize: true,
+      symbol: "BINANCE:BTCUSDT",
+      interval: "60",
+      timezone: "Etc/UTC",
+      theme: "dark",
+      style: "1",
+      locale: "en",
+      backgroundColor: "rgba(7, 17, 31, 1)",
+      gridColor: "rgba(30, 53, 82, 0.2)",
+      hide_top_toolbar: false,
+      hide_legend: false,
+      allow_symbol_change: true,
+      save_image: false,
+      calendar: false,
+      hide_volume: false,
+      support_host: "https://www.tradingview.com",
+    });
+
+    containerRef.current.appendChild(script);
+  }, []);
+
+  return (
+    <div className="tradingview-container" style={{ height: "420px" }}>
+      <div ref={containerRef} style={{ height: "100%", width: "100%" }} />
+    </div>
+  );
+}
+
+/* ──────────────────────────────────────────
    MAIN PAGE
    ────────────────────────────────────────── */
 
 export default function LandingPage() {
   const [chartTimeframe, setChartTimeframe] = useState("24H");
+  const [chartMode, setChartMode] = useState<"live" | "demo">("live");
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   // Dynamic Transaction Lists
@@ -289,10 +348,13 @@ export default function LandingPage() {
       {/* ═══════ TOP REAL-TIME PRICE TICKER ═══════ */}
       <div className="ticker-bar">
         <div className="ticker-track">
+          {/* Simulated data label */}
+          <div className="ticker-item flex-shrink-0">
+            <span className="text-[9px] font-bold uppercase tracking-widest text-[#64748b] border border-[#1E3552] rounded px-1.5 py-0.5">⚡ Simulated</span>
+          </div>
           {[...tickerItems, ...tickerItems].map((item, i) => (
             <div key={i} className="ticker-item">
               <span className="symbol">{item.symbol}</span>
-              <span className="text-xs font-semibold text-[#94A3B8]">{item.name}</span>
               <span className="price">{item.price}</span>
               <span className={item.up ? "change-up" : "change-down"}>
                 {item.up ? <ArrowUpRight className="inline h-3 w-3" /> : <ArrowDownRight className="inline h-3 w-3" />}
@@ -306,7 +368,7 @@ export default function LandingPage() {
       {/* ═══════ HEADER / NAVIGATION ═══════ */}
       <header className="sticky top-0 z-50 border-b border-[#1E3552] bg-[#07111F]/90 backdrop-blur-xl">
         <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
-          {/* Logo - Large Logo Integration */}
+          {/* Logo */}
           <Link href="/" className="flex items-center gap-3.5 group">
             <div className="h-14 w-14 rounded-xl bg-white p-1 flex items-center justify-center shadow-md relative overflow-hidden flex-shrink-0">
               <Image 
@@ -403,34 +465,34 @@ export default function LandingPage() {
         </div>
       )}
 
-      {/* ═══════ HERO SECTION (CLEAN & APPEALING OVERHAUL) ═══════ */}
-      <section className="relative py-24 lg:py-40 overflow-hidden border-b border-[#1E3552]">
-        {/* Subtle Background grids / gradient overlays */}
-        <div className="absolute top-0 inset-x-0 h-full pointer-events-none -z-10 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-[#0A2540]/30 via-[#07111F] to-[#07111F]" />
+      {/* ═══════ HERO SECTION ═══════ */}
+      <section className="relative py-28 lg:py-44 overflow-hidden border-b border-[#1E3552]">
+        {/* Background gradient */}
+        <div className="absolute top-0 inset-x-0 h-full pointer-events-none -z-10 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-[#0A2540]/40 via-[#07111F] to-[#07111F]" />
 
         <div className="max-w-7xl mx-auto px-6 grid lg:grid-cols-12 gap-16 items-center">
-          {/* Left Columns - Copy */}
+          {/* Left — Copy */}
           <div className="lg:col-span-7 flex flex-col gap-8 text-left animate-slide-up">
             <div className="inline-flex self-start items-center gap-2 px-3.5 py-1.5 rounded-full border border-[#1E3552] bg-[#0A2540]/40 text-[#C9A227] text-xs font-bold tracking-wider uppercase">
               <Sparkles className="h-3.5 w-3.5" /> Multi-Asset Investment Platform
             </div>
 
-            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight leading-tight text-white uppercase">
-              Invest Today. <span className="text-gradient">Earn Tomorrow.</span>
+            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight leading-[1.1] text-white">
+              Invest Beyond the <span className="text-gradient">Horizon.</span>
             </h1>
 
-            <div className="flex flex-col gap-3">
-              <p className="text-base sm:text-lg text-[#94A3B8] max-w-lg leading-relaxed font-semibold">
+            <div className="flex flex-col gap-4">
+              <p className="text-base sm:text-lg text-[#94A3B8] max-w-lg leading-relaxed font-medium">
                 Access institutional-grade allocations across digital assets, real estate, energy, currencies, and mineral resources — all through one unified dashboard.
               </p>
-              <div className="inline-flex self-start items-center gap-3 px-5 py-2 rounded-full border border-[#C9A227]/40 bg-[#C9A227]/10 backdrop-blur-sm">
-                <span className="text-xs sm:text-sm font-bold tracking-widest uppercase text-[#C9A227]">Crypto Investments</span>
-                <span className="text-[#C9A227]/60 font-light">|</span>
-                <span className="text-xs sm:text-sm font-bold tracking-widest uppercase text-[#C9A227]">Real Returns</span>
+              <div className="inline-flex self-start items-center gap-3 px-5 py-2 rounded-full border border-[#C9A227]/30 bg-[#C9A227]/5">
+                <span className="text-xs font-bold tracking-widest uppercase text-[#C9A227]">Crypto Investments</span>
+                <span className="text-[#C9A227]/40">|</span>
+                <span className="text-xs font-bold tracking-widest uppercase text-[#C9A227]">Real Returns</span>
               </div>
             </div>
 
-            <div className="flex flex-wrap items-center gap-4">
+            <div className="flex flex-wrap items-center gap-4 pt-2">
               <a href="#plans" className="btn-primary px-8 py-3.5 font-bold text-sm">
                 Explore Investments <ChevronRight className="h-4 w-4" />
               </a>
@@ -440,18 +502,18 @@ export default function LandingPage() {
             </div>
           </div>
 
-          {/* Right Columns - Premium Investment Related Image Mockup */}
-          <div className="lg:col-span-5 relative w-full h-[400px] rounded-3xl overflow-hidden border border-[#1E3552] shadow-2xl animate-fade-in group">
+          {/* Right — Hero Visual */}
+          <div className="lg:col-span-5 relative w-full h-[420px] rounded-2xl overflow-hidden border border-[#1E3552] animate-fade-in animate-hero-float">
             <Image 
               src="/hero-bg.jpg" 
-              alt="Institutional Asset Clearing Analytics" 
+              alt="Multi-Asset Investment Platform — Digital Assets, Real Estate, Energy, Currencies, Minerals" 
               fill 
-              className="object-cover transition-transform duration-750 group-hover:scale-105" 
+              className="object-cover" 
               priority 
             />
             {/* Dark vignette overlay */}
-            <div className="absolute inset-0 bg-gradient-to-t from-[#07111F] via-[#07111F]/10 to-transparent opacity-80" />
-            <div className="absolute bottom-6 left-6 right-6 p-4 rounded-xl bg-[#0A2540]/80 backdrop-blur-md border border-[#1E3552]/40 flex flex-col gap-1">
+            <div className="absolute inset-0 bg-gradient-to-t from-[#07111F] via-[#07111F]/20 to-transparent opacity-70" />
+            <div className="absolute bottom-6 left-6 right-6 p-4 rounded-xl bg-[#07111F]/80 backdrop-blur-md border border-[#1E3552]/50 flex flex-col gap-1">
               <span className="text-[10px] font-bold text-[#C9A227] tracking-wider uppercase">Institutional Allocations</span>
               <span className="text-xs text-[#94A3B8]">Multi-ledger clearing engines</span>
             </div>
@@ -460,22 +522,22 @@ export default function LandingPage() {
       </section>
 
       {/* ═══════ TRUST / VALUE STRIP ═══════ */}
-      <section className="py-10 bg-[#0A2540]/20 border-b border-[#1E3552]">
+      <section className="py-10 border-b border-[#1E3552] bg-[#050d18]">
         <div className="max-w-7xl mx-auto px-6">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
-            <div className="flex flex-col gap-1 md:border-r border-[#1E3552]/40 md:last:border-none md:px-6">
+            <div className="flex flex-col gap-1.5 md:border-r border-[#1E3552]/30 md:last:border-none md:px-6">
               <span className="text-xs font-bold text-[#C9A227] tracking-wider uppercase">Multi-Asset Access</span>
               <span className="text-xs text-[#94A3B8]">Digital, real estate, energy, metals</span>
             </div>
-            <div className="flex flex-col gap-1 md:border-r border-[#1E3552]/40 md:last:border-none md:px-6">
+            <div className="flex flex-col gap-1.5 md:border-r border-[#1E3552]/30 md:last:border-none md:px-6">
               <span className="text-xs font-bold text-[#C9A227] tracking-wider uppercase">Transparent Info</span>
               <span className="text-xs text-[#94A3B8]">Clear investment terms</span>
             </div>
-            <div className="flex flex-col gap-1 md:border-r border-[#1E3552]/40 md:last:border-none md:px-6">
+            <div className="flex flex-col gap-1.5 md:border-r border-[#1E3552]/30 md:last:border-none md:px-6">
               <span className="text-xs font-bold text-[#C9A227] tracking-wider uppercase">Secure Infrastructure</span>
               <span className="text-xs text-[#94A3B8]">Platform security architecture</span>
             </div>
-            <div className="flex flex-col gap-1 md:px-6">
+            <div className="flex flex-col gap-1.5 md:px-6">
               <span className="text-xs font-bold text-[#C9A227] tracking-wider uppercase">Centralized Platform</span>
               <span className="text-xs text-[#94A3B8]">One console for management</span>
             </div>
@@ -484,7 +546,7 @@ export default function LandingPage() {
       </section>
 
       {/* ═══════ EXPLORE INVESTMENT CATEGORIES ═══════ */}
-      <section id="about" className="py-24 md:py-32 border-b border-[#1E3552]">
+      <section id="about" className="py-28 md:py-36 border-b border-[#1E3552]">
         <div className="max-w-7xl mx-auto px-6">
           <div className="text-left flex flex-col gap-2 mb-16 max-w-xl">
             <span className="text-xs font-bold uppercase tracking-[0.25em] text-[#C9A227]">Diverse Portfolio Allocation</span>
@@ -494,9 +556,9 @@ export default function LandingPage() {
             </p>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6">
-            {/* Category 1 */}
-            <div className="card flex flex-col p-8 h-[270px] justify-between group hover:border-[#C9A227]/30 transition-all duration-300">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-5">
+            {/* Category 1: Digital Assets */}
+            <div className="card flex flex-col p-7 h-[240px] justify-between group hover:border-[#C9A227]/20 transition-all duration-300">
               <div className="h-10 w-10 rounded-lg bg-[#C9A227]/5 border border-[#C9A227]/10 flex items-center justify-center text-[#C9A227]">
                 <Coins className="h-5 w-5" />
               </div>
@@ -506,8 +568,8 @@ export default function LandingPage() {
               </div>
             </div>
 
-            {/* Category 2 */}
-            <div className="card flex flex-col p-8 h-[270px] justify-between group hover:border-[#C9A227]/30 transition-all duration-300">
+            {/* Category 2: Real Estate */}
+            <div className="card flex flex-col p-7 h-[240px] justify-between group hover:border-[#C9A227]/20 transition-all duration-300">
               <div className="h-10 w-10 rounded-lg bg-[#C9A227]/5 border border-[#C9A227]/10 flex items-center justify-center text-[#C9A227]">
                 <Building2 className="h-5 w-5" />
               </div>
@@ -517,8 +579,8 @@ export default function LandingPage() {
               </div>
             </div>
 
-            {/* Category 3 */}
-            <div className="card flex flex-col p-8 h-[270px] justify-between group hover:border-[#C9A227]/30 transition-all duration-300">
+            {/* Category 3: Energy */}
+            <div className="card flex flex-col p-7 h-[240px] justify-between group hover:border-[#C9A227]/20 transition-all duration-300">
               <div className="h-10 w-10 rounded-lg bg-[#C9A227]/5 border border-[#C9A227]/10 flex items-center justify-center text-[#C9A227]">
                 <Flame className="h-5 w-5" />
               </div>
@@ -528,8 +590,8 @@ export default function LandingPage() {
               </div>
             </div>
 
-            {/* Category 4 */}
-            <div className="card flex flex-col p-8 h-[270px] justify-between group hover:border-[#C9A227]/30 transition-all duration-300">
+            {/* Category 4: Currencies */}
+            <div className="card flex flex-col p-7 h-[240px] justify-between group hover:border-[#C9A227]/20 transition-all duration-300">
               <div className="h-10 w-10 rounded-lg bg-[#C9A227]/5 border border-[#C9A227]/10 flex items-center justify-center text-[#C9A227]">
                 <Globe className="h-5 w-5" />
               </div>
@@ -539,8 +601,8 @@ export default function LandingPage() {
               </div>
             </div>
 
-            {/* Category 5 */}
-            <div className="card flex flex-col p-8 h-[270px] justify-between group hover:border-[#C9A227]/30 transition-all duration-300">
+            {/* Category 5: Mineral Resources */}
+            <div className="card flex flex-col p-7 h-[240px] justify-between group hover:border-[#C9A227]/20 transition-all duration-300">
               <div className="h-10 w-10 rounded-lg bg-[#C9A227]/5 border border-[#C9A227]/10 flex items-center justify-center text-[#C9A227]">
                 <Gem className="h-5 w-5" />
               </div>
@@ -554,35 +616,35 @@ export default function LandingPage() {
       </section>
 
       {/* ═══════ INVESTMENT PLANS ═══════ */}
-      <section id="plans" className="py-24 md:py-32 border-b border-[#1E3552]">
+      <section id="plans" className="py-28 md:py-36 border-b border-[#1E3552] section-alt">
         <div className="max-w-[1440px] mx-auto px-6">
-          <div className="text-center flex flex-col items-center gap-3 mb-16">
+          <div className="text-center flex flex-col items-center gap-3 mb-20">
             <span className="text-xs font-bold uppercase tracking-[0.25em] text-[#C9A227]">Investment Portfolios</span>
-            <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-white font-black">Choose Your Investment Plan</h2>
-            <p className="text-[#94A3B8] max-w-xl text-sm leading-relaxed mt-2 font-medium">
+            <h2 className="text-3xl sm:text-4xl font-black tracking-tight text-white">Choose Your Investment Plan</h2>
+            <p className="text-[#94A3B8] max-w-xl text-sm leading-relaxed mt-1">
               Select an investment plan based on your capital and preferred investment duration.
             </p>
           </div>
 
           <div className="plans-grid">
             {/* 1. Horizon Starter */}
-            <div className="plan-card tier-starter flex flex-col gap-6">
+            <div className="plan-card tier-starter flex flex-col gap-5">
               <div className="flex justify-between items-start">
                 <div className="flex flex-col">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-[#94A3B8]">Tier 01</span>
-                  <h3 className="text-base font-extrabold mt-1 text-white">Horizon Starter</h3>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-[#64748b]">Tier 01</span>
+                  <h3 className="text-sm font-extrabold mt-1 text-white">Horizon Starter</h3>
                 </div>
                 <span className="plan-badge">Popular</span>
               </div>
-              <div className="flex items-baseline gap-1 py-4 border-y border-[#1E3552]/40">
-                <span className="text-4xl font-extrabold text-[#C9A227]">2.5%</span>
-                <span className="text-[#94A3B8] text-xs font-bold">Return</span>
+              <div className="flex items-baseline gap-1.5 py-4 border-y border-[#1E3552]/30">
+                <span className="text-4xl font-black text-[#C9A227] tracking-tight">2.5%</span>
+                <span className="text-[#64748b] text-xs font-bold">Return</span>
               </div>
-              <div className="flex flex-col gap-2.5 text-xs text-[#94A3B8]">
-                <div className="plan-detail-row"><span className="label"><Clock className="inline h-3.5 w-3.5 mr-1" />Duration</span><span className="value">7 Days</span></div>
+              <div className="flex flex-col gap-2 text-xs text-[#94A3B8]">
+                <div className="plan-detail-row"><span className="label"><Clock className="inline h-3.5 w-3.5 mr-1.5" />Duration</span><span className="value">7 Days</span></div>
                 <div className="plan-detail-row"><span className="label">Min Investment</span><span className="value">$50</span></div>
                 <div className="plan-detail-row"><span className="label">Max Investment</span><span className="value">$499</span></div>
-                <div className="plan-detail-row"><span className="label"><Gift className="inline h-3.5 w-3.5 mr-1" />Referral</span><span className="value-gold">3%</span></div>
+                <div className="plan-detail-row"><span className="label"><Gift className="inline h-3.5 w-3.5 mr-1.5" />Referral</span><span className="value-gold">3%</span></div>
               </div>
               <Link href="/register" className="btn-secondary w-full justify-center mt-auto text-xs py-3 font-bold">
                 Invest Now
@@ -590,23 +652,23 @@ export default function LandingPage() {
             </div>
 
             {/* 2. Horizon Rise */}
-            <div className="plan-card tier-rise flex flex-col gap-6">
+            <div className="plan-card tier-rise flex flex-col gap-5">
               <div className="flex justify-between items-start">
                 <div className="flex flex-col">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-[#94A3B8]">Tier 02</span>
-                  <h3 className="text-base font-extrabold mt-1 text-white">Horizon Rise</h3>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-[#64748b]">Tier 02</span>
+                  <h3 className="text-sm font-extrabold mt-1 text-white">Horizon Rise</h3>
                 </div>
                 <span className="plan-badge">Best Value</span>
               </div>
-              <div className="flex items-baseline gap-1 py-4 border-y border-[#1E3552]/40">
-                <span className="text-4xl font-extrabold text-[#C9A227]">4%</span>
-                <span className="text-[#94A3B8] text-xs font-bold">Return</span>
+              <div className="flex items-baseline gap-1.5 py-4 border-y border-[#1E3552]/30">
+                <span className="text-4xl font-black text-[#C9A227] tracking-tight">4%</span>
+                <span className="text-[#64748b] text-xs font-bold">Return</span>
               </div>
-              <div className="flex flex-col gap-2.5 text-xs text-[#94A3B8]">
-                <div className="plan-detail-row"><span className="label"><Clock className="inline h-3.5 w-3.5 mr-1" />Duration</span><span className="value">14 Days</span></div>
+              <div className="flex flex-col gap-2 text-xs text-[#94A3B8]">
+                <div className="plan-detail-row"><span className="label"><Clock className="inline h-3.5 w-3.5 mr-1.5" />Duration</span><span className="value">14 Days</span></div>
                 <div className="plan-detail-row"><span className="label">Min Investment</span><span className="value">$500</span></div>
                 <div className="plan-detail-row"><span className="label">Max Investment</span><span className="value">$1,999</span></div>
-                <div className="plan-detail-row"><span className="label"><Gift className="inline h-3.5 w-3.5 mr-1" />Referral</span><span className="value-gold">4%</span></div>
+                <div className="plan-detail-row"><span className="label"><Gift className="inline h-3.5 w-3.5 mr-1.5" />Referral</span><span className="value-gold">4%</span></div>
               </div>
               <Link href="/register" className="btn-secondary w-full justify-center mt-auto text-xs py-3 font-bold">
                 Invest Now
@@ -614,23 +676,23 @@ export default function LandingPage() {
             </div>
 
             {/* 3. Horizon Peak */}
-            <div className="plan-card tier-peak flex flex-col gap-6 shadow-xl">
+            <div className="plan-card tier-peak flex flex-col gap-5">
               <div className="flex justify-between items-start">
                 <div className="flex flex-col">
                   <span className="text-[10px] font-bold uppercase tracking-wider text-[#C9A227]">Tier 03</span>
-                  <h3 className="text-base font-extrabold mt-1 text-white">Horizon Peak</h3>
+                  <h3 className="text-sm font-extrabold mt-1 text-white">Horizon Peak</h3>
                 </div>
-                <span className="plan-badge bg-[#E0BE52]/20 border-[#E0BE52]/30 text-[#E0BE52]"><Sparkles className="h-2.5 w-2.5 mr-0.5" />Recommended</span>
+                <span className="plan-badge bg-[#E0BE52]/15 border-[#E0BE52]/25 text-[#E0BE52]"><Sparkles className="h-2.5 w-2.5 mr-0.5" />Recommended</span>
               </div>
-              <div className="flex items-baseline gap-1 py-4 border-y border-[#1E3552]/40">
-                <span className="text-4xl font-extrabold text-[#E0BE52]">6%</span>
-                <span className="text-[#94A3B8] text-xs font-bold">Return</span>
+              <div className="flex items-baseline gap-1.5 py-4 border-y border-[#1E3552]/30">
+                <span className="text-4xl font-black text-[#E0BE52] tracking-tight">6%</span>
+                <span className="text-[#64748b] text-xs font-bold">Return</span>
               </div>
-              <div className="flex flex-col gap-2.5 text-xs text-[#94A3B8]">
-                <div className="plan-detail-row"><span className="label"><Clock className="inline h-3.5 w-3.5 mr-1" />Duration</span><span className="value">30 Days</span></div>
+              <div className="flex flex-col gap-2 text-xs text-[#94A3B8]">
+                <div className="plan-detail-row"><span className="label"><Clock className="inline h-3.5 w-3.5 mr-1.5" />Duration</span><span className="value">30 Days</span></div>
                 <div className="plan-detail-row"><span className="label">Min Investment</span><span className="value">$2,000</span></div>
                 <div className="plan-detail-row"><span className="label">Max Investment</span><span className="value">$9,999</span></div>
-                <div className="plan-detail-row"><span className="label"><Gift className="inline h-3.5 w-3.5 mr-1" />Referral</span><span className="value-gold">5%</span></div>
+                <div className="plan-detail-row"><span className="label"><Gift className="inline h-3.5 w-3.5 mr-1.5" />Referral</span><span className="value-gold">5%</span></div>
               </div>
               <Link href="/register" className="btn-primary w-full justify-center mt-auto text-xs py-3 font-bold">
                 Invest Now <Zap className="h-3.5 w-3.5 fill-current" />
@@ -638,23 +700,23 @@ export default function LandingPage() {
             </div>
 
             {/* 4. Horizon Apex */}
-            <div className="plan-card tier-apex flex flex-col gap-6">
+            <div className="plan-card tier-apex flex flex-col gap-5">
               <div className="flex justify-between items-start">
                 <div className="flex flex-col">
                   <span className="text-[10px] font-bold uppercase tracking-wider text-[#C9A227]">Tier 04</span>
-                  <h3 className="text-base font-extrabold mt-1 text-white">Horizon Apex</h3>
+                  <h3 className="text-sm font-extrabold mt-1 text-white">Horizon Apex</h3>
                 </div>
-                <span className="plan-badge border-[#C9A227]/40 text-[#C9A227]"><Award className="h-2.5 w-2.5 mr-0.5" />Premium</span>
+                <span className="plan-badge border-[#C9A227]/30 text-[#C9A227]"><Award className="h-2.5 w-2.5 mr-0.5" />Premium</span>
               </div>
-              <div className="flex items-baseline gap-1 py-4 border-y border-[#1E3552]/40">
-                <span className="text-4xl font-extrabold text-[#C9A227]">8%</span>
-                <span className="text-[#94A3B8] text-xs font-bold">Return</span>
+              <div className="flex items-baseline gap-1.5 py-4 border-y border-[#1E3552]/30">
+                <span className="text-4xl font-black text-[#C9A227] tracking-tight">8%</span>
+                <span className="text-[#64748b] text-xs font-bold">Return</span>
               </div>
-              <div className="flex flex-col gap-2.5 text-xs text-[#94A3B8]">
-                <div className="plan-detail-row"><span className="label"><Clock className="inline h-3.5 w-3.5 mr-1" />Duration</span><span className="value">60 Days</span></div>
+              <div className="flex flex-col gap-2 text-xs text-[#94A3B8]">
+                <div className="plan-detail-row"><span className="label"><Clock className="inline h-3.5 w-3.5 mr-1.5" />Duration</span><span className="value">60 Days</span></div>
                 <div className="plan-detail-row"><span className="label">Min Investment</span><span className="value">$10,000</span></div>
                 <div className="plan-detail-row"><span className="label">Max Investment</span><span className="value">$49,999</span></div>
-                <div className="plan-detail-row"><span className="label"><Gift className="inline h-3.5 w-3.5 mr-1" />Referral</span><span className="value-gold">6%</span></div>
+                <div className="plan-detail-row"><span className="label"><Gift className="inline h-3.5 w-3.5 mr-1.5" />Referral</span><span className="value-gold">6%</span></div>
               </div>
               <Link href="/register" className="btn-secondary w-full justify-center mt-auto text-xs py-3 font-bold">
                 Invest Now
@@ -662,23 +724,23 @@ export default function LandingPage() {
             </div>
 
             {/* 5. Horizon Legacy */}
-            <div className="plan-card tier-legacy flex flex-col gap-6">
+            <div className="plan-card tier-legacy flex flex-col gap-5">
               <div className="flex justify-between items-start">
                 <div className="flex flex-col">
                   <span className="text-[10px] font-bold uppercase tracking-wider text-[#A7841B]">Tier 05</span>
-                  <h3 className="text-base font-extrabold mt-1 text-white">Horizon Legacy</h3>
+                  <h3 className="text-sm font-extrabold mt-1 text-white">Horizon Legacy</h3>
                 </div>
-                <span className="plan-badge bg-[#E0BE52]/10 border-[#A7841B]/40 text-[#E0BE52]"><Crown className="h-2.5 w-2.5 mr-0.5" />Elite</span>
+                <span className="plan-badge elite-badge"><Crown className="h-2.5 w-2.5 mr-0.5" />Elite</span>
               </div>
-              <div className="flex items-baseline gap-1 py-4 border-y border-[#1E3552]/40">
-                <span className="text-4xl font-extrabold text-[#E0BE52]">10%</span>
-                <span className="text-[#94A3B8] text-xs font-bold">Return</span>
+              <div className="flex items-baseline gap-1.5 py-4 border-y border-[#1E3552]/30">
+                <span className="text-4xl font-black text-[#E0BE52] tracking-tight">10%</span>
+                <span className="text-[#64748b] text-xs font-bold">Return</span>
               </div>
-              <div className="flex flex-col gap-2.5 text-xs text-[#94A3B8]">
-                <div className="plan-detail-row"><span className="label"><Clock className="inline h-3.5 w-3.5 mr-1" />Duration</span><span className="value">90 Days</span></div>
+              <div className="flex flex-col gap-2 text-xs text-[#94A3B8]">
+                <div className="plan-detail-row"><span className="label"><Clock className="inline h-3.5 w-3.5 mr-1.5" />Duration</span><span className="value">90 Days</span></div>
                 <div className="plan-detail-row"><span className="label">Min Investment</span><span className="value">$50,000</span></div>
                 <div className="plan-detail-row"><span className="label">Max Investment</span><span className="value">Unlimited</span></div>
-                <div className="plan-detail-row"><span className="label"><Gift className="inline h-3.5 w-3.5 mr-1" />Referral</span><span className="value-gold">8%</span></div>
+                <div className="plan-detail-row"><span className="label"><Gift className="inline h-3.5 w-3.5 mr-1.5" />Referral</span><span className="value-gold">8%</span></div>
               </div>
               <Link href="/register" className="btn-primary w-full justify-center mt-auto text-xs py-3 font-bold bg-[#A7841B] hover:bg-[#C9A227] border-[#A7841B]">
                 Invest Now <Crown className="h-3.5 w-3.5" />
@@ -689,65 +751,94 @@ export default function LandingPage() {
       </section>
 
       {/* ═══════ MARKET OVERVIEW / CHART ═══════ */}
-      <section id="market" className="py-24 md:py-32 border-b border-[#1E3552] bg-[#0A2540]/10">
+      <section id="market" className="py-28 md:py-36 border-b border-[#1E3552]">
         <div className="max-w-7xl mx-auto px-6">
           <div className="chart-container">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6 mb-10">
-              <div className="flex flex-col">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6 mb-8">
+              <div className="flex flex-col gap-2">
                 <div className="flex items-center gap-2">
                   <Activity className="h-4.5 w-4.5 text-[#C9A227]" />
                   <h2 className="text-xl font-bold tracking-wide">Market Overview</h2>
                 </div>
-                <div className="flex items-baseline gap-3 mt-3">
-                  <span className="text-3xl font-extrabold text-white transition-all duration-300">{activeChart.price}</span>
-                  <span className="text-xs font-bold text-[#00d4aa] flex items-center gap-0.5 py-0.5 px-2.5 rounded-full bg-[#00d4aa]/10">
-                    <ArrowUpRight className="h-3.5 w-3.5" />{activeChart.change}
-                  </span>
-                  <span className="text-xs text-[#94A3B8] font-bold uppercase tracking-wider">BTC/USD Indicator</span>
-                </div>
+                {chartMode === "demo" && (
+                  <div className="flex items-baseline gap-3 mt-1">
+                    <span className="text-3xl font-black text-white tracking-tight transition-all duration-300">{activeChart.price}</span>
+                    <span className="text-xs font-bold text-[#00d4aa] flex items-center gap-0.5 py-0.5 px-2.5 rounded-full bg-[#00d4aa]/10">
+                      <ArrowUpRight className="h-3.5 w-3.5" />{activeChart.change}
+                    </span>
+                    <span className="text-xs text-[#64748b] font-bold uppercase tracking-wider">BTC/USD</span>
+                  </div>
+                )}
               </div>
-              <div className="flex gap-1.5 p-1.5 bg-[#07111F] rounded-lg border border-[#1E3552]">
-                {["1H", "24H", "7D", "30D"].map((tf) => (
+
+              <div className="flex items-center gap-3">
+                {/* Mode Toggle */}
+                <div className="chart-mode-toggle">
                   <button
-                    key={tf}
-                    onClick={() => setChartTimeframe(tf)}
-                    className={`chart-timeframe-btn font-bold px-3 py-1.5 text-xs rounded transition-all duration-200 ${chartTimeframe === tf ? "active bg-[#0A2540] text-[#C9A227]" : "text-[#94A3B8] hover:text-[#F8FAFC]"}`}
+                    onClick={() => setChartMode("live")}
+                    className={`chart-mode-btn ${chartMode === "live" ? "active" : ""}`}
                   >
-                    {tf}
+                    <span className="flex items-center gap-1"><Activity className="h-3 w-3" /> Live Trading</span>
                   </button>
-                ))}
+                  <button
+                    onClick={() => setChartMode("demo")}
+                    className={`chart-mode-btn ${chartMode === "demo" ? "active" : ""}`}
+                  >
+                    <span className="flex items-center gap-1"><Eye className="h-3 w-3" /> Demo Simulated</span>
+                  </button>
+                </div>
+
+                {/* Timeframe buttons — only for demo mode */}
+                {chartMode === "demo" && (
+                  <div className="flex gap-1 p-1 bg-[#07111F] rounded-lg border border-[#1E3552]">
+                    {["1H", "24H", "7D", "30D"].map((tf) => (
+                      <button
+                        key={tf}
+                        onClick={() => setChartTimeframe(tf)}
+                        className={`chart-timeframe-btn px-3 py-1.5 text-xs rounded transition-all duration-200 ${chartTimeframe === tf ? "active" : ""}`}
+                      >
+                        {tf}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
 
-            <div className="h-56 sm:h-64 w-full">
-              <MarketOverviewChart points={activeChart.points} />
-            </div>
+            {/* Chart Area */}
+            {chartMode === "live" ? (
+              <TradingViewWidget />
+            ) : (
+              <div className="h-56 sm:h-64 w-full">
+                <MarketOverviewChart points={activeChart.points} />
+              </div>
+            )}
           </div>
         </div>
       </section>
 
-      {/* ═══════ FEATURED OPPORTUNITIES (DYNAMIC EMPTY STATE) ═══════ */}
-      <section className="py-24 md:py-32 border-b border-[#1E3552]">
+      {/* ═══════ FEATURED OPPORTUNITIES ═══════ */}
+      <section className="py-28 md:py-36 border-b border-[#1E3552] section-alt">
         <div className="max-w-7xl mx-auto px-6">
-          <div className="text-left flex flex-col gap-2 mb-12 max-w-md">
+          <div className="text-left flex flex-col gap-2 mb-14 max-w-md">
             <span className="text-xs font-bold uppercase tracking-[0.25em] text-[#C9A227]">Private Placements</span>
             <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-white">Featured Opportunities</h2>
-            <p className="text-[#94A3B8] text-sm leading-relaxed mt-2 font-medium">
+            <p className="text-[#94A3B8] text-sm leading-relaxed mt-2">
               Access dynamic private investment opportunities tailored to strategic asset growth.
             </p>
           </div>
 
-          <div className="card p-12 text-center flex flex-col items-center justify-center max-w-xl mx-auto gap-6 border border-dashed border-[#1E3552]">
-            <div className="h-12 w-12 rounded-full bg-[#0A2540] border border-[#1E3552] flex items-center justify-center text-[#94A3B8]">
-              <Lock className="h-5 w-5" />
+          <div className="card p-14 text-center flex flex-col items-center justify-center max-w-xl mx-auto gap-6 border border-dashed border-[#1E3552]">
+            <div className="h-14 w-14 rounded-full bg-[#0A2540] border border-[#1E3552] flex items-center justify-center text-[#64748b]">
+              <Lock className="h-6 w-6" />
             </div>
-            <div className="flex flex-col gap-2.5">
+            <div className="flex flex-col gap-3">
               <h4 className="text-sm font-extrabold text-white uppercase tracking-wider">Private Access Required</h4>
               <p className="text-xs text-[#94A3B8] leading-relaxed max-w-md">
                 Public offerings are currently fully subscribed. Sign in to your dashboard to review private placements, or contact your portfolio manager to request allocation terms.
               </p>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 pt-2">
               <Link href="/login" className="btn-primary text-xs py-2.5 px-6 font-bold">
                 Access Dashboard
               </Link>
@@ -759,34 +850,88 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ═══════ LATEST DEPOSITS & WITHDRAWALS (DYNAMIC TIMED FEEDS) ═══════ */}
-      <section id="activity" className="py-24 md:py-32 border-b border-[#1E3552] bg-[#0A2540]/10">
+      {/* ═══════ HOW IT WORKS ═══════ */}
+      <section className="py-28 md:py-36 border-b border-[#1E3552]">
+        <div className="max-w-7xl mx-auto px-6">
+          <div className="text-center flex flex-col items-center gap-3 mb-20">
+            <span className="text-xs font-bold uppercase tracking-[0.25em] text-[#C9A227]">Getting Started</span>
+            <h2 className="text-3xl sm:text-4xl font-black tracking-tight text-white">How It Works</h2>
+            <p className="text-[#94A3B8] max-w-lg text-sm leading-relaxed mt-1">
+              Four simple steps to begin your investment journey with Horizon Equity.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
+            <div className="step-card">
+              <div className="step-number">1</div>
+              <div className="h-10 w-10 flex items-center justify-center text-[#C9A227]">
+                <UserPlus className="h-5 w-5" />
+              </div>
+              <h4 className="text-xs font-extrabold uppercase tracking-wider text-white">Create Account</h4>
+              <p className="text-xs text-[#94A3B8] leading-relaxed">Register and verify your identity in under 5 minutes.</p>
+            </div>
+
+            <div className="step-card">
+              <div className="step-number">2</div>
+              <div className="h-10 w-10 flex items-center justify-center text-[#C9A227]">
+                <Layers className="h-5 w-5" />
+              </div>
+              <h4 className="text-xs font-extrabold uppercase tracking-wider text-white">Choose a Plan</h4>
+              <p className="text-xs text-[#94A3B8] leading-relaxed">Select from five structured investment tiers.</p>
+            </div>
+
+            <div className="step-card">
+              <div className="step-number">3</div>
+              <div className="h-10 w-10 flex items-center justify-center text-[#C9A227]">
+                <Wallet className="h-5 w-5" />
+              </div>
+              <h4 className="text-xs font-extrabold uppercase tracking-wider text-white">Fund Your Wallet</h4>
+              <p className="text-xs text-[#94A3B8] leading-relaxed">Deposit via crypto or fiat with instant confirmation.</p>
+            </div>
+
+            <div className="step-card">
+              <div className="step-number">4</div>
+              <div className="h-10 w-10 flex items-center justify-center text-[#C9A227]">
+                <TrendingUp className="h-5 w-5" />
+              </div>
+              <h4 className="text-xs font-extrabold uppercase tracking-wider text-white">Earn Returns</h4>
+              <p className="text-xs text-[#94A3B8] leading-relaxed">Track growth and withdraw earnings at maturity.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ═══════ LATEST DEPOSITS & WITHDRAWALS ═══════ */}
+      <section id="activity" className="py-28 md:py-36 border-b border-[#1E3552] section-alt">
         <div className="max-w-7xl mx-auto px-6">
           <div className="text-center flex flex-col items-center gap-3 mb-16">
             <span className="text-xs font-bold uppercase tracking-[0.25em] text-[#C9A227]">Global Flow</span>
             <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-white">Transaction Feeds</h2>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-[#64748b] mt-2 border border-[#1E3552] rounded-full px-3 py-1">
+              ⚡ Simulated Activity
+            </p>
           </div>
 
           <div className="grid md:grid-cols-2 gap-8">
             {/* Deposits Feed */}
             <div className="chart-container">
-              <div className="flex items-center justify-between mb-6 border-b border-[#1E3552]/40 pb-4">
+              <div className="flex items-center justify-between mb-6 border-b border-[#1E3552]/30 pb-4">
                 <h3 className="font-extrabold text-xs tracking-wider uppercase flex items-center gap-2 text-white">
                   <ArrowDownRight className="h-4.5 w-4.5 text-[#00d4aa]" /> Latest Deposits
                 </h3>
                 <div className="live-indicator"><span className="live-dot" /> LIVE</div>
               </div>
-              <div className="flex flex-col divide-y divide-[#1E3552]/20">
+              <div className="flex flex-col divide-y divide-[#1E3552]/15">
                 {deposits.map((tx, idx) => (
-                  <div key={idx} className="py-3 flex flex-row items-center justify-between text-xs sm:text-sm animate-fade-in">
-                    <span className="text-[#94A3B8] font-bold">{tx.user}</span>
+                  <div key={idx} className="py-3 flex flex-row items-center justify-between text-xs sm:text-sm animate-row-slide-in" style={{ animationDelay: `${idx * 50}ms` }}>
+                    <span className="text-[#94A3B8] font-semibold">{tx.user}</span>
                     <div className="flex items-center gap-2">
-                      <span className="font-extrabold text-white">{tx.amount}</span>
-                      <span className="text-[10px] font-bold uppercase py-0.5 px-2 bg-[#0A2540] border border-[#1E3552] rounded text-[#C9A227]">
+                      <span className="font-bold text-white">{tx.amount}</span>
+                      <span className={`text-[10px] font-bold uppercase py-0.5 px-2 rounded ${currencyBadgeClass[tx.currency] || "badge-gold"}`}>
                         {tx.currency}
                       </span>
                     </div>
-                    <span className="text-[#94A3B8]/60 text-[10px] font-semibold">{tx.time}</span>
+                    <span className="text-[#64748b] text-[10px] font-semibold">{tx.time}</span>
                   </div>
                 ))}
               </div>
@@ -794,23 +939,23 @@ export default function LandingPage() {
 
             {/* Withdrawals Feed */}
             <div className="chart-container">
-              <div className="flex items-center justify-between mb-6 border-b border-[#1E3552]/40 pb-4">
+              <div className="flex items-center justify-between mb-6 border-b border-[#1E3552]/30 pb-4">
                 <h3 className="font-extrabold text-xs tracking-wider uppercase flex items-center gap-2 text-white">
                   <ArrowUpRight className="h-4.5 w-4.5 text-[#ff6b6b]" /> Latest Withdrawals
                 </h3>
-                <div className="live-indicator"><span className="live-dot animate-pulse" /> LIVE</div>
+                <div className="live-indicator"><span className="live-dot" /> LIVE</div>
               </div>
-              <div className="flex flex-col divide-y divide-[#1E3552]/20">
+              <div className="flex flex-col divide-y divide-[#1E3552]/15">
                 {withdrawals.map((tx, idx) => (
-                  <div key={idx} className="py-3 flex flex-row items-center justify-between text-xs sm:text-sm animate-fade-in">
-                    <span className="text-[#94A3B8] font-bold">{tx.user}</span>
+                  <div key={idx} className="py-3 flex flex-row items-center justify-between text-xs sm:text-sm animate-row-slide-in" style={{ animationDelay: `${idx * 50}ms` }}>
+                    <span className="text-[#94A3B8] font-semibold">{tx.user}</span>
                     <div className="flex items-center gap-2">
-                      <span className="font-extrabold text-white">{tx.amount}</span>
-                      <span className="text-[10px] font-bold uppercase py-0.5 px-2 bg-[#0A2540] border border-[#1E3552] rounded text-[#C9A227]">
+                      <span className="font-bold text-white">{tx.amount}</span>
+                      <span className={`text-[10px] font-bold uppercase py-0.5 px-2 rounded ${currencyBadgeClass[tx.currency] || "badge-gold"}`}>
                         {tx.currency}
                       </span>
                     </div>
-                    <span className="text-[#94A3B8]/60 text-[10px] font-semibold">{tx.time}</span>
+                    <span className="text-[#64748b] text-[10px] font-semibold">{tx.time}</span>
                   </div>
                 ))}
               </div>
@@ -819,28 +964,74 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ═══════ EXECUTIVE TEAM (WHITE CARDS) ═══════ */}
-      <section id="team" className="py-24 md:py-32 border-b border-[#1E3552]">
+      {/* ═══════ WHY HORIZON EQUITY ═══════ */}
+      <section className="py-28 md:py-36 border-b border-[#1E3552]">
+        <div className="max-w-7xl mx-auto px-6">
+          <div className="text-center flex flex-col items-center gap-3 mb-20">
+            <span className="text-xs font-bold uppercase tracking-[0.25em] text-[#C9A227]">Our Advantages</span>
+            <h2 className="text-3xl sm:text-4xl font-black tracking-tight text-white">Why Horizon Equity</h2>
+            <p className="text-[#94A3B8] max-w-lg text-sm leading-relaxed mt-1">
+              Built for investors who demand institutional quality with personal service.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="card p-8 flex flex-col gap-4 text-left">
+              <div className="h-10 w-10 rounded-lg bg-[#C9A227]/5 border border-[#C9A227]/10 flex items-center justify-center text-[#C9A227]">
+                <Layers className="h-5 w-5" />
+              </div>
+              <h4 className="text-xs font-extrabold uppercase tracking-wider text-white">Multi-Asset Access</h4>
+              <p className="text-xs text-[#94A3B8] leading-relaxed">Diversify across digital assets, real estate, energy, currencies, and mineral resources through one platform.</p>
+            </div>
+
+            <div className="card p-8 flex flex-col gap-4 text-left">
+              <div className="h-10 w-10 rounded-lg bg-[#C9A227]/5 border border-[#C9A227]/10 flex items-center justify-center text-[#C9A227]">
+                <CheckCircle2 className="h-5 w-5" />
+              </div>
+              <h4 className="text-xs font-extrabold uppercase tracking-wider text-white">Transparent Terms</h4>
+              <p className="text-xs text-[#94A3B8] leading-relaxed">Clear investment terms, visible return structures, and no hidden fees across all tier plans.</p>
+            </div>
+
+            <div className="card p-8 flex flex-col gap-4 text-left">
+              <div className="h-10 w-10 rounded-lg bg-[#C9A227]/5 border border-[#C9A227]/10 flex items-center justify-center text-[#C9A227]">
+                <ShieldCheck className="h-5 w-5" />
+              </div>
+              <h4 className="text-xs font-extrabold uppercase tracking-wider text-white">Secure Infrastructure</h4>
+              <p className="text-xs text-[#94A3B8] leading-relaxed">Multi-signature vaults, encrypted communications, and institutional-grade security protocols.</p>
+            </div>
+
+            <div className="card p-8 flex flex-col gap-4 text-left">
+              <div className="h-10 w-10 rounded-lg bg-[#C9A227]/5 border border-[#C9A227]/10 flex items-center justify-center text-[#C9A227]">
+                <Headphones className="h-5 w-5" />
+              </div>
+              <h4 className="text-xs font-extrabold uppercase tracking-wider text-white">24/7 Support</h4>
+              <p className="text-xs text-[#94A3B8] leading-relaxed">Dedicated portfolio managers and round-the-clock support for all account tiers.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ═══════ EXECUTIVE TEAM ═══════ */}
+      <section id="team" className="py-28 md:py-36 border-b border-[#1E3552] section-alt">
         <div className="max-w-7xl mx-auto px-6">
           <div className="text-center flex flex-col items-center gap-3 mb-20">
             <span className="text-xs font-bold uppercase tracking-[0.25em] text-[#C9A227]">Corporate Governance</span>
-            <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-white font-black">Our Leadership</h2>
-            <p className="text-[#94A3B8] max-w-lg text-sm leading-relaxed mt-2 font-medium">
+            <h2 className="text-3xl sm:text-4xl font-black tracking-tight text-white">Our Leadership</h2>
+            <p className="text-[#94A3B8] max-w-lg text-sm leading-relaxed mt-1">
               Experienced professionals driving innovation across global asset management.
             </p>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-5 gap-6">
             {executives.map((exec) => (
-              <div key={exec.name} className="team-card bg-white text-black shadow-lg rounded-xl overflow-hidden group">
-                <div className="relative h-[250px] w-full overflow-hidden bg-[#0A2540]">
+              <div key={exec.name} className="team-card">
+                <div className="relative w-full overflow-hidden bg-[#0A2540]" style={{ aspectRatio: "3 / 4" }}>
                   <Image
                     src={exec.photo}
                     alt={exec.name}
                     fill
                     className="object-cover object-top transition-transform duration-500 group-hover:scale-105"
                     sizes="(max-width: 768px) 100vw, (max-width: 1200px) 33vw, 20vw"
-                    priority
                   />
                 </div>
                 <div className="team-card-info">
@@ -855,9 +1046,9 @@ export default function LandingPage() {
       </section>
 
       {/* ═══════ CINEMATIC BRAND SECTION ═══════ */}
-      <section className="relative py-32 overflow-hidden border-b border-[#1E3552] bg-gradient-to-tr from-[#07111F] via-[#0A2540]/30 to-[#07111F]">
+      <section className="relative py-36 overflow-hidden border-b border-[#1E3552] bg-gradient-to-tr from-[#07111F] via-[#0A2540]/20 to-[#07111F]">
         <div className="absolute inset-0 pointer-events-none -z-10">
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[300px] rounded-full bg-[#C9A227]/3 blur-[100px]" />
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[250px] rounded-full bg-[#C9A227]/3 blur-[120px]" />
         </div>
 
         <div className="max-w-4xl mx-auto px-6 text-center flex flex-col items-center gap-8">
@@ -865,7 +1056,7 @@ export default function LandingPage() {
           <h2 className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight leading-tight text-white">
             Look Beyond the Obvious.
           </h2>
-          <p className="text-base text-[#94A3B8] max-w-xl leading-relaxed font-semibold">
+          <p className="text-base text-[#94A3B8] max-w-xl leading-relaxed">
             Opportunities exist across markets. Horizon Equity brings them together in one institutional investment experience.
           </p>
           <a href="#market" className="btn-primary mt-2 px-8 py-3.5 font-bold text-sm">
@@ -875,15 +1066,15 @@ export default function LandingPage() {
       </section>
 
       {/* ═══════ TRUST / CREDIBILITY ═══════ */}
-      <section className="py-24 md:py-32 border-b border-[#1E3552]">
+      <section className="py-28 md:py-36 border-b border-[#1E3552]">
         <div className="max-w-7xl mx-auto px-6 grid md:grid-cols-12 gap-16 items-center">
           <div className="md:col-span-6 flex flex-col gap-6 text-left">
             <span className="text-xs font-bold uppercase tracking-[0.25em] text-[#C9A227]">Verified Quality</span>
             <h2 className="text-3xl font-bold tracking-tight text-white">Institutional Credibility</h2>
-            <p className="text-xs sm:text-sm text-[#94A3B8] leading-relaxed font-medium">
+            <p className="text-sm text-[#94A3B8] leading-relaxed">
               We employ strict risk frameworks, regulatory alignments, and secure custodian partnerships to deliver capital stability. Focus is given to asset growth with absolute clarity.
             </p>
-            <div className="flex flex-col gap-4 mt-3">
+            <div className="flex flex-col gap-4 mt-2">
               <div className="flex items-center gap-3 text-xs text-[#F8FAFC]">
                 <ShieldCheck className="h-4.5 w-4.5 text-[#C9A227] flex-shrink-0" />
                 <span>Multi-signature vaults and custodian security.</span>
@@ -899,21 +1090,21 @@ export default function LandingPage() {
             </div>
           </div>
 
-          <div className="md:col-span-6 grid grid-cols-2 gap-4">
-            <div className="card p-8 flex flex-col gap-1 text-left bg-[#0A2540]/20">
-              <span className="text-3xl font-black text-[#C9A227] tracking-wider">100%</span>
+          <div className="md:col-span-6 grid grid-cols-2 gap-5">
+            <div className="card p-8 flex flex-col gap-1.5 text-left">
+              <span className="text-3xl font-black text-[#C9A227] tracking-tight">100%</span>
               <span className="text-[10px] font-bold uppercase tracking-wider text-[#94A3B8]">Audit Transparency</span>
             </div>
-            <div className="card p-8 flex flex-col gap-1 text-left bg-[#0A2540]/20">
-              <span className="text-3xl font-black text-[#C9A227] tracking-wider">24/7</span>
+            <div className="card p-8 flex flex-col gap-1.5 text-left">
+              <span className="text-3xl font-black text-[#C9A227] tracking-tight">24/7</span>
               <span className="text-[10px] font-bold uppercase tracking-wider text-[#94A3B8]">Support Response</span>
             </div>
-            <div className="card p-8 flex flex-col gap-1 text-left bg-[#0A2540]/20">
-              <span className="text-3xl font-black text-[#C9A227] tracking-wider">5 Categories</span>
+            <div className="card p-8 flex flex-col gap-1.5 text-left">
+              <span className="text-3xl font-black text-[#C9A227] tracking-tight">5 Categories</span>
               <span className="text-[10px] font-bold uppercase tracking-wider text-[#94A3B8]">Diversified Range</span>
             </div>
-            <div className="card p-8 flex flex-col gap-1 text-left bg-[#0A2540]/20">
-              <span className="text-3xl font-black text-[#C9A227] tracking-wider">5 Tiers</span>
+            <div className="card p-8 flex flex-col gap-1.5 text-left">
+              <span className="text-3xl font-black text-[#C9A227] tracking-tight">5 Tiers</span>
               <span className="text-[10px] font-bold uppercase tracking-wider text-[#94A3B8]">Structured Plans</span>
             </div>
           </div>
@@ -921,12 +1112,12 @@ export default function LandingPage() {
       </section>
 
       {/* ═══════ FINAL CTA SECTION ═══════ */}
-      <section className="py-24 md:py-32 bg-[#0A2540]/10">
+      <section className="py-28 md:py-36 section-alt">
         <div className="max-w-4xl mx-auto px-6 text-center flex flex-col items-center gap-8">
-          <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-white font-black">
+          <h2 className="text-3xl sm:text-4xl font-black tracking-tight text-white">
             Your Next Opportunity May Be Beyond Your Usual Market.
           </h2>
-          <p className="text-sm text-[#94A3B8] max-w-xl leading-relaxed font-semibold">
+          <p className="text-sm text-[#94A3B8] max-w-xl leading-relaxed">
             Explore investment opportunities across multiple markets through Horizon Equity. Start mapping your capital path today.
           </p>
           <div className="flex items-center gap-4">
@@ -941,7 +1132,7 @@ export default function LandingPage() {
       </section>
 
       {/* ═══════ FOOTER ═══════ */}
-      <footer className="mt-auto border-t border-[#1E3552] bg-[#07111F] py-16 text-sm text-[#94A3B8]">
+      <footer className="mt-auto border-t border-[#1E3552] bg-[#050d18] py-16 text-sm text-[#94A3B8]">
         <div className="max-w-7xl mx-auto px-6 grid md:grid-cols-4 gap-12">
           <div className="flex flex-col gap-5">
             <div className="flex items-center gap-2.5">
@@ -950,7 +1141,7 @@ export default function LandingPage() {
               </div>
               <span className="font-extrabold text-white text-sm">Horizon Equity</span>
             </div>
-            <p className="text-xs leading-relaxed max-w-xs text-[#94A3B8]/80 font-medium">
+            <p className="text-xs leading-relaxed max-w-xs text-[#94A3B8]/80">
               Horizon Equity is a premium multi-asset investment platform. Access diversified capital opportunities seamlessly.
             </p>
           </div>
@@ -984,10 +1175,10 @@ export default function LandingPage() {
           </div>
         </div>
 
-        <div className="max-w-7xl mx-auto px-6 mt-16 pt-8 border-t border-[#1E3552]/40 flex flex-col gap-6 text-xs">
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 text-[#94A3B8]/60 font-bold">
+        <div className="max-w-7xl mx-auto px-6 mt-16 pt-8 border-t border-[#1E3552]/30 flex flex-col gap-6 text-xs">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 text-[#94A3B8]/50 font-bold">
             <span>&copy; {new Date().getFullYear()} Horizon Equity. All rights reserved.</span>
-            <span className="opacity-50">Secure multi-ledger clearing</span>
+            <span>Secure multi-ledger clearing</span>
           </div>
         </div>
       </footer>

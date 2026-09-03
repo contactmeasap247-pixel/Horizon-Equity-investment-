@@ -1,8 +1,9 @@
 @import "tailwindcss";
 
 /* ============================================
-   HORIZON EQUITY - GLOBAL DESIGN SYSTEM
+   HORIZON EQUITY - PREMIUM DESIGN SYSTEM v2
    Navy + Gold Institutional Theme
+   Phase 2: Premium UI/UX Refinement
    ============================================ */
 
 @theme {
@@ -42,8 +43,8 @@
   --color-border-gold: rgba(201, 162, 39, 0.3);
 
   /* Font families */
-  --font-heading: "Playfair Display", serif;
-  --font-body: "Inter", -apple-system, sans-serif;
+  --font-heading: var(--font-heading), "Playfair Display", serif;
+  --font-body: var(--font-sans), "Inter", -apple-system, sans-serif;
   --font-mono: "JetBrains Mono", monospace;
 
   /* Animations */
@@ -83,6 +84,11 @@
   to { opacity: 1; transform: translateY(0); }
 }
 
+@keyframes fadeSlideUp {
+  from { opacity: 0; transform: translateY(30px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
 @keyframes pulse-gold {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.6; }
@@ -101,6 +107,21 @@
 @keyframes livePulse {
   0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(0, 212, 170, 0.4); }
   50% { opacity: 0.8; box-shadow: 0 0 0 6px rgba(0, 212, 170, 0); }
+}
+
+@keyframes rowSlideIn {
+  from { opacity: 0; transform: translateX(-12px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes heroFloat {
+  0%, 100% { transform: translateY(0) scale(1); }
+  50% { transform: translateY(-8px) scale(1.01); }
+}
+
+@keyframes badgeShimmer {
+  0% { background-position: -100% center; }
+  100% { background-position: 200% center; }
 }
 
 /* ============================================
@@ -170,20 +191,18 @@ body {
   transform: translateY(-2px);
 }
 
+/* Premium card — reduced visual noise */
 .card {
-  background: rgba(255, 255, 255, 0.04);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(10, 37, 64, 0.25);
+  border: 1px solid rgba(30, 53, 82, 0.5);
   border-radius: 1rem;
   padding: 1.5rem;
-  transition: all 0.3s ease;
+  transition: border-color 0.3s ease, transform 0.3s ease;
 }
 
 .card:hover {
-  border-color: rgba(201, 162, 39, 0.25);
-  box-shadow: 0 0 40px rgba(201, 162, 39, 0.06);
-  transform: translateY(-4px);
+  border-color: rgba(201, 162, 39, 0.2);
+  transform: translateY(-2px);
 }
 
 /* ============================================
@@ -210,12 +229,12 @@ body {
    ============================================ */
 
 .btn-primary {
-  background: linear-gradient(135deg, #C9A227, #e4cc7a);
-  color: #0A2540;
+  background: linear-gradient(135deg, #C9A227, #E0BE52);
+  color: #07111F;
   padding: 0.75rem 2rem;
   border-radius: 0.75rem;
-  font-weight: 600;
-  font-size: 0.95rem;
+  font-weight: 700;
+  font-size: 0.875rem;
   transition: all 0.3s ease;
   border: none;
   cursor: pointer;
@@ -223,11 +242,12 @@ body {
   align-items: center;
   gap: 0.5rem;
   text-decoration: none;
+  letter-spacing: 0.01em;
 }
 
 .btn-primary:hover {
   transform: translateY(-2px);
-  box-shadow: 0 8px 25px rgba(201, 162, 39, 0.3);
+  box-shadow: 0 8px 25px rgba(201, 162, 39, 0.25);
 }
 
 .btn-secondary {
@@ -235,9 +255,9 @@ body {
   color: #C9A227;
   padding: 0.75rem 2rem;
   border-radius: 0.75rem;
-  font-weight: 600;
-  font-size: 0.95rem;
-  border: 1px solid rgba(201, 162, 39, 0.3);
+  font-weight: 700;
+  font-size: 0.875rem;
+  border: 1px solid rgba(201, 162, 39, 0.25);
   transition: all 0.3s ease;
   cursor: pointer;
   display: inline-flex;
@@ -247,8 +267,8 @@ body {
 }
 
 .btn-secondary:hover {
-  background: rgba(201, 162, 39, 0.08);
-  border-color: rgba(201, 162, 39, 0.5);
+  background: rgba(201, 162, 39, 0.06);
+  border-color: rgba(201, 162, 39, 0.4);
   transform: translateY(-2px);
 }
 
@@ -292,10 +312,10 @@ body {
 }
 
 /* Crypto badges */
-.badge-btc { background: rgba(247, 147, 26, 0.15); color: #f7931a; }
-.badge-eth { background: rgba(98, 126, 234, 0.15); color: #627eea; }
-.badge-usdt { background: rgba(38, 161, 123, 0.15); color: #26a17b; }
-.badge-sol { background: rgba(153, 69, 255, 0.15); color: #9945ff; }
+.badge-btc { background: rgba(247, 147, 26, 0.12); color: #f7931a; border: 1px solid rgba(247, 147, 26, 0.2); }
+.badge-eth { background: rgba(98, 126, 234, 0.12); color: #627eea; border: 1px solid rgba(98, 126, 234, 0.2); }
+.badge-usdt { background: rgba(38, 161, 123, 0.12); color: #26a17b; border: 1px solid rgba(38, 161, 123, 0.2); }
+.badge-sol { background: rgba(153, 69, 255, 0.12); color: #9945ff; border: 1px solid rgba(153, 69, 255, 0.2); }
 
 /* ============================================
    INPUTS
@@ -365,12 +385,24 @@ body {
   animation: slideUp 0.5s ease-out forwards;
 }
 
+.animate-fade-slide-up {
+  animation: fadeSlideUp 0.6s ease-out forwards;
+}
+
 .animate-ticker {
-  animation: ticker 40s linear infinite;
+  animation: ticker 45s linear infinite;
 }
 
 .animate-pulse-gold {
   animation: pulse-gold 2s ease-in-out infinite;
+}
+
+.animate-row-slide-in {
+  animation: rowSlideIn 0.4s ease-out forwards;
+}
+
+.animate-hero-float {
+  animation: heroFloat 6s ease-in-out infinite;
 }
 
 /* Staggered animations */
@@ -522,17 +554,22 @@ body {
   padding: 0 1.5rem;
 }
 
+/* Section separator — alternating background */
+.section-alt {
+  background: rgba(10, 37, 64, 0.12);
+}
+
 /* ============================================
-   PRICE TICKER BAR
+   PRICE TICKER BAR — Premium Financial
    ============================================ */
 
 .ticker-bar {
-  background: #07111F;
-  border-bottom: 1px solid #1E3552;
+  background: #050d18;
+  border-bottom: 1px solid rgba(30, 53, 82, 0.6);
   overflow: hidden;
   white-space: nowrap;
   position: relative;
-  height: 40px;
+  height: 42px;
   display: flex;
   align-items: center;
 }
@@ -543,32 +580,33 @@ body {
   position: absolute;
   top: 0;
   bottom: 0;
-  width: 60px;
+  width: 80px;
   z-index: 2;
   pointer-events: none;
 }
 
 .ticker-bar::before {
   left: 0;
-  background: linear-gradient(90deg, #07111F, transparent);
+  background: linear-gradient(90deg, #050d18, transparent);
 }
 
 .ticker-bar::after {
   right: 0;
-  background: linear-gradient(270deg, #07111F, transparent);
+  background: linear-gradient(270deg, #050d18, transparent);
 }
 
 .ticker-track {
   display: flex;
   gap: 2.5rem;
-  animation: ticker 40s linear infinite;
+  animation: ticker 45s linear infinite;
+  will-change: transform;
 }
 
 .ticker-item {
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
-  font-size: 0.75rem;
+  font-size: 0.7rem;
   font-weight: 500;
   flex-shrink: 0;
 }
@@ -576,18 +614,22 @@ body {
 .ticker-item .symbol {
   color: #C9A227;
   font-weight: 700;
+  letter-spacing: 0.03em;
 }
 
 .ticker-item .price {
-  color: #ffffff;
+  color: #F8FAFC;
+  font-weight: 600;
 }
 
 .ticker-item .change-up {
   color: #00d4aa;
+  font-weight: 600;
 }
 
 .ticker-item .change-down {
   color: #ff6b6b;
+  font-weight: 600;
 }
 
 /* ============================================
@@ -595,11 +637,11 @@ body {
    ============================================ */
 
 .plan-card {
-  background: #0A2540;
-  border: 1px solid #1E3552;
+  background: rgba(10, 37, 64, 0.35);
+  border: 1px solid rgba(30, 53, 82, 0.5);
   border-radius: 1.25rem;
-  padding: 2.25rem 2rem;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  padding: 2rem 1.75rem;
+  transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
   overflow: hidden;
   display: flex;
@@ -608,26 +650,25 @@ body {
 
 .plan-card:hover {
   transform: translateY(-4px);
-  border-color: rgba(201, 162, 39, 0.3);
-  box-shadow: 0 12px 24px rgba(7, 17, 31, 0.25);
+  border-color: rgba(201, 162, 39, 0.25);
 }
 
-/* Tier 1: Starter (Slate Muted) */
+/* Tier 1: Starter — most subtle */
 .plan-card.tier-starter {
-  border-color: rgba(30, 53, 82, 0.5);
-  background: rgba(10, 37, 64, 0.3);
+  border-color: rgba(30, 53, 82, 0.4);
+  background: rgba(10, 37, 64, 0.2);
 }
 
-/* Tier 2: Rise (Subtle Blue / Slate Highlight) */
+/* Tier 2: Rise — slightly elevated */
 .plan-card.tier-rise {
-  border-color: rgba(30, 53, 82, 0.8);
-  background: rgba(10, 37, 64, 0.5);
+  border-color: rgba(30, 53, 82, 0.6);
+  background: rgba(10, 37, 64, 0.35);
 }
 
-/* Tier 3: Peak (Featured / Gold Highlight Gradient) */
+/* Tier 3: Peak — featured / gold highlighted */
 .plan-card.tier-peak {
-  background: rgba(10, 37, 64, 0.8);
-  border-color: #E0BE52;
+  background: rgba(10, 37, 64, 0.5);
+  border-color: rgba(224, 190, 82, 0.5);
 }
 
 .plan-card.tier-peak::before {
@@ -636,18 +677,18 @@ body {
   top: 0;
   left: 0;
   right: 0;
-  height: 4px;
+  height: 3px;
   background: linear-gradient(90deg, #C9A227, #E0BE52);
 }
 
 .plan-card.tier-peak:hover {
-  box-shadow: 0 16px 32px rgba(224, 190, 82, 0.08);
+  box-shadow: 0 12px 24px rgba(224, 190, 82, 0.06);
 }
 
-/* Tier 4: Apex (Premium Investment Gold Focus) */
+/* Tier 4: Apex — premium gold */
 .plan-card.tier-apex {
-  background: rgba(10, 37, 64, 0.7);
-  border-color: #C9A227;
+  background: rgba(10, 37, 64, 0.55);
+  border-color: rgba(201, 162, 39, 0.45);
 }
 
 .plan-card.tier-apex::before {
@@ -656,14 +697,14 @@ body {
   top: 0;
   left: 0;
   right: 0;
-  height: 4px;
+  height: 3px;
   background: #C9A227;
 }
 
-/* Tier 5: Legacy (Elite VIP Carbon Dark Layout) */
+/* Tier 5: Legacy — elite dark with gold accent */
 .plan-card.tier-legacy {
-  background: linear-gradient(135deg, #050d18 0%, #071526 100%);
-  border-color: #A7841B;
+  background: linear-gradient(135deg, rgba(5, 13, 24, 0.9) 0%, rgba(7, 21, 38, 0.9) 100%);
+  border-color: rgba(167, 132, 27, 0.5);
 }
 
 .plan-card.tier-legacy::before {
@@ -672,12 +713,12 @@ body {
   top: 0;
   left: 0;
   right: 0;
-  height: 4px;
+  height: 3px;
   background: linear-gradient(90deg, #A7841B, #E0BE52, #A7841B);
 }
 
 .plan-card.tier-legacy:hover {
-  box-shadow: 0 20px 40px rgba(167, 132, 27, 0.12);
+  box-shadow: 0 16px 32px rgba(167, 132, 27, 0.08);
 }
 
 /* ============================================
@@ -686,8 +727,14 @@ body {
 
 .plans-grid {
   display: grid;
-  gap: 1.5rem;
+  gap: 1.25rem;
   grid-template-columns: 1fr;
+}
+
+@media (min-width: 640px) {
+  .plans-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
 }
 
 @media (min-width: 768px) {
@@ -699,20 +746,15 @@ body {
 @media (min-width: 1280px) {
   .plans-grid {
     grid-template-columns: repeat(5, 1fr);
-    gap: 1.25rem;
+    gap: 1rem;
   }
 
   .plans-grid .plan-card {
-    padding: 1.5rem;
+    padding: 1.5rem 1.25rem;
   }
 }
 
 /* Plan badge */
-@keyframes badgeShimmer {
-  0% { background-position: -100% center; }
-  100% { background-position: 200% center; }
-}
-
 .plan-badge {
   display: inline-flex;
   align-items: center;
@@ -722,9 +764,9 @@ body {
   font-weight: 700;
   letter-spacing: 0.05em;
   text-transform: uppercase;
-  background: rgba(201, 162, 39, 0.15);
+  background: rgba(201, 162, 39, 0.12);
   color: #C9A227;
-  border: 1px solid rgba(201, 162, 39, 0.25);
+  border: 1px solid rgba(201, 162, 39, 0.2);
 }
 
 .plan-badge.elite-badge {
@@ -746,15 +788,17 @@ body {
   justify-content: space-between;
   align-items: center;
   font-size: 0.75rem;
-  padding: 0.3rem 0;
+  padding: 0.35rem 0;
 }
 
 .plan-detail-row .label {
   color: #64748b;
+  display: flex;
+  align-items: center;
 }
 
 .plan-detail-row .value {
-  color: #ffffff;
+  color: #F8FAFC;
   font-weight: 600;
 }
 
@@ -764,53 +808,54 @@ body {
 }
 
 /* ============================================
-   CHART SECTION
+   CHART SECTION — Premium Terminal
    ============================================ */
 
 .chart-container {
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(10, 37, 64, 0.25);
+  border: 1px solid rgba(30, 53, 82, 0.5);
   border-radius: 1.25rem;
-  padding: 2rem;
+  padding: 1.75rem;
   position: relative;
   overflow: hidden;
 }
 
 .chart-timeframe-btn {
-  padding: 0.375rem 0.875rem;
+  padding: 0.4rem 0.875rem;
   border-radius: 0.5rem;
-  font-size: 0.75rem;
-  font-weight: 600;
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  font-size: 0.7rem;
+  font-weight: 700;
+  border: 1px solid rgba(30, 53, 82, 0.5);
   background: transparent;
   color: #64748b;
   cursor: pointer;
   transition: all 0.2s ease;
+  letter-spacing: 0.03em;
 }
 
 .chart-timeframe-btn:hover {
-  color: #ffffff;
-  background: rgba(255, 255, 255, 0.05);
+  color: #F8FAFC;
+  background: rgba(255, 255, 255, 0.04);
 }
 
 .chart-timeframe-btn.active {
-  background: rgba(201, 162, 39, 0.15);
+  background: rgba(201, 162, 39, 0.1);
   color: #C9A227;
-  border-color: rgba(201, 162, 39, 0.3);
+  border-color: rgba(201, 162, 39, 0.25);
 }
 
 /* ============================================
-   LIVE FEED / TRANSACTIONS
+   LIVE FEED / TRANSACTIONS — Premium
    ============================================ */
 
 .live-indicator {
   display: inline-flex;
   align-items: center;
   gap: 0.375rem;
-  font-size: 0.65rem;
+  font-size: 0.6rem;
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.1em;
   color: #00d4aa;
 }
 
@@ -826,9 +871,10 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 0.625rem 0;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  padding: 0.75rem 0;
+  border-bottom: 1px solid rgba(30, 53, 82, 0.2);
   font-size: 0.8rem;
+  animation: rowSlideIn 0.4s ease-out forwards;
 }
 
 .feed-row:last-child {
@@ -836,15 +882,15 @@ body {
 }
 
 /* ============================================
-   EXECUTIVE TEAM CARDS
+   EXECUTIVE TEAM CARDS — Institutional
    ============================================ */
 
 .team-card {
   background: #ffffff;
-  border: 1px solid #1E3552;
+  border: 1px solid rgba(30, 53, 82, 0.15);
   border-radius: 1rem;
   overflow: hidden;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
   text-align: left;
   display: flex;
   flex-direction: column;
@@ -852,7 +898,7 @@ body {
 
 .team-card:hover {
   transform: translateY(-4px);
-  box-shadow: 0 12px 30px rgba(7, 17, 31, 0.12);
+  box-shadow: 0 16px 40px rgba(7, 17, 31, 0.1);
   border-color: #C9A227;
 }
 
@@ -865,26 +911,168 @@ body {
 }
 
 .team-card-info h4 {
-  font-size: 0.9rem;
+  font-size: 0.875rem;
   font-weight: 800;
   color: #07111F;
   margin: 0;
 }
 
 .team-card-info .gold-line {
-  width: 24px;
+  width: 28px;
   height: 2px;
-  background: #C9A227;
-  margin: 0.25rem 0;
+  background: linear-gradient(90deg, #C9A227, #E0BE52);
+  margin: 0.3rem 0;
   border-radius: 9999px;
 }
 
 .team-card-info p {
-  font-size: 0.65rem;
+  font-size: 0.625rem;
   color: #64748B;
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.06em;
   line-height: 1.4;
   margin: 0;
+}
+
+/* ============================================
+   HOW IT WORKS — Steps
+   ============================================ */
+
+.step-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 1rem;
+  padding: 2rem 1.5rem;
+  position: relative;
+}
+
+.step-number {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  font-weight: 800;
+  color: #C9A227;
+  background: rgba(201, 162, 39, 0.08);
+  border: 1px solid rgba(201, 162, 39, 0.2);
+}
+
+/* Connector line between steps (desktop only) */
+@media (min-width: 768px) {
+  .step-card:not(:last-child)::after {
+    content: '';
+    position: absolute;
+    top: 3rem;
+    right: -1rem;
+    width: 2rem;
+    height: 1px;
+    background: rgba(30, 53, 82, 0.5);
+  }
+}
+
+/* ============================================
+   SECTION REVEAL ANIMATION
+   ============================================ */
+
+.reveal {
+  opacity: 0;
+  transform: translateY(20px);
+  transition: opacity 0.6s ease-out, transform 0.6s ease-out;
+}
+
+.reveal.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* ============================================
+   MOBILE RESPONSIVE REFINEMENTS
+   ============================================ */
+
+/* 320px and up */
+@media (max-width: 374px) {
+  .plan-card {
+    padding: 1.25rem 1rem;
+  }
+
+  .plan-detail-row {
+    font-size: 0.7rem;
+  }
+
+  .chart-container {
+    padding: 1rem;
+  }
+}
+
+/* Transaction feeds — mobile card layout */
+@media (max-width: 639px) {
+  .feed-row {
+    flex-wrap: wrap;
+    gap: 0.375rem;
+    padding: 0.625rem 0;
+  }
+}
+
+/* Ensure no horizontal overflow on mobile */
+@media (max-width: 430px) {
+  .ticker-bar {
+    height: 38px;
+  }
+
+  .ticker-item {
+    font-size: 0.65rem;
+    gap: 0.35rem;
+  }
+}
+
+/* ============================================
+   TRADINGVIEW WIDGET CONTAINER
+   ============================================ */
+
+.tradingview-container {
+  border-radius: 0.75rem;
+  overflow: hidden;
+  border: 1px solid rgba(30, 53, 82, 0.3);
+}
+
+.tradingview-container iframe {
+  border: none;
+  width: 100%;
+  height: 100%;
+}
+
+/* Mode toggle */
+.chart-mode-toggle {
+  display: inline-flex;
+  border-radius: 0.5rem;
+  overflow: hidden;
+  border: 1px solid rgba(30, 53, 82, 0.5);
+}
+
+.chart-mode-btn {
+  padding: 0.375rem 0.75rem;
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  background: transparent;
+  color: #64748b;
+}
+
+.chart-mode-btn.active {
+  background: rgba(201, 162, 39, 0.12);
+  color: #C9A227;
+}
+
+.chart-mode-btn:hover:not(.active) {
+  color: #F8FAFC;
 }
