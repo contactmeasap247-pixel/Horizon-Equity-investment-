@@ -415,13 +415,20 @@ export default function LandingPage() {
               <Sparkles className="h-3.5 w-3.5" /> Multi-Asset Investment Platform
             </div>
 
-            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight leading-tight text-white">
-              Invest Beyond the <span className="text-gradient">Horizon.</span>
+            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight leading-tight text-white uppercase">
+              Invest Today. <span className="text-gradient">Earn Tomorrow.</span>
             </h1>
 
-            <p className="text-base sm:text-lg text-[#94A3B8] max-w-lg leading-relaxed font-semibold">
-              Access institutional-grade allocations across digital assets, real estate, energy, currencies, and mineral resources — all through one unified dashboard.
-            </p>
+            <div className="flex flex-col gap-3">
+              <p className="text-base sm:text-lg text-[#94A3B8] max-w-lg leading-relaxed font-semibold">
+                Access institutional-grade allocations across digital assets, real estate, energy, currencies, and mineral resources — all through one unified dashboard.
+              </p>
+              <div className="inline-flex self-start items-center gap-3 px-5 py-2 rounded-full border border-[#C9A227]/40 bg-[#C9A227]/10 backdrop-blur-sm">
+                <span className="text-xs sm:text-sm font-bold tracking-widest uppercase text-[#C9A227]">Crypto Investments</span>
+                <span className="text-[#C9A227]/60 font-light">|</span>
+                <span className="text-xs sm:text-sm font-bold tracking-widest uppercase text-[#C9A227]">Real Returns</span>
+              </div>
+            </div>
 
             <div className="flex flex-wrap items-center gap-4">
               <a href="#plans" className="btn-primary px-8 py-3.5 font-bold text-sm">
