@@ -1,17 +1,5 @@
 import type { Metadata } from "next";
-import { Inter, Playfair_Display } from "next/font/google";
 import "./globals.css";
-
-const inter = Inter({
-  subsets: ["latin"],
-  variable: "--font-sans",
-});
-
-const playfair = Playfair_Display({
-  subsets: ["latin"],
-  variable: "--font-heading",
-  weight: ["400", "500", "600", "700", "800", "900"],
-});
 
 export const metadata: Metadata = {
   title: "Horizon Equity | Premium Multi-Asset Investment Platform",
@@ -36,7 +24,7 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark scroll-smooth">
       <body
-        className={`${inter.variable} ${playfair.variable} font-sans min-h-screen bg-[#07111F] text-white antialiased`}
+        className="font-sans min-h-screen bg-[#07111F] text-white antialiased"
       >
         {children}
       </body>
