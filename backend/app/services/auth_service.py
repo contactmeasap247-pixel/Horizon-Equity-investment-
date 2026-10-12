@@ -19,14 +19,19 @@ from app.core.security import (
     create_refresh_token,
     decode_token,
 )
+from decimal import Decimal
 from app.models.user import User
 from app.models.wallet import Wallet
 from app.models.session_token import SessionToken
 from app.models.audit_log import AuditLog
+from app.models.registration_bonus import RegistrationBonus
+from app.models.transaction import Transaction
 from app.schemas.user import UserCreate
 from app.schemas.auth import Token
 from app.services.email_service import email_service
+from app.services.notification_service import notification_service
 from app.tasks.email_tasks import send_verification_email_task, send_password_reset_email_task
+
 
 logger = logging.getLogger("horizon.auth")
 
@@ -93,17 +98,53 @@ class AuthService:
 
         # 4. Auto-create user cryptocurrency wallets (BTC, ETH, USDT, SOL)
         for currency in ["BTC", "ETH", "USDT", "SOL"]:
+            initial_balance = Decimal("5.00") if currency == "USDT" else Decimal("0.0")
             wallet = Wallet(
                 user_id=new_user.id,
                 currency=currency,
-                balance=0.0,
-                frozen_balance=0.0,
-                total_deposited=0.0,
-                total_withdrawn=0.0,
+                balance=initial_balance,
+                frozen_balance=Decimal("0.0"),
+                total_deposited=Decimal("0.0"),
+                total_withdrawn=Decimal("0.0"),
             )
             db.add(wallet)
 
-        # 5. Log audit trail
+        # 5. Award $5 Promotional Registration Bonus (Locked until qualifying investment)
+        bonus = RegistrationBonus(
+            user_id=new_user.id,
+            amount=Decimal("5.00"),
+            currency="USDT",
+            status="locked",
+            awarded_at=datetime.utcnow(),
+            notes="Awarded upon initial account registration. Requires qualifying investment (e.g. Silver Plan) to unlock.",
+        )
+        db.add(bonus)
+
+        # 6. Log transaction ledger entry for the bonus
+        bonus_tx = Transaction(
+            user_id=new_user.id,
+            type="registration_bonus",
+            subtype="promotional_credit",
+            amount=Decimal("5.00"),
+            fee=Decimal("0.0"),
+            currency="USDT",
+            status="completed",
+            reference=f"BONUS-{new_user.id.hex[:8].upper()}",
+            description="Welcome promotional credit ($5.00 USDT). Locked until completing first qualifying investment.",
+        )
+        db.add(bonus_tx)
+
+        # 7. Notify user
+        await notification_service.create_notification(
+            db,
+            user_id=new_user.id,
+            type="system",
+            title="$5 Welcome Bonus Credited",
+            message="You received a $5.00 USDT promotional welcome credit! Complete your first investment (e.g. Silver Plan) to unlock this bonus for withdrawal.",
+        )
+
+        # 8. Log audit trail
+
         audit = AuditLog(
             user_id=new_user.id,
             action="user_registered",

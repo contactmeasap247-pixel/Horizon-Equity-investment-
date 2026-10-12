@@ -25,6 +25,7 @@ from app.models.session_token import SessionToken
 from app.models.audit_log import AuditLog
 from app.models.site_setting import SiteSetting
 from app.models.notification import Notification
+from app.models.user_saved_wallet import UserSavedWallet
 from app.services.notification_service import notification_service
 from app.services.transaction_service import transaction_service
 from app.services.email_service import email_service
@@ -477,6 +478,25 @@ class AdminService:
             for t in tx_res.scalars().all()
         ]
 
+        # Saved destination wallets
+        saved_wallets_res = await db.execute(
+            select(UserSavedWallet)
+            .filter(UserSavedWallet.user_id == user_id)
+            .order_by(desc(UserSavedWallet.is_default), desc(UserSavedWallet.created_at))
+        )
+        saved_wallets_data = [
+            {
+                "id": str(sw.id),
+                "asset": sw.asset,
+                "network": sw.network,
+                "address": sw.address,
+                "label": sw.label,
+                "is_default": sw.is_default,
+                "created_at": sw.created_at.isoformat() if sw.created_at else None,
+            }
+            for sw in saved_wallets_res.scalars().all()
+        ]
+
         # Audit events for this user
         audit_res = await db.execute(
             select(AuditLog).filter(or_(AuditLog.user_id == user_id, AuditLog.entity_id == user_id)).order_by(AuditLog.created_at.desc()).limit(20)
@@ -519,12 +539,14 @@ class AdminService:
             "referral_count": user.referral_count,
             "referral_earnings": float(user.referral_earnings or 0.0),
             "wallets": wallets_data,
+            "saved_wallets": saved_wallets_data,
             "active_investments": investments_data,
             "deposit_history": deposits_data,
             "withdrawal_history": withdrawals_data,
             "transactions": transactions_data,
             "audit_events": audit_data,
         }
+
 
     @staticmethod
     async def update_user_profile(
@@ -1552,10 +1574,13 @@ class AdminService:
     ) -> User:
         """Approve or reject a user's KYC verification."""
         status_clean = kyc_status.lower().strip()
-        if status_clean not in ["verified", "rejected"]:
+        if status_clean == "approved":
+            status_clean = "verified"
+
+        if status_clean not in ["verified", "rejected", "requires_info", "under_review"]:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Invalid status selection. Must be 'verified' or 'rejected'.",
+                detail="Invalid status selection. Must be 'verified', 'rejected', or 'requires_info'.",
             )
 
         result = await db.execute(select(User).filter(User.id == user_id))
@@ -1564,14 +1589,24 @@ class AdminService:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found.")
 
         user.kyc_status = status_clean
+
+        # Persist review notes into kyc_documents JSON
+        docs = dict(user.kyc_documents) if isinstance(user.kyc_documents, dict) else {}
+        if rejection_reason:
+            docs["review_notes"] = rejection_reason.strip()
+            docs["rejection_reason"] = rejection_reason.strip()
+        docs["reviewed_by"] = str(admin_id)
+        docs["reviewed_at"] = datetime.utcnow().isoformat()
+        user.kyc_documents = docs
+
         if status_clean == "verified":
             user.kyc_verified_at = datetime.utcnow()
             await notification_service.create_notification(
                 db,
                 user_id=user.id,
                 type="system",
-                title="KYC Approved",
-                message="Congratulations! Your identity verification (KYC) request has been approved.",
+                title="KYC Verification Approved",
+                message="Congratulations! Your identity verification (KYC) request has been approved. Unrestricted platform privileges are active.",
             )
         elif status_clean == "rejected":
             user.kyc_verified_at = None
@@ -1580,8 +1615,18 @@ class AdminService:
                 db,
                 user_id=user.id,
                 type="system",
-                title="KYC Rejected",
-                message=f"Your identity verification (KYC) request was rejected. Reason: {reason}",
+                title="KYC Verification Rejected",
+                message=f"Your identity verification request was rejected. Reason: {reason}. You may resubmit updated documents in the Verification section.",
+            )
+        elif status_clean == "requires_info":
+            user.kyc_verified_at = None
+            reason = rejection_reason.strip() if rejection_reason else "Additional documentation required."
+            await notification_service.create_notification(
+                db,
+                user_id=user.id,
+                type="system",
+                title="Additional KYC Information Required",
+                message=f"Compliance note: {reason}. Please review your Verification page and provide additional details.",
             )
 
         db.add(user)
@@ -1591,13 +1636,14 @@ class AdminService:
             action="kyc_status_updated",
             entity_type="user",
             entity_id=user.id,
-            new_values={"kyc_status": status_clean, "rejection_reason": rejection_reason},
+            new_values={"kyc_status": status_clean, "review_notes": rejection_reason},
         )
         db.add(audit)
 
         await db.commit()
         await db.refresh(user)
         return user
+
 
     @staticmethod
     async def suspend_user(

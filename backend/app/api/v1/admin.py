@@ -565,3 +565,89 @@ async def list_tickets(
     """Retrieve support tickets across the platform."""
     from app.services.ticket_service import ticket_service
     return await ticket_service.get_all_tickets(db, status_filter=status)
+
+
+# ----------------------------------------------------
+# 13. LOAN MANAGEMENT
+# ----------------------------------------------------
+
+@router.get("/loans")
+async def admin_list_loans(
+    status: Optional[str] = None,
+    current_admin: User = Depends(get_admin_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Administrative overview and queue of all user loan applications."""
+    from app.services.loan_service import loan_service
+    return await loan_service.admin_list_loans(db, status_filter=status)
+
+
+@router.post("/loans/{loan_id}/review")
+async def admin_review_loan(
+    loan_id: UUID,
+    body: Dict[str, Any],
+    current_admin: User = Depends(get_admin_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Approve or decline an investment-backed loan application with recorded reason."""
+    from app.services.loan_service import loan_service
+    new_status = body.get("status", "")
+    decline_reason = body.get("decline_reason")
+    return await loan_service.admin_review_loan(
+        db,
+        loan_id=loan_id,
+        new_status=new_status,
+        admin_id=current_admin.id,
+        decline_reason=decline_reason,
+    )
+
+
+@router.post("/loans/{loan_id}/disburse")
+async def admin_disburse_loan(
+    loan_id: UUID,
+    current_admin: User = Depends(get_admin_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Disburse approved loan principal to the borrower's wallet."""
+    from app.services.loan_service import loan_service
+    return await loan_service.admin_disburse_loan(
+        db,
+        loan_id=loan_id,
+        admin_id=current_admin.id,
+    )
+
+
+# ----------------------------------------------------
+# 14. KYC QUEUE
+# ----------------------------------------------------
+
+@router.get("/kyc/submissions")
+async def list_kyc_submissions(
+    status: Optional[str] = None,
+    current_admin: User = Depends(get_admin_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Retrieve all users with submitted, pending, or reviewed KYC verification."""
+    query = select(User).filter(User.kyc_status != None)
+    if status:
+        query = query.filter(User.kyc_status == status.lower().strip())
+    else:
+        query = query.filter(User.kyc_status.in_(["submitted", "under_review", "pending", "requires_info", "rejected", "verified"]))
+
+    result = await db.execute(query.order_by(desc(User.kyc_submitted_at)))
+    users = result.scalars().all()
+
+    return [
+        {
+            "id": str(u.id),
+            "email": u.email,
+            "full_name": u.full_name,
+            "country": u.country,
+            "kyc_status": u.kyc_status,
+            "kyc_documents": u.kyc_documents,
+            "kyc_submitted_at": u.kyc_submitted_at.isoformat() if u.kyc_submitted_at else None,
+            "kyc_verified_at": u.kyc_verified_at.isoformat() if u.kyc_verified_at else None,
+        }
+        for u in users
+    ]
+

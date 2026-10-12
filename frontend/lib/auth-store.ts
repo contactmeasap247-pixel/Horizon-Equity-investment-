@@ -11,6 +11,10 @@ interface UserProfile {
   full_name: string;
   referral_code: string;
   referred_by?: string;
+  phone?: string;
+  country?: string;
+  city?: string;
+  address?: string;
   is_admin: boolean;
   kyc_status: string;
   created_at: string;
@@ -20,6 +24,7 @@ interface AuthState {
   user: UserProfile | null;
   isAuthenticated: boolean;
   isInitialized: boolean;
+  setUser: (user: UserProfile | null) => void;
   login: (email: string, password: string) => Promise<void>;
   register: (fullName: string, email: string, password: string, referralCode?: string) => Promise<void>;
   logout: () => Promise<void>;
@@ -31,6 +36,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   user: null,
   isAuthenticated: false,
   isInitialized: false,
+  setUser: (user) => set({ user }),
+
 
   login: async (email, password) => {
     try {

@@ -13,7 +13,12 @@ from app.models.wallet import Wallet
 from app.models.admin_wallet import AdminWallet
 from app.models.deposit_request import DepositRequest
 from app.models.withdrawal_request import WithdrawalRequest
+from app.models.user import User
+from app.models.registration_bonus import RegistrationBonus
+from app.models.transaction import Transaction
+from app.models.audit_log import AuditLog
 from app.schemas.wallet import AdminWalletCreate, AdminWalletUpdate, WithdrawalRequestCreate
+from app.services.notification_service import notification_service
 
 
 class WalletService:
@@ -203,6 +208,32 @@ class WalletService:
             status="pending",
         )
         db.add(new_request)
+        await db.flush()
+
+        # Create transaction record in pending state
+        dep_ref = f"DEP-{new_request.id.hex[:8].upper()}"
+        tx = Transaction(
+            user_id=user_id,
+            type="deposit",
+            subtype="crypto_transfer",
+            amount=amount,
+            fee=Decimal("0.0"),
+            currency=currency,
+            status="pending",
+            reference=dep_ref,
+            description=f"Deposit confirmation submitted. TXID: {transaction_hash[:16]}...",
+        )
+        db.add(tx)
+
+        # Notify user
+        await notification_service.create_notification(
+            db,
+            user_id=user_id,
+            type="system",
+            title="Deposit Request Submitted",
+            message=f"Deposit of {amount} {currency} submitted for blockchain confirmation ({dep_ref}).",
+        )
+
         await db.commit()
         await db.refresh(new_request)
         return new_request
@@ -233,6 +264,23 @@ class WalletService:
         currency = withdraw_in.currency.upper()
         amount = withdraw_in.amount
 
+        # 1. Check user account status
+        user_res = await db.execute(select(User).filter(User.id == user_id))
+        user = user_res.scalars().first()
+        if not user or not user.is_active or user.is_suspended:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Account is suspended or inactive. Please contact support.",
+            )
+
+        # 2. Check KYC verification policy
+        if user.kyc_status != "verified":
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Identity verification (KYC) must be approved before withdrawals can be processed. Current status: '{user.kyc_status}'. Please visit the Verification page to submit your documents.",
+            )
+
+        # 3. Check wallet existence and balance
         wallet = await self.get_user_wallet_by_currency(db, user_id, currency)
         if wallet is None:
             raise HTTPException(
@@ -240,13 +288,25 @@ class WalletService:
                 detail=f"You do not possess a wallet for {currency}.",
             )
 
+        # 4. Enforce $5 Registration Bonus Locked Policy
+        if currency == "USDT":
+            bonus_res = await db.execute(select(RegistrationBonus).filter(RegistrationBonus.user_id == user_id))
+            bonus = bonus_res.scalars().first()
+            if bonus and bonus.status == "locked":
+                withdrawable_balance = wallet.balance - bonus.amount
+                if amount > withdrawable_balance:
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail=f"Cannot withdraw {amount} USDT. Your ${bonus.amount} welcome registration bonus is locked until completing a qualifying investment (e.g. Silver Plan). Available withdrawable balance: {max(Decimal('0.0'), withdrawable_balance)} USDT.",
+                    )
+
         if wallet.balance < amount:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=f"Inadequate available balance. Your balance is {wallet.balance} {currency}.",
             )
 
-        # Freeze the withdrawal funds
+        # 5. Freeze the withdrawal funds
         wallet.balance -= amount
         wallet.frozen_balance += amount
         db.add(wallet)
@@ -260,6 +320,45 @@ class WalletService:
             status="pending",
         )
         db.add(new_request)
+        await db.flush()
+
+        # 6. Record transaction ledger entry
+        wd_ref = f"WD-{new_request.id.hex[:8].upper()}"
+        tx = Transaction(
+            user_id=user_id,
+            type="withdrawal",
+            subtype="crypto_payout",
+            amount=-amount,
+            fee=Decimal("0.0"),
+            currency=currency,
+            status="pending",
+            reference=wd_ref,
+            description=f"Withdrawal request of {amount} {currency} to {withdraw_in.wallet_address[:10]}... ({withdraw_in.wallet_type})",
+        )
+        db.add(tx)
+
+        # 7. Audit log & notification
+        audit = AuditLog(
+            user_id=user_id,
+            action="withdrawal_requested",
+            entity_type="withdrawal_request",
+            entity_id=new_request.id,
+            new_values={
+                "amount": float(amount),
+                "currency": currency,
+                "destination": withdraw_in.wallet_address[:10] + "...",
+            },
+        )
+        db.add(audit)
+
+        await notification_service.create_notification(
+            db,
+            user_id=user_id,
+            type="system",
+            title="Withdrawal Request Placed",
+            message=f"Withdrawal request for {amount} {currency} ({wd_ref}) has been submitted and is pending administrative review.",
+        )
+
         await db.commit()
         await db.refresh(new_request)
         return new_request

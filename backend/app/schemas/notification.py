@@ -17,9 +17,9 @@ class NotificationResponse(BaseModel):
     message: str
     is_read: bool
     read_at: Optional[datetime] = None
-    metadata_: Optional[Dict[str, Any]] = Field(None, alias="metadata")
+    metadata_: Optional[Dict[str, Any]] = None
     created_at: datetime
 
     class Config:
         from_attributes = True
-        populate_by_name = True
+

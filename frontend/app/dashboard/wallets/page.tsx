@@ -1,264 +1,243 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import {
-  ArrowDownLeft,
-  ArrowUpRight,
+  Wallet,
+  Plus,
+  Trash2,
   Copy,
   Check,
-  History,
-  Loader2,
-  AlertCircle,
-  CheckCircle2,
+  AlertTriangle,
+  ArrowDownLeft,
+  ArrowUpRight,
   ShieldCheck,
+  Star,
+  Loader2,
   Coins,
+  Layers,
+  History,
+  X,
+  ExternalLink,
 } from "lucide-react";
 import { api } from "@/lib/api";
 import { toNum, formatCrypto } from "@/lib/format";
 
-interface WalletItem {
+interface WalletBalance {
   currency: string;
   balance: number | string;
   frozen_balance: number | string;
+  total_deposited: number | string;
+  total_withdrawn: number | string;
 }
 
-interface AdminAddress {
+interface SavedWallet {
   id: string;
-  currency: string;
-  wallet_address: string;
-}
-
-interface RequestItem {
-  id: string;
-  amount: number;
-  currency: string;
-  wallet_address?: string;
-  transaction_hash?: string;
-  status: string;
+  asset: string;
+  network: string;
+  address: string;
+  label: string;
+  is_default: boolean;
   created_at: string;
 }
 
-const SUPPORTED_CURRENCIES = [
-  { code: "BTC", name: "Bitcoin", network: "Native Mainnet" },
-  { code: "ETH", name: "Ethereum", network: "ERC-20" },
-  { code: "USDT", name: "Tether USD", network: "TRC-20 / ERC-20" },
-  { code: "SOL", name: "Solana", network: "SPL Native" },
-];
+const NETWORK_OPTIONS: Record<string, string[]> = {
+  BTC: ["Bitcoin Mainnet"],
+  ETH: ["Ethereum (ERC-20)"],
+  USDT: [
+    "Tron (TRC-20)",
+    "Ethereum (ERC-20)",
+    "BNB Smart Chain (BEP-20)",
+    "Solana (SPL)",
+  ],
+  SOL: ["Solana Mainnet"],
+};
 
 export default function WalletsPage() {
-  const [wallets, setWallets] = useState<WalletItem[]>([]);
-  const [adminAddresses, setAdminAddresses] = useState<AdminAddress[]>([]);
-  const [deposits, setDeposits] = useState<RequestItem[]>([]);
-  const [withdrawals, setWithdrawals] = useState<RequestItem[]>([]);
+  const [balances, setBalances] = useState<WalletBalance[]>([]);
+  const [savedWallets, setSavedWallets] = useState<SavedWallet[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
 
-  const [isLoading, setIsLoading] = useState(true);
-  const [submitting, setSubmitting] = useState(false);
-  const [activeTab, setActiveTab] = useState<"deposit" | "withdraw">("deposit");
+  // Modal State
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [asset, setAsset] = useState("USDT");
+  const [network, setNetwork] = useState("Tron (TRC-20)");
+  const [address, setAddress] = useState("");
+  const [label, setLabel] = useState("");
+  const [isDefault, setIsDefault] = useState(false);
+  const [confirmedRisk, setConfirmedRisk] = useState(false);
+  const [modalSubmitting, setModalSubmitting] = useState(false);
+  const [modalError, setModalError] = useState("");
+  const [successMsg, setSuccessMsg] = useState("");
 
-  // Form states
-  const [selectedCurrency, setSelectedCurrency] = useState("BTC");
-  const [copiedAddress, setCopiedAddress] = useState(false);
-  const [depositAmount, setDepositAmount] = useState("");
-  const [txHash, setTxHash] = useState("");
-  const [withdrawAmount, setWithdrawAmount] = useState("");
-  const [withdrawDest, setWithdrawDest] = useState("");
-
-  const [formError, setFormError] = useState<string | null>(null);
-  const [formSuccess, setFormSuccess] = useState<string | null>(null);
-
-  const fetchWalletData = async () => {
+  const loadData = async () => {
     try {
-      const [walletsRes, addressesRes, depositsRes, withdrawalsRes] = await Promise.all([
+      setLoading(true);
+      const [balRes, savedRes] = await Promise.all([
         api.get("/wallets"),
-        api.get("/wallets/addresses"),
-        api.get("/wallets/history/deposits"),
-        api.get("/wallets/history/withdrawals"),
+        api.get("/wallets/saved"),
       ]);
-
-      setWallets(walletsRes.data || []);
-      setAdminAddresses(addressesRes.data || []);
-      setDeposits(depositsRes.data || []);
-      setWithdrawals(withdrawalsRes.data || []);
+      setBalances(balRes.data || []);
+      setSavedWallets(savedRes.data || []);
     } catch (e) {
-      console.error("Error loading wallet details:", e);
+      console.error("Failed to load wallets:", e);
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchWalletData();
+    loadData();
   }, []);
 
-  const activeAdminAddress =
-    adminAddresses.find(
-      (addr) => addr.currency.toUpperCase() === selectedCurrency.toUpperCase()
-    )?.wallet_address || "No deposit address configured.";
-
-  const selectedCurrencyMeta = SUPPORTED_CURRENCIES.find((c) => c.code === selectedCurrency);
-  const currentWallet = wallets.find((w) => w.currency.toUpperCase() === selectedCurrency.toUpperCase());
-  const currentAvailable = currentWallet ? toNum(currentWallet.balance) : 0;
-
-  const handleCopyAddress = () => {
-    if (activeAdminAddress.startsWith("No")) return;
-    navigator.clipboard.writeText(activeAdminAddress);
-    setCopiedAddress(true);
-    setTimeout(() => setCopiedAddress(false), 2000);
+  // Update default network when asset changes
+  const handleAssetChange = (newAsset: string) => {
+    setAsset(newAsset);
+    const available = NETWORK_OPTIONS[newAsset] || [];
+    if (available.length > 0) {
+      setNetwork(available[0]);
+    }
   };
 
-  const handleDepositSubmit = async (e: React.FormEvent) => {
+  const handleCopy = (text: string, id: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedId(id);
+    setTimeout(() => setCopiedId(null), 2000);
+  };
+
+  const handleAddWallet = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!depositAmount || !txHash) {
-      setFormError("Please populate both the transferred amount and the blockchain transaction hash.");
+    setModalError("");
+
+    if (!address.trim() || !label.trim()) {
+      setModalError("Please provide both a wallet label and a valid receiving address.");
       return;
     }
 
-    setSubmitting(true);
-    setFormError(null);
-    setFormSuccess(null);
+    if (!confirmedRisk) {
+      setModalError("You must verify and confirm the blockchain network before saving.");
+      return;
+    }
 
     try {
-      await api.post("/wallets/deposit", {
-        amount: parseFloat(depositAmount),
-        currency: selectedCurrency,
-        transaction_hash: txHash.trim(),
+      setModalSubmitting(true);
+      const res = await api.post("/wallets/saved", {
+        asset,
+        network,
+        address: address.trim(),
+        label: label.trim(),
+        is_default: isDefault,
       });
-      setFormSuccess(`Deposit proof for ${depositAmount} ${selectedCurrency} submitted for multi-signature verification.`);
-      setDepositAmount("");
-      setTxHash("");
-      fetchWalletData();
-    } catch (error: any) {
-      setFormError(error.response?.data?.detail || "Submission failed. Please verify your inputs.");
+
+      setSavedWallets((prev) => [res.data, ...prev]);
+      setIsModalOpen(false);
+      setAddress("");
+      setLabel("");
+      setConfirmedRisk(false);
+      setSuccessMsg(`Successfully saved ${label} destination wallet.`);
+      setTimeout(() => setSuccessMsg(""), 4000);
+    } catch (err: any) {
+      setModalError(err.response?.data?.detail || "Failed to validate or save wallet address.");
     } finally {
-      setSubmitting(false);
+      setModalSubmitting(false);
     }
   };
 
-  const handleWithdrawSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!withdrawAmount || !withdrawDest) {
-      setFormError("Please provide both destination wallet address and withdrawal amount.");
-      return;
-    }
-
-    const amt = parseFloat(withdrawAmount);
-    if (isNaN(amt) || amt <= 0) {
-      setFormError("Please enter a valid withdrawal amount greater than zero.");
-      return;
-    }
-
-    if (amt > currentAvailable) {
-      setFormError(`Insufficient available balance. You currently have ${formatCrypto(currentAvailable, 6)} ${selectedCurrency} available.`);
-      return;
-    }
-
-    setSubmitting(true);
-    setFormError(null);
-    setFormSuccess(null);
-
+  const handleDeleteWallet = async (id: string, name: string) => {
+    if (!confirm(`Are you sure you want to remove the saved wallet "${name}"?`)) return;
     try {
-      await api.post("/wallets/withdraw", {
-        amount: amt,
-        currency: selectedCurrency,
-        wallet_address: withdrawDest.trim(),
-        wallet_type: "Native",
-      });
-      setFormSuccess(`Withdrawal request for ${withdrawAmount} ${selectedCurrency} submitted to security queue.`);
-      setWithdrawAmount("");
-      setWithdrawDest("");
-      fetchWalletData();
-    } catch (error: any) {
-      setFormError(error.response?.data?.detail || "Withdrawal failed. Ensure you have adequate available balance.");
-    } finally {
-      setSubmitting(false);
+      await api.delete(`/wallets/saved/${id}`);
+      setSavedWallets((prev) => prev.filter((w) => w.id !== id));
+      setSuccessMsg("Destination wallet removed successfully.");
+      setTimeout(() => setSuccessMsg(""), 3000);
+    } catch (err: any) {
+      alert(err.response?.data?.detail || "Failed to remove wallet.");
     }
   };
 
-  if (isLoading) {
+  const handleSetDefault = async (id: string) => {
+    try {
+      await api.put(`/wallets/saved/${id}`, { is_default: true });
+      loadData();
+    } catch (err: any) {
+      alert(err.response?.data?.detail || "Failed to update default status.");
+    }
+  };
+
+  if (loading) {
     return (
-      <div className="min-h-[50vh] flex flex-col items-center justify-center gap-3">
-        <Loader2 className="w-8 h-8 text-accent animate-spin" />
-        <p className="text-xs text-text-muted">Loading vault accounts...</p>
+      <div className="h-[60vh] flex flex-col items-center justify-center gap-3">
+        <Loader2 className="h-8 w-8 animate-spin text-[#4388F5]" />
+        <p className="text-xs text-[#7D8998]">Loading cryptocurrency wallets and security telemetry...</p>
       </div>
     );
   }
 
   return (
-    <div className="space-y-8">
-      {/* Page Header */}
-      <div className="border-b border-border pb-6">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-2 mb-1">
-              <span className="badge badge-accent">Custody</span>
-              <span className="text-xs text-text-faint font-mono">MPC WALLETS</span>
-            </div>
-            <h1 className="t-page">Wallets & Capital Custody</h1>
-            <p className="text-sm text-text-muted mt-1 max-w-2xl">
-              Manage multi-currency ledger balances, initiate verified on-chain deposits, and dispatch cold-storage withdrawal requests.
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="badge badge-success flex items-center gap-1.5 py-1 px-2.5">
-              <ShieldCheck className="w-3.5 h-3.5 text-success" />
-              Vault Health: Operational
-            </span>
-          </div>
+    <div className="flex flex-col gap-8 max-w-7xl mx-auto pb-12">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-white/10">
+        <div>
+          <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-white flex items-center gap-2">
+            Cryptocurrency Wallets & Custody
+          </h2>
+          <p className="text-xs text-[#A6B0BE] mt-1">
+            Manage your liquid portfolio balances and authorized destination addresses across supported blockchains.
+          </p>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2.5">
+          <Link href="/dashboard/deposits" className="btn btn-secondary btn-sm font-semibold">
+            <ArrowDownLeft className="h-3.5 w-3.5 mr-1 text-[#27C58B]" />
+            <span>Initiate Deposit</span>
+          </Link>
+          <Link href="/dashboard/withdrawals" className="btn btn-primary btn-sm font-semibold shadow-sm">
+            <ArrowUpRight className="h-3.5 w-3.5 mr-1" />
+            <span>Request Withdrawal</span>
+          </Link>
         </div>
       </div>
 
-      {/* Currency Balance Cards */}
-      <div>
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="t-title flex items-center gap-2">
-            <Coins className="w-4 h-4 text-accent" />
-            Asset Balances
-          </h2>
-          <span className="text-xs text-text-muted">Multi-Asset Ledger</span>
+      {successMsg && (
+        <div className="p-3.5 rounded bg-[#27C58B]/10 border border-[#27C58B]/30 text-xs text-[#27C58B] flex items-center gap-2">
+          <Check className="h-4 w-4 shrink-0" />
+          <span>{successMsg}</span>
         </div>
+      )}
 
+      {/* 4 Asset Balance Cards */}
+      <div>
+        <h3 className="text-xs font-semibold uppercase tracking-wider text-[#7D8998] mb-3">
+          Liquid Reserves & Available Balances
+        </h3>
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-          {SUPPORTED_CURRENCIES.map((curr) => {
-            const w = wallets.find((item) => item.currency.toUpperCase() === curr.code);
-            const balance = w ? w.balance : 0;
-            const frozen = w ? w.frozen_balance : 0;
-            const isSelected = selectedCurrency === curr.code;
+          {["BTC", "ETH", "USDT", "SOL"].map((curr) => {
+            const w = balances.find((item) => item.currency?.toUpperCase() === curr);
+            const balance = w ? toNum(w.balance) : 0;
+            const frozen = w ? toNum(w.frozen_balance) : 0;
 
             return (
-              <div
-                key={curr.code}
-                onClick={() => setSelectedCurrency(curr.code)}
-                className={`panel p-3.5 sm:p-5 cursor-pointer transition-all border flex flex-col justify-between min-h-[128px] sm:min-h-0 ${
-                  isSelected
-                    ? "border-accent shadow-sm"
-                    : "border-border hover:border-border-hover"
-                }`}
-              >
-                <div className="flex items-center justify-between mb-2 sm:mb-3 gap-1">
-                  <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
-                    <span className="w-6 h-6 sm:w-8 sm:h-8 rounded-md bg-surface-raised border border-border flex items-center justify-center font-bold text-[10px] sm:text-xs text-text shrink-0">
-                      {curr.code.slice(0, 3)}
-                    </span>
-                    <div className="min-w-0">
-                      <div className="text-xs sm:text-sm font-semibold text-text leading-tight truncate">{curr.code}</div>
-                      <div className="text-[10px] sm:text-[11px] text-text-faint truncate hidden sm:block">{curr.name}</div>
-                    </div>
-                  </div>
-                  <span className="badge font-mono text-[9px] sm:text-[10px] px-1 sm:px-1.5 py-0.5 shrink-0">{curr.network}</span>
-                </div>
-
-                <div className="my-1 sm:my-2">
-                  <div className="text-[10px] sm:text-xs text-text-muted mb-0.5 truncate">Available Balance</div>
-                  <div className="text-base sm:text-2xl font-bold text-text num font-mono truncate">
-                    {formatCrypto(balance, 4)}
-                  </div>
-                </div>
-
-                <div className="mt-2.5 sm:mt-4 pt-2 sm:pt-3 border-t border-border-subtle flex items-center justify-between text-[10px] sm:text-xs text-text-muted">
-                  <span className="truncate">Locked:</span>
-                  <span className="font-mono text-text num font-medium truncate ml-1">
-                    {formatCrypto(frozen, 4)} {curr.code}
+              <div key={curr} className="panel p-4 flex flex-col justify-between min-h-[130px]">
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-sm text-white">{curr}</span>
+                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-white/5 border border-white/10 text-[#7D8998]">
+                    {curr === "USDT" ? "Multi-Net" : "Mainnet"}
                   </span>
+                </div>
+
+                <div className="my-2">
+                  <span className="num text-xl sm:text-2xl font-bold text-white block truncate">
+                    {formatCrypto(balance)}
+                  </span>
+                  <span className="text-[10px] text-[#7D8998] block">
+                    {curr} Liquid Reserve
+                  </span>
+                </div>
+
+                <div className="pt-2 border-t border-white/5 flex items-center justify-between text-[11px] text-[#A6B0BE]">
+                  <span>Frozen:</span>
+                  <span className="font-medium text-white">{formatCrypto(frozen)}</span>
                 </div>
               </div>
             );
@@ -266,401 +245,370 @@ export default function WalletsPage() {
         </div>
       </div>
 
-      {/* Deposit & Withdraw Workflow Split */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-        {/* Left Col: Actions Terminal */}
-        <div className="lg:col-span-5 panel p-6 space-y-6">
-          {/* Operation Tab Switcher */}
-          <div>
-            <div className="tabs">
-              <button
-                type="button"
-                onClick={() => {
-                  setActiveTab("deposit");
-                  setFormError(null);
-                  setFormSuccess(null);
-                }}
-                className={`tab flex items-center gap-2 ${activeTab === "deposit" ? "tab-active" : ""}`}
-              >
-                <ArrowDownLeft className="w-4 h-4" />
-                Deposit Assets
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setActiveTab("withdraw");
-                  setFormError(null);
-                  setFormSuccess(null);
-                }}
-                className={`tab flex items-center gap-2 ${activeTab === "withdraw" ? "tab-active" : ""}`}
-              >
-                <ArrowUpRight className="w-4 h-4" />
-                Withdraw Assets
-              </button>
+      {/* Quick Navigation Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+        <Link
+          href="/dashboard/deposits"
+          className="panel p-4 flex items-center justify-between hover:border-[#4388F5]/40 transition group"
+        >
+          <div className="flex items-center gap-3">
+            <div className="h-9 w-9 rounded bg-[#4388F5]/10 border border-[#4388F5]/20 flex items-center justify-center text-[#4388F5]">
+              <ArrowDownLeft className="h-4 w-4" />
+            </div>
+            <div>
+              <span className="text-xs font-bold text-white block group-hover:text-[#4388F5] transition">
+                Deposit Funds
+              </span>
+              <span className="text-[11px] text-[#7D8998]">Generate address & TXID proof</span>
             </div>
           </div>
+          <ExternalLink className="h-3.5 w-3.5 text-[#7D8998] group-hover:text-white transition" />
+        </Link>
 
-          {/* Feedback banners */}
-          {formError && (
-            <div className="alert alert-danger text-xs">
-              <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5 text-danger" />
-              <div className="leading-relaxed">{formError}</div>
+        <Link
+          href="/dashboard/my-deposits"
+          className="panel p-4 flex items-center justify-between hover:border-[#4388F5]/40 transition group"
+        >
+          <div className="flex items-center gap-3">
+            <div className="h-9 w-9 rounded bg-[#27C58B]/10 border border-[#27C58B]/20 flex items-center justify-center text-[#27C58B]">
+              <Layers className="h-4 w-4" />
             </div>
-          )}
+            <div>
+              <span className="text-xs font-bold text-white block group-hover:text-[#27C58B] transition">
+                My Deposits
+              </span>
+              <span className="text-[11px] text-[#7D8998]">Audit past deposit records</span>
+            </div>
+          </div>
+          <ExternalLink className="h-3.5 w-3.5 text-[#7D8998] group-hover:text-white transition" />
+        </Link>
 
-          {formSuccess && (
-            <div className="alert alert-success text-xs">
-              <CheckCircle2 className="w-4 h-4 flex-shrink-0 mt-0.5 text-success" />
-              <div className="leading-relaxed">{formSuccess}</div>
+        <Link
+          href="/dashboard/withdrawals"
+          className="panel p-4 flex items-center justify-between hover:border-[#4388F5]/40 transition group"
+        >
+          <div className="flex items-center gap-3">
+            <div className="h-9 w-9 rounded bg-[#F3B94F]/10 border border-[#F3B94F]/20 flex items-center justify-center text-[#F3B94F]">
+              <ArrowUpRight className="h-4 w-4" />
             </div>
-          )}
+            <div>
+              <span className="text-xs font-bold text-white block group-hover:text-[#F3B94F] transition">
+                Withdrawals
+              </span>
+              <span className="text-[11px] text-[#7D8998]">Dispatch to saved wallets</span>
+            </div>
+          </div>
+          <ExternalLink className="h-3.5 w-3.5 text-[#7D8998] group-hover:text-white transition" />
+        </Link>
 
-          {/* Currency Selector Pills */}
-          <div className="space-y-2">
-            <label className="text-xs font-semibold text-text-muted uppercase tracking-wider">
-              Select Working Asset
-            </label>
-            <div className="grid grid-cols-4 gap-2">
-              {SUPPORTED_CURRENCIES.map((curr) => (
-                <button
-                  key={curr.code}
-                  type="button"
-                  onClick={() => setSelectedCurrency(curr.code)}
-                  className={`py-2 px-3 rounded-md text-xs font-semibold border transition-all text-center ${
-                    selectedCurrency === curr.code
-                      ? "bg-accent/15 border-accent text-accent font-bold"
-                      : "bg-surface-raised border-border text-text-muted hover:text-text hover:border-border-hover"
-                  }`}
-                >
-                  {curr.code}
-                </button>
-              ))}
+        <Link
+          href="/dashboard/withdrawal-history"
+          className="panel p-4 flex items-center justify-between hover:border-[#4388F5]/40 transition group"
+        >
+          <div className="flex items-center gap-3">
+            <div className="h-9 w-9 rounded bg-[#7D8998]/10 border border-[#7D8998]/20 flex items-center justify-center text-[#7D8998]">
+              <History className="h-4 w-4" />
             </div>
-            <p className="text-[11px] text-text-faint">
-              Network: {selectedCurrencyMeta?.network}
+            <div>
+              <span className="text-xs font-bold text-white block group-hover:text-white transition">
+                Withdrawal History
+              </span>
+              <span className="text-[11px] text-[#7D8998]">Track payout status & TXIDs</span>
+            </div>
+          </div>
+          <ExternalLink className="h-3.5 w-3.5 text-[#7D8998] group-hover:text-white transition" />
+        </Link>
+      </div>
+
+      {/* Prominent Risk Warning Banner (Phase 5 Requirement) */}
+      <div className="panel p-4 sm:p-5 border-[#F3B94F]/40 bg-[#F3B94F]/5 flex items-start gap-3.5">
+        <AlertTriangle className="h-5 w-5 text-[#F3B94F] shrink-0 mt-0.5" />
+        <div>
+          <h4 className="text-xs font-bold text-[#F3B94F] uppercase tracking-wider">
+            Critical Blockchain Safety Notice
+          </h4>
+          <p className="text-xs text-[#F5F7FA] mt-1 leading-relaxed">
+            IMPORTANT: Always verify your wallet address and blockchain network before saving. The selected network must match the receiving wallet. Transfers sent to an incompatible address or network may be irreversible and could result in permanent loss of funds.
+          </p>
+        </div>
+      </div>
+
+      {/* Saved Destination Wallets Section */}
+      <div className="panel p-5 sm:p-6 flex flex-col gap-5">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/10 pb-4">
+          <div>
+            <h3 className="text-base font-bold text-white flex items-center gap-2">
+              <ShieldCheck className="h-5 w-5 text-[#4388F5]" />
+              Saved Destination Wallets
+            </h3>
+            <p className="text-xs text-[#7D8998] mt-0.5">
+              Authorized personal addresses used for expedited withdrawals and yield distributions.
             </p>
           </div>
 
-          {/* DEPOSIT FORM */}
-          {activeTab === "deposit" && (
-            <form onSubmit={handleDepositSubmit} className="space-y-5">
-              <div className="inset p-4 rounded-lg space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-semibold text-text uppercase tracking-wider">
-                    Institutional Deposit Address ({selectedCurrency})
-                  </span>
-                  <span className="badge badge-accent text-[10px]">VERIFIED CUSTODY</span>
-                </div>
+          <button
+            type="button"
+            onClick={() => setIsModalOpen(true)}
+            className="btn btn-primary btn-sm flex items-center gap-1.5 self-start sm:self-auto"
+          >
+            <Plus className="h-4 w-4" />
+            <span>Add Destination Wallet</span>
+          </button>
+        </div>
 
-                <div className="flex items-center gap-2">
-                  <input
-                    type="text"
-                    readOnly
-                    value={activeAdminAddress}
-                    className="input text-xs font-mono select-all bg-canvas py-2"
-                  />
-                  <button
-                    type="button"
-                    onClick={handleCopyAddress}
-                    disabled={activeAdminAddress.startsWith("No")}
-                    className="btn btn-secondary px-3 py-2 flex items-center justify-center flex-shrink-0"
-                    title="Copy Address"
-                  >
-                    {copiedAddress ? (
-                      <Check className="w-4 h-4 text-success" />
-                    ) : (
-                      <Copy className="w-4 h-4" />
+        {savedWallets.length === 0 ? (
+          <div className="py-12 flex flex-col items-center justify-center text-center gap-3">
+            <div className="h-12 w-12 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-[#7D8998]">
+              <Wallet className="h-6 w-6" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-white">No Destination Wallets Saved</p>
+              <p className="text-xs text-[#7D8998] mt-0.5 max-w-sm">
+                Add your verified external Bitcoin, Ethereum, USDT, or Solana addresses to simplify future withdrawals.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setIsModalOpen(true)}
+              className="btn btn-secondary btn-sm mt-2"
+            >
+              <Plus className="h-3.5 w-3.5 mr-1" />
+              <span>Add Your First Wallet</span>
+            </button>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {savedWallets.map((sw) => (
+              <div
+                key={sw.id}
+                className="p-4 rounded-lg bg-[#0B0F14] border border-white/10 flex flex-col justify-between gap-3 hover:border-white/20 transition"
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-[#4388F5]/15 text-[#4388F5] border border-[#4388F5]/30">
+                      {sw.asset}
+                    </span>
+                    <span className="text-[11px] font-medium text-[#A6B0BE]">
+                      {sw.network}
+                    </span>
+                    {sw.is_default && (
+                      <span className="flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded bg-[#27C58B]/15 text-[#27C58B] border border-[#27C58B]/30">
+                        <Star className="h-3 w-3 fill-[#27C58B]" />
+                        Default
+                      </span>
                     )}
-                  </button>
+                  </div>
+
+                  <div className="flex items-center gap-1">
+                    {!sw.is_default && (
+                      <button
+                        type="button"
+                        onClick={() => handleSetDefault(sw.id)}
+                        title="Set as Default Wallet"
+                        className="p-1 rounded text-[#7D8998] hover:text-[#27C58B] transition"
+                      >
+                        <Star className="h-3.5 w-3.5" />
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteWallet(sw.id, sw.label)}
+                      title="Remove Wallet"
+                      className="p-1 rounded text-[#7D8998] hover:text-[#F06464] transition"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
                 </div>
 
-                <div className="text-[11px] text-text-faint leading-relaxed">
-                  Notice: Transfer only <strong className="text-text">{selectedCurrency}</strong> to this specific custodial address. Cross-chain transfers without bridge support cannot be routed.
+                <div>
+                  <span className="text-xs font-bold text-white block">{sw.label}</span>
+                  <div className="mt-1 flex items-center justify-between gap-2 p-2 rounded bg-[#111821] border border-white/5 font-mono text-[11px] text-[#E2E8F0] break-all">
+                    <span>{sw.address}</span>
+                    <button
+                      type="button"
+                      onClick={() => handleCopy(sw.address, sw.id)}
+                      className="p-1 text-[#7D8998] hover:text-white shrink-0"
+                      title="Copy Address"
+                    >
+                      {copiedId === sw.id ? (
+                        <Check className="h-3.5 w-3.5 text-[#27C58B]" />
+                      ) : (
+                        <Copy className="h-3.5 w-3.5" />
+                      )}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="text-[10px] text-[#7D8998] flex items-center justify-between pt-1">
+                  <span>Added {new Date(sw.created_at).toLocaleDateString()}</span>
+                  <span className="text-[#27C58B]">Address Validated</span>
                 </div>
               </div>
-
-              <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-text-muted flex justify-between">
-                  <span>Transferred Amount ({selectedCurrency})</span>
-                  <span className="text-text-faint font-normal">Min: 0.001 {selectedCurrency}</span>
-                </label>
-                <input
-                  type="number"
-                  step="any"
-                  value={depositAmount}
-                  onChange={(e) => setDepositAmount(e.target.value)}
-                  placeholder="0.05"
-                  className="input font-mono"
-                  required
-                  disabled={submitting}
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-text-muted">
-                  Blockchain Transaction Hash (TXID)
-                </label>
-                <input
-                  type="text"
-                  value={txHash}
-                  onChange={(e) => setTxHash(e.target.value)}
-                  placeholder="Paste on-chain transaction hash or hex string"
-                  className="input font-mono text-xs"
-                  required
-                  disabled={submitting}
-                />
-                <p className="text-[11px] text-text-faint">
-                  Transactions require network confirmations before balance settles into available capital.
-                </p>
-              </div>
-
-              <button
-                type="submit"
-                disabled={submitting}
-                className="btn btn-primary w-full justify-center py-2.5"
-              >
-                {submitting ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                    Verifying Proof...
-                  </>
-                ) : (
-                  <>
-                    <ShieldCheck className="w-4 h-4 mr-2" />
-                    Submit Deposit Proof
-                  </>
-                )}
-              </button>
-            </form>
-          )}
-
-          {/* WITHDRAW FORM */}
-          {activeTab === "withdraw" && (
-            <form onSubmit={handleWithdrawSubmit} className="space-y-5">
-              <div className="inset p-4 rounded-lg space-y-2">
-                <div className="flex items-center justify-between text-xs">
-                  <span className="text-text-muted">Available for Withdrawal:</span>
-                  <span className="font-mono text-text font-bold num">
-                    {formatCrypto(currentAvailable, 6)} {selectedCurrency}
-                  </span>
-                </div>
-                <div className="text-[11px] text-text-faint">
-                  Cold-storage settlement requests execute under automated risk checks within standard clearing windows.
-                </div>
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-text-muted">
-                  Destination External Wallet Address
-                </label>
-                <input
-                  type="text"
-                  value={withdrawDest}
-                  onChange={(e) => setWithdrawDest(e.target.value)}
-                  placeholder={`Enter destination ${selectedCurrency} address`}
-                  className="input font-mono text-xs"
-                  required
-                  disabled={submitting}
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <label className="text-xs font-semibold text-text-muted">
-                    Withdrawal Amount ({selectedCurrency})
-                  </label>
-                  <button
-                    type="button"
-                    onClick={() => setWithdrawAmount(currentAvailable.toString())}
-                    className="text-[11px] text-accent hover:underline"
-                  >
-                    Use Max Available
-                  </button>
-                </div>
-                <input
-                  type="number"
-                  step="any"
-                  value={withdrawAmount}
-                  onChange={(e) => setWithdrawAmount(e.target.value)}
-                  placeholder="0.01"
-                  className="input font-mono"
-                  required
-                  disabled={submitting}
-                />
-              </div>
-
-              <button
-                type="submit"
-                disabled={submitting || currentAvailable <= 0}
-                className="btn btn-primary w-full justify-center py-2.5"
-              >
-                {submitting ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                    Dispatching Transfer...
-                  </>
-                ) : (
-                  <>
-                    <ArrowUpRight className="w-4 h-4 mr-2" />
-                    Dispatch Withdrawal Request
-                  </>
-                )}
-              </button>
-            </form>
-          )}
-        </div>
-
-        {/* Right Col: Transaction History Ledgers */}
-        <div className="lg:col-span-7 space-y-6">
-          {/* Recent Deposits Panel */}
-          <div className="panel p-6 space-y-4">
-            <div className="flex items-center justify-between pb-3 border-b border-border">
-              <h3 className="t-title flex items-center gap-2">
-                <History className="w-4 h-4 text-accent" />
-                Deposit Settlement Ledger
-              </h3>
-              <span className="badge font-mono text-[10px]">
-                {deposits.length} Records
-              </span>
-            </div>
-
-            <div className="table-wrap">
-              <table className="table">
-                <thead>
-                  <tr>
-                    <th>Date</th>
-                    <th>Asset</th>
-                    <th>Amount</th>
-                    <th>TX Hash</th>
-                    <th>Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {deposits.length === 0 ? (
-                    <tr>
-                      <td colSpan={5} className="text-center py-8 text-text-muted text-xs">
-                        No deposit settlements recorded yet.
-                      </td>
-                    </tr>
-                  ) : (
-                    deposits.map((dep) => (
-                      <tr key={dep.id}>
-                        <td className="text-text-muted text-xs font-mono">
-                          {new Date(dep.created_at).toLocaleDateString()}
-                        </td>
-                        <td>
-                          <span className="font-semibold text-text text-xs">
-                            {dep.currency}
-                          </span>
-                        </td>
-                        <td className="font-mono text-xs font-bold text-text num">
-                          {dep.amount}
-                        </td>
-                        <td className="font-mono text-xs text-text-faint">
-                          {dep.transaction_hash ? (
-                            <span title={dep.transaction_hash}>
-                              {dep.transaction_hash.slice(0, 10)}...{dep.transaction_hash.slice(-6)}
-                            </span>
-                          ) : (
-                            "—"
-                          )}
-                        </td>
-                        <td>
-                          <span
-                            className={`badge text-[10px] ${
-                              dep.status === "verified"
-                                ? "badge-success"
-                                : dep.status === "pending"
-                                ? "badge-warning"
-                                : "badge-danger"
-                            }`}
-                          >
-                            {dep.status}
-                          </span>
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
+            ))}
           </div>
-
-          {/* Recent Withdrawals Panel */}
-          <div className="panel p-6 space-y-4">
-            <div className="flex items-center justify-between pb-3 border-b border-border">
-              <h3 className="t-title flex items-center gap-2">
-                <ArrowUpRight className="w-4 h-4 text-accent" />
-                Withdrawal Clearing Ledger
-              </h3>
-              <span className="badge font-mono text-[10px]">
-                {withdrawals.length} Records
-              </span>
-            </div>
-
-            <div className="table-wrap">
-              <table className="table">
-                <thead>
-                  <tr>
-                    <th>Date</th>
-                    <th>Asset</th>
-                    <th>Amount</th>
-                    <th>Destination</th>
-                    <th>Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {withdrawals.length === 0 ? (
-                    <tr>
-                      <td colSpan={5} className="text-center py-8 text-text-muted text-xs">
-                        No withdrawal transfers recorded yet.
-                      </td>
-                    </tr>
-                  ) : (
-                    withdrawals.map((w) => (
-                      <tr key={w.id}>
-                        <td className="text-text-muted text-xs font-mono">
-                          {new Date(w.created_at).toLocaleDateString()}
-                        </td>
-                        <td>
-                          <span className="font-semibold text-text text-xs">
-                            {w.currency}
-                          </span>
-                        </td>
-                        <td className="font-mono text-xs font-bold text-text num">
-                          {w.amount}
-                        </td>
-                        <td className="font-mono text-xs text-text-faint">
-                          {w.wallet_address ? (
-                            <span title={w.wallet_address}>
-                              {w.wallet_address.slice(0, 8)}...{w.wallet_address.slice(-6)}
-                            </span>
-                          ) : (
-                            "—"
-                          )}
-                        </td>
-                        <td>
-                          <span
-                            className={`badge text-[10px] ${
-                              w.status === "completed"
-                                ? "badge-success"
-                                : w.status === "pending"
-                                ? "badge-warning"
-                                : "badge-danger"
-                            }`}
-                          >
-                            {w.status}
-                          </span>
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
+        )}
       </div>
+
+      {/* Add Wallet Modal */}
+      {isModalOpen && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="panel w-full max-w-lg p-6 bg-[#111821] border-white/20 shadow-2xl relative animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between border-b border-white/10 pb-3 mb-4">
+              <h3 className="text-base font-bold text-white flex items-center gap-2">
+                <Plus className="h-4 w-4 text-[#4388F5]" />
+                Add Destination Wallet
+              </h3>
+              <button
+                type="button"
+                onClick={() => setIsModalOpen(false)}
+                className="p-1 rounded text-[#7D8998] hover:text-white"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {modalError && (
+              <div className="mb-4 p-3 rounded bg-[#F06464]/10 border border-[#F06464]/30 text-xs text-[#F06464] flex items-center gap-2">
+                <AlertTriangle className="h-4 w-4 shrink-0" />
+                <span>{modalError}</span>
+              </div>
+            )}
+
+            <form onSubmit={handleAddWallet} className="flex flex-col gap-4">
+              <div className="grid grid-cols-2 gap-3">
+                {/* Asset */}
+                <div>
+                  <label className="text-xs font-semibold text-[#A6B0BE] block mb-1">
+                    Asset *
+                  </label>
+                  <select
+                    value={asset}
+                    onChange={(e) => handleAssetChange(e.target.value)}
+                    className="input w-full bg-[#0B0F14] border-white/10 text-white text-xs h-10"
+                  >
+                    <option value="USDT">USDT (Tether)</option>
+                    <option value="BTC">BTC (Bitcoin)</option>
+                    <option value="ETH">ETH (Ethereum)</option>
+                    <option value="SOL">SOL (Solana)</option>
+                  </select>
+                </div>
+
+                {/* Network */}
+                <div>
+                  <label className="text-xs font-semibold text-[#A6B0BE] block mb-1">
+                    Blockchain Network *
+                  </label>
+                  <select
+                    value={network}
+                    onChange={(e) => setNetwork(e.target.value)}
+                    className="input w-full bg-[#0B0F14] border-white/10 text-white text-xs h-10"
+                  >
+                    {(NETWORK_OPTIONS[asset] || []).map((net) => (
+                      <option key={net} value={net}>
+                        {net}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {/* Wallet Label */}
+              <div>
+                <label className="text-xs font-semibold text-[#A6B0BE] block mb-1">
+                  Wallet Label *
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. Ledger Cold Storage / Binance Account"
+                  value={label}
+                  onChange={(e) => setLabel(e.target.value)}
+                  className="input w-full bg-[#0B0F14] border-white/10 text-white text-xs h-10"
+                  required
+                />
+              </div>
+
+              {/* Destination Address */}
+              <div>
+                <label className="text-xs font-semibold text-[#A6B0BE] block mb-1">
+                  Receiving Wallet Address *
+                </label>
+                <input
+                  type="text"
+                  placeholder={
+                    asset === "BTC"
+                      ? "1..., 3..., or bc1..."
+                      : asset === "ETH"
+                      ? "0x..."
+                      : asset === "SOL"
+                      ? "Base58 address (e.g. 7EcP...)"
+                      : network.includes("TRC")
+                      ? "T... (Tron 34 characters)"
+                      : "0x... (ERC-20 / BEP-20)"
+                  }
+                  value={address}
+                  onChange={(e) => setAddress(e.target.value)}
+                  className="input w-full bg-[#0B0F14] border-white/10 text-white text-xs h-10 font-mono"
+                  required
+                />
+              </div>
+
+              {/* Default Toggle */}
+              <div className="flex items-center gap-2 pt-1">
+                <input
+                  type="checkbox"
+                  id="defaultToggle"
+                  checked={isDefault}
+                  onChange={(e) => setIsDefault(e.target.checked)}
+                  className="rounded border-white/20 bg-[#0B0F14] text-[#4388F5]"
+                />
+                <label htmlFor="defaultToggle" className="text-xs text-[#A6B0BE] cursor-pointer">
+                  Set as default destination wallet for {asset}
+                </label>
+              </div>
+
+              {/* Network Confirmation Attestation */}
+              <div className="p-3 rounded bg-[#F3B94F]/10 border border-[#F3B94F]/30 flex items-start gap-2.5">
+                <input
+                  type="checkbox"
+                  id="riskConfirm"
+                  checked={confirmedRisk}
+                  onChange={(e) => setConfirmedRisk(e.target.checked)}
+                  className="rounded border-white/20 bg-[#0B0F14] text-[#4388F5] mt-0.5"
+                  required
+                />
+                <label htmlFor="riskConfirm" className="text-[11px] text-[#F5F7FA] leading-tight cursor-pointer">
+                  I confirm that the receiving address above matches the selected <strong>{network}</strong> network. I acknowledge that transfers sent via incorrect networks cannot be reversed.
+                </label>
+              </div>
+
+              <div className="flex justify-end gap-2.5 pt-2 border-t border-white/10">
+                <button
+                  type="button"
+                  onClick={() => setIsModalOpen(false)}
+                  className="btn btn-secondary btn-sm"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={modalSubmitting}
+                  className="btn btn-primary btn-sm flex items-center gap-2"
+                >
+                  {modalSubmitting ? (
+                    <>
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      <span>Validating...</span>
+                    </>
+                  ) : (
+                    <span>Save Destination Wallet</span>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

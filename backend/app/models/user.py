@@ -72,6 +72,9 @@ class User(Base):
     support_tickets = relationship("SupportTicket", back_populates="user", foreign_keys="SupportTicket.user_id", cascade="all, delete-orphan")
     referrer = relationship("User", remote_side="User.id", foreign_keys=[referred_by])
     session_tokens = relationship("SessionToken", back_populates="user", cascade="all, delete-orphan")
+    saved_wallets = relationship("UserSavedWallet", back_populates="user", cascade="all, delete-orphan")
+    registration_bonus = relationship("RegistrationBonus", back_populates="user", uselist=False, cascade="all, delete-orphan")
+    loan_applications = relationship("LoanApplication", back_populates="user", foreign_keys="LoanApplication.user_id", cascade="all, delete-orphan")
 
     def __repr__(self):
         return f"<User {self.email}>"

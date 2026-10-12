@@ -12,7 +12,10 @@ import {
   ArrowUpRight,
   Clock,
   Loader2,
+  ShieldCheck,
+  Gift,
 } from "lucide-react";
+
 import { useAuthStore } from "@/lib/auth-store";
 import { api } from "@/lib/api";
 import { toNum, formatCrypto, formatUsd } from "@/lib/format";
@@ -56,6 +59,7 @@ export default function DashboardOverview() {
   const [referralCode, setReferralCode] = useState("");
   const [referralCount, setReferralCount] = useState(0);
   const [referralEarnings, setReferralEarnings] = useState(0);
+  const [bonus, setBonus] = useState<{ amount: number; status: string; is_withdrawable: boolean } | null>(null);
 
   const [isLoading, setIsLoading] = useState(true);
   const [copied, setCopied] = useState(false);
@@ -64,15 +68,19 @@ export default function DashboardOverview() {
     let isMounted = true;
     const fetchData = async () => {
       try {
-        const [walletsRes, investmentsRes, referralsRes] = await Promise.all([
+        const [walletsRes, investmentsRes, referralsRes, bonusRes] = await Promise.all([
           api.get("/wallets").catch(() => ({ data: [] })),
           api.get("/investments?status=active").catch(() => ({ data: [] })),
           api.get("/referrals/stats").catch(() => ({ data: {} })),
+          api.get("/users/bonus").catch(() => ({ data: null })),
         ]);
 
         if (isMounted) {
           setWallets(Array.isArray(walletsRes.data) ? walletsRes.data : []);
           setInvestments(Array.isArray(investmentsRes.data) ? investmentsRes.data : []);
+          if (bonusRes.data) {
+            setBonus(bonusRes.data);
+          }
 
           if (referralsRes.data) {
             setReferralCode(referralsRes.data.referral_code || "");
@@ -80,6 +88,7 @@ export default function DashboardOverview() {
             setReferralEarnings(toNum(referralsRes.data.referral_earnings));
           }
         }
+
       } catch (e) {
         console.error("Error loading dashboard data:", e);
       } finally {
@@ -159,7 +168,7 @@ export default function DashboardOverview() {
         </div>
 
         <div className="grid grid-cols-2 sm:flex items-center gap-2.5 sm:gap-3 w-full sm:w-auto">
-          <Link href="/dashboard/wallets" className="btn btn-secondary btn-sm font-semibold justify-center text-center">
+          <Link href="/dashboard/deposits" className="btn btn-secondary btn-sm font-semibold justify-center text-center">
             <span>Deposit Funds</span>
           </Link>
           <Link href="/dashboard/investments" className="btn btn-primary btn-sm font-semibold shadow-sm justify-center text-center">
@@ -168,6 +177,44 @@ export default function DashboardOverview() {
           </Link>
         </div>
       </div>
+
+      {/* Promotional Welcome Bonus Banner (Phase 10) */}
+      {bonus && (
+        <div className="panel p-4 bg-gradient-to-r from-[#4388F5]/10 via-[#111821] to-[#27C58B]/10 border-white/10 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="h-9 w-9 rounded-full bg-[#4388F5]/20 border border-[#4388F5]/30 flex items-center justify-center text-[#4388F5] shrink-0">
+              <Gift className="h-4 w-4" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-bold text-white">
+                  ${bonus.amount}.00 USDT Registration Bonus Credited
+                </span>
+                <span
+                  className={`text-[9px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wider ${
+                    bonus.status === "unlocked"
+                      ? "bg-[#27C58B]/15 text-[#27C58B] border border-[#27C58B]/30"
+                      : "bg-[#F3B94F]/15 text-[#F3B94F] border border-[#F3B94F]/30"
+                  }`}
+                >
+                  {bonus.status === "unlocked" ? "Unlocked for Withdrawal" : "Locked (Qualifying Plan Required)"}
+                </span>
+              </div>
+              <p className="text-[11px] text-[#A6B0BE] mt-0.5">
+                {bonus.status === "unlocked"
+                  ? "Congratulations! Your qualifying investment has completed. Your $5 bonus is now unlocked for withdrawal."
+                  : "Complete your first qualifying investment contract (e.g. Silver Plan) to unlock this welcome bonus for withdrawal."}
+              </p>
+            </div>
+          </div>
+          <Link
+            href="/dashboard/investments"
+            className="text-xs font-semibold text-[#4388F5] hover:underline shrink-0"
+          >
+            {bonus.status === "unlocked" ? "View Balances →" : "Explore Qualifying Plans →"}
+          </Link>
+        </div>
+      )}
 
       {/* Top 4 Key Metrics */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
@@ -220,30 +267,40 @@ export default function DashboardOverview() {
           </span>
         </div>
 
-        {/* Compliance Standing */}
-        <div className="panel p-3.5 sm:p-5 flex flex-col justify-between min-h-[110px] sm:min-h-0">
+        {/* Compliance Standing - Direct link to /dashboard/verification */}
+        <Link
+          href="/dashboard/verification"
+          className="panel p-3.5 sm:p-5 flex flex-col justify-between min-h-[110px] sm:min-h-0 hover:border-[#4388F5]/40 transition group cursor-pointer"
+        >
           <div className="flex items-center justify-between text-[#7D8998] text-[11px] sm:text-xs font-medium gap-1">
-            <span className="truncate">KYC Compliance</span>
-            <Clock className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-[#7D8998] shrink-0" />
+            <span className="truncate group-hover:text-white transition">KYC Compliance</span>
+            <ShieldCheck className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-[#4388F5] shrink-0" />
           </div>
           <div className="my-1.5 sm:my-2.5">
             <span
               className={`text-sm sm:text-lg font-bold uppercase tracking-wider block truncate ${
-                user?.kyc_status === "verified"
+                user?.kyc_status === "verified" || user?.kyc_status === "approved"
                   ? "text-[#27C58B]"
-                  : user?.kyc_status === "pending"
+                  : user?.kyc_status === "pending" || user?.kyc_status === "under_review" || user?.kyc_status === "submitted"
                   ? "text-[#F3B94F]"
                   : "text-[#F06464]"
               }`}
             >
-              {user?.kyc_status || "Verified"}
+              {user?.kyc_status === "verified" || user?.kyc_status === "approved"
+                ? "Verified"
+                : user?.kyc_status === "under_review" || user?.kyc_status === "submitted"
+                ? "Under Review"
+                : user?.kyc_status || "Pending"}
             </span>
           </div>
-          <span className="text-[10px] sm:text-[11px] text-[#7D8998] block truncate">
-            Tier-1 Regulatory Standing
+          <span className="text-[10px] sm:text-[11px] text-[#4388F5] group-hover:underline block truncate">
+            {user?.kyc_status === "verified" || user?.kyc_status === "approved"
+              ? "Tier-1 Standing Active"
+              : "Complete Verification →"}
           </span>
-        </div>
+        </Link>
       </div>
+
 
       {/* Individual Cryptocurrencies Grid */}
       <div>

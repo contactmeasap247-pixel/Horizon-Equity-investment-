@@ -14,6 +14,7 @@ from app.api.v1 import (
     tickets,
     admin,
     admin_wallets,
+    loans,
 )
 
 api_router = APIRouter()
@@ -28,3 +29,5 @@ api_router.include_router(notifications.router, prefix="/notifications", tags=["
 api_router.include_router(tickets.router, prefix="/tickets", tags=["Support Tickets"])
 api_router.include_router(admin.router, prefix="/admin", tags=["Admin Operations"])
 api_router.include_router(admin_wallets.router, prefix="/admin/wallets", tags=["Admin Wallets Management"])
+api_router.include_router(loans.router, prefix="/loans", tags=["Loans"])
+

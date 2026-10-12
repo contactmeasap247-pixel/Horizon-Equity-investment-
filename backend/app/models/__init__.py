@@ -17,6 +17,9 @@ from app.models.support_ticket import SupportTicket, TicketReply
 from app.models.audit_log import AuditLog
 from app.models.site_setting import SiteSetting
 from app.models.session_token import SessionToken
+from app.models.user_saved_wallet import UserSavedWallet
+from app.models.registration_bonus import RegistrationBonus
+from app.models.loan import LoanProduct, LoanApplication, LoanRepayment
 
 __all__ = [
     "User",
@@ -34,4 +37,9 @@ __all__ = [
     "AuditLog",
     "SiteSetting",
     "SessionToken",
+    "UserSavedWallet",
+    "RegistrationBonus",
+    "LoanProduct",
+    "LoanApplication",
+    "LoanRepayment",
 ]

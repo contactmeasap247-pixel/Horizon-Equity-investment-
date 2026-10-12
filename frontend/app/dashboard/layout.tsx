@@ -11,6 +11,7 @@ import {
   HelpCircle,
   History,
   Shield,
+  ShieldCheck,
   LogOut,
   Bell,
   Menu,
@@ -26,6 +27,10 @@ import {
   FileText,
   Lock,
   Settings,
+  Landmark,
+  Briefcase,
+  ReceiptText,
+
 } from "lucide-react";
 import { useAuthStore } from "@/lib/auth-store";
 import { api } from "@/lib/api";
@@ -108,16 +113,26 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   const menuItems = [
     { name: "Overview", href: "/dashboard", icon: LayoutDashboard },
-    { name: "Wallets & Deposits", href: "/dashboard/wallets", icon: Wallet },
+    { name: "Take a Loan", href: "/dashboard/loans", icon: Landmark, badge: "PRO" },
+    { name: "Verification", href: "/dashboard/verification", icon: ShieldCheck },
+    { name: "Wallets", href: "/dashboard/wallets", icon: Wallet },
+    { name: "Deposits", href: "/dashboard/deposits", icon: ArrowDownLeft },
+    { name: "My Deposits", href: "/dashboard/my-deposits", icon: Layers },
+    { name: "Withdrawals", href: "/dashboard/withdrawals", icon: ArrowUpRight },
+    { name: "Withdrawal History", href: "/dashboard/withdrawal-history", icon: History },
     { name: "Investment Plans", href: "/dashboard/investments", icon: TrendingUp },
+    { name: "Active Investments", href: "/dashboard/active-investments", icon: Briefcase },
     { name: "Referral Network", href: "/dashboard/referrals", icon: Share2 },
+    { name: "Transactions", href: "/dashboard/transactions", icon: ReceiptText },
     { name: "Support Desk", href: "/dashboard/tickets", icon: HelpCircle },
-    { name: "Audit Ledgers", href: "/dashboard/transactions", icon: History },
+    { name: "Settings", href: "/dashboard/settings", icon: Settings },
   ];
 
   const adminItems = [
     { name: "Overview", href: "/dashboard/admin", icon: LayoutDashboard },
     { name: "Users", href: "/dashboard/admin/users", icon: Users },
+    { name: "KYC Submissions", href: "/dashboard/admin/kyc", icon: ShieldCheck },
+    { name: "Loan Management", href: "/dashboard/admin/loans", icon: Landmark },
     { name: "Deposits", href: "/dashboard/admin/deposits", icon: ArrowDownLeft },
     { name: "Withdrawal Requests", href: "/dashboard/admin/withdrawals", icon: ArrowUpRight },
     { name: "Transactions", href: "/dashboard/admin/transactions", icon: History },
@@ -131,6 +146,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     { name: "Platform Settings", href: "/dashboard/admin/settings", icon: Settings },
     { name: "System Wallets", href: "/dashboard/admin/wallets", icon: Wallet },
   ];
+
 
   const currentTitle =
     menuItems.find((i) => i.href === pathname)?.name ||
@@ -181,11 +197,19 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                   href={item.href}
                   onClick={() => setMobileMenuOpen(false)}
                   aria-current={isActive ? "page" : undefined}
-                  className={`side-link ${isActive ? "bg-[#4388F5]/12 text-white font-semibold" : ""}`}
+                  className={`side-link flex items-center justify-between ${isActive ? "bg-[#4388F5]/12 text-white font-semibold" : ""}`}
                 >
-                  <Icon className={`h-4 w-4 shrink-0 ${isActive ? "text-[#4388F5]" : "text-[#7D8998]"}`} />
-                  <span>{item.name}</span>
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <Icon className={`h-4 w-4 shrink-0 ${isActive ? "text-[#4388F5]" : "text-[#7D8998]"}`} />
+                    <span className="truncate">{item.name}</span>
+                  </div>
+                  {"badge" in item && (item as any).badge && (
+                    <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-[#27C58B]/15 text-[#27C58B] border border-[#27C58B]/30 tracking-wider">
+                      {(item as any).badge}
+                    </span>
+                  )}
                 </Link>
+
               );
             })}
 
