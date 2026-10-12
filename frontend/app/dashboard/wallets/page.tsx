@@ -14,11 +14,12 @@ import {
   Coins,
 } from "lucide-react";
 import { api } from "@/lib/api";
+import { toNum, formatCrypto } from "@/lib/format";
 
 interface WalletItem {
   currency: string;
-  balance: number;
-  frozen_balance: number;
+  balance: number | string;
+  frozen_balance: number | string;
 }
 
 interface AdminAddress {
@@ -96,7 +97,7 @@ export default function WalletsPage() {
 
   const selectedCurrencyMeta = SUPPORTED_CURRENCIES.find((c) => c.code === selectedCurrency);
   const currentWallet = wallets.find((w) => w.currency.toUpperCase() === selectedCurrency.toUpperCase());
-  const currentAvailable = currentWallet ? currentWallet.balance : 0;
+  const currentAvailable = currentWallet ? toNum(currentWallet.balance) : 0;
 
   const handleCopyAddress = () => {
     if (activeAdminAddress.startsWith("No")) return;
@@ -147,7 +148,7 @@ export default function WalletsPage() {
     }
 
     if (amt > currentAvailable) {
-      setFormError(`Insufficient available balance. You currently have ${currentAvailable.toFixed(6)} ${selectedCurrency} available.`);
+      setFormError(`Insufficient available balance. You currently have ${formatCrypto(currentAvailable, 6)} ${selectedCurrency} available.`);
       return;
     }
 
@@ -249,14 +250,14 @@ export default function WalletsPage() {
                 <div className="mt-2">
                   <div className="text-xs text-text-muted mb-0.5">Available Balance</div>
                   <div className="text-2xl font-bold text-text num font-mono">
-                    {balance.toFixed(6)}
+                    {formatCrypto(balance, 6)}
                   </div>
                 </div>
 
                 <div className="mt-4 pt-3 border-t border-border-subtle flex items-center justify-between text-xs text-text-muted">
                   <span>Locked in Yield:</span>
                   <span className="font-mono text-text num font-medium">
-                    {frozen.toFixed(6)} {curr.code}
+                    {formatCrypto(frozen, 6)} {curr.code}
                   </span>
                 </div>
               </div>
@@ -440,7 +441,7 @@ export default function WalletsPage() {
                 <div className="flex items-center justify-between text-xs">
                   <span className="text-text-muted">Available for Withdrawal:</span>
                   <span className="font-mono text-text font-bold num">
-                    {currentAvailable.toFixed(6)} {selectedCurrency}
+                    {formatCrypto(currentAvailable, 6)} {selectedCurrency}
                   </span>
                 </div>
                 <div className="text-[11px] text-text-faint">

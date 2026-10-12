@@ -2,7 +2,7 @@
 # HORIZON EQUITY - WALLET SCHEMAS
 # ============================================
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_serializer
 from typing import Optional
 from datetime import datetime
 from uuid import UUID
@@ -20,6 +20,10 @@ class WalletResponse(BaseModel):
     total_withdrawn: Decimal
     created_at: datetime
     updated_at: datetime
+
+    @field_serializer("balance", "frozen_balance", "total_deposited", "total_withdrawn")
+    def serialize_decimals(self, v: Decimal) -> float:
+        return float(v) if v is not None else 0.0
 
     class Config:
         from_attributes = True

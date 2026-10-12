@@ -2,7 +2,7 @@
 # HORIZON EQUITY - INVESTMENT SCHEMAS
 # ============================================
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_serializer
 from typing import Optional
 from datetime import datetime
 from uuid import UUID
@@ -21,6 +21,10 @@ class InvestmentPlanBase(BaseModel):
     is_active: bool = True
     is_featured: bool = False
     sort_order: int = 0
+
+    @field_serializer("min_amount", "max_amount", "return_percentage", "referral_bonus_percentage")
+    def serialize_plan_decimals(self, v: Optional[Decimal]) -> Optional[float]:
+        return float(v) if v is not None else None
 
 
 class InvestmentPlanCreate(InvestmentPlanBase):
@@ -77,6 +81,10 @@ class InvestmentResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
     plan: Optional[InvestmentPlanResponse] = None
+
+    @field_serializer("amount", "expected_return", "actual_return")
+    def serialize_investment_decimals(self, v: Optional[Decimal]) -> Optional[float]:
+        return float(v) if v is not None else None
 
     class Config:
         from_attributes = True

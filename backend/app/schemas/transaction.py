@@ -2,7 +2,7 @@
 # HORIZON EQUITY - TRANSACTION SCHEMAS
 # ============================================
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_serializer
 from typing import Optional, Dict, Any
 from datetime import datetime
 from uuid import UUID
@@ -26,6 +26,10 @@ class TransactionResponse(BaseModel):
     approved_at: Optional[datetime] = None
     created_at: datetime
     updated_at: datetime
+
+    @field_serializer("amount", "fee")
+    def serialize_tx_decimals(self, v: Decimal) -> float:
+        return float(v) if v is not None else 0.0
 
     class Config:
         from_attributes = True

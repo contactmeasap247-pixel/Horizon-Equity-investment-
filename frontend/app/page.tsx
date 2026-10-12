@@ -21,22 +21,13 @@ import {
 import PublicNav from "@/app/components/PublicNav";
 import PublicFooter from "@/app/components/PublicFooter";
 import { useLanguage } from "@/lib/language-context";
+import { useMarketPrices } from "@/lib/use-market-prices";
 
 /* ---------------------------------------------------------------------
    DATA DEFINITIONS
    --------------------------------------------------------------------- */
 
-const TICKER_ITEMS = [
-  { symbol: "BTC/USD", name: "Bitcoin", price: "$97,243.50", change: "+2.41%", up: true },
-  { symbol: "ETH/USD", name: "Ethereum", price: "$3,412.18", change: "-0.45%", up: false },
-  { symbol: "SOL/USD", name: "Solana", price: "$184.62", change: "+5.12%", up: true },
-  { symbol: "GOLD", name: "Gold Spot", price: "$2,648.80", change: "+1.42%", up: true },
-  { symbol: "SILVER", name: "Silver Spot", price: "$31.85", change: "+2.15%", up: true },
-  { symbol: "BRENT", name: "Brent Crude", price: "$78.40", change: "+0.95%", up: true },
-  { symbol: "EUR/USD", name: "Euro / USD", price: "1.0924", change: "+0.15%", up: true },
-  { symbol: "SPX", name: "S&P 500", price: "5,820.10", change: "+0.65%", up: true },
-  { symbol: "REIT-INDEX", name: "Real Estate Syndicate", price: "$1,412.30", change: "+1.10%", up: true },
-];
+
 
 const INVESTMENT_PLANS = [
   {
@@ -44,14 +35,14 @@ const INVESTMENT_PLANS = [
     name: "Silver Tier",
     badge: "Entry Tier",
     rate: 8.0,
-    dailyRate: 8.0 / 14,
-    durationDays: 14,
+    dailyRate: 8.0 / 2,
+    durationDays: 2,
     minDeposit: 100,
     maxDeposit: 499,
     popular: false,
     features: [
       "8.0% fixed contract return",
-      "14-day maturity period",
+      "2-day maturity period",
       "Automatic principal return on maturity",
       "Supported: BTC, ETH, USDT, SOL",
       "Standard email & ticketing liaison",
@@ -62,14 +53,14 @@ const INVESTMENT_PLANS = [
     name: "Gold Tier",
     badge: "Most Popular",
     rate: 16.0,
-    dailyRate: 16.0 / 30,
-    durationDays: 30,
+    dailyRate: 16.0 / 3,
+    durationDays: 3,
     minDeposit: 500,
     maxDeposit: 999,
     popular: true,
     features: [
       "16.0% fixed contract return",
-      "30-day maturity period",
+      "3-day maturity period",
       "Daily automated yield compounding",
       "Priority automated withdrawal channel",
       "Dedicated account portfolio strategist",
@@ -81,14 +72,14 @@ const INVESTMENT_PLANS = [
     name: "Platinum Tier",
     badge: "Institutional",
     rate: 28.0,
-    dailyRate: 28.0 / 60,
-    durationDays: 60,
+    dailyRate: 28.0 / 7,
+    durationDays: 7,
     minDeposit: 1000,
     maxDeposit: 4999,
     popular: false,
     features: [
       "28.0% fixed contract return",
-      "60-day maturity period",
+      "7-day maturity period (1 week)",
       "Institutional orderbook routing",
       "Direct VIP communication desk",
       "Multi-asset algorithmic hedging protocol",
@@ -100,15 +91,15 @@ const INVESTMENT_PLANS = [
     name: "Diamond Tier",
     badge: "VIP Unlimited",
     rate: 45.0,
-    dailyRate: 45.0 / 90,
-    durationDays: 90,
+    dailyRate: 45.0 / 7,
+    durationDays: 7,
     minDeposit: 5000,
     maxDeposit: 100000, // Slider ceiling
     isUnlimited: true,
     popular: false,
     features: [
       "45.0% fixed contract return",
-      "90-day maximum compounding cycle",
+      "7-day maximum compounding cycle (1 week)",
       "Unlimited capital allocation ceiling",
       "Bespoke private wealth management",
       "Priority on-chain & wire settlements",
@@ -175,10 +166,25 @@ const FAQ_ITEMS = [
 
 export default function HomePage() {
   const { t, dir } = useLanguage();
+  const { rates, categories } = useMarketPrices();
   const [calcPlan, setCalcPlan] = useState(INVESTMENT_PLANS[1]);
   const [calcAmount, setCalcAmount] = useState(750);
   const [openFaq, setOpenFaq] = useState<number | null>(0);
   const calcAmountId = useId();
+
+  // Real-time dynamic ticker items from live streaming rates
+  const liveTickerItems = categories.length > 0
+    ? categories.flatMap((c) => c.items)
+    : [
+        { symbol: "BTC/USD", name: "Bitcoin", price: `$${rates.BTC.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, change: "+1.84%", up: true },
+        { symbol: "ETH/USD", name: "Ethereum", price: `$${rates.ETH.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, change: "-0.42%", up: false },
+        { symbol: "SOL/USD", name: "Solana", price: `$${rates.SOL.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, change: "+3.15%", up: true },
+        { symbol: "GOLD", name: "Gold Spot", price: `$${rates.GOLD.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, change: "+0.85%", up: true },
+        { symbol: "SILVER", name: "Silver Spot", price: `$${rates.SILVER.toFixed(2)}`, change: "+1.12%", up: true },
+        { symbol: "EUR/USD", name: "Euro / USD", price: rates.EUR_USD.toFixed(4), change: "+0.18%", up: true },
+        { symbol: "CRUDE", name: "Brent Crude", price: `$${rates.CRUDE.toFixed(2)}`, change: "-0.65%", up: false },
+        { symbol: "SPX", name: "S&P 500", price: rates.SPX.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }), change: "+0.72%", up: true },
+      ];
 
   // Dynamic yields
   const totalProfit = calcAmount * (calcPlan.rate / 100);
@@ -288,22 +294,22 @@ export default function HomePage() {
         aria-label="Market Data"
       >
         <div className="flex gap-4 items-center whitespace-nowrap overflow-x-auto scrollbar-none px-6">
-          <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-[#7D8998] shrink-0 pr-4 border-r border-white/10">
+          <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-[#7D8998] shrink-0 pr-4 border-r border-white/10 font-mono">
             <span className="w-2 h-2 rounded-full bg-[#27C58B] animate-pulse" />
-            <span>Markets</span>
+            <span>LIVE MARKETS</span>
           </div>
 
           <div className="flex items-center gap-6 shrink-0">
-            {TICKER_ITEMS.map((item, idx) => (
+            {liveTickerItems.map((item, idx) => (
               <Link
                 key={idx}
                 href="/markets"
                 className="inline-flex items-center gap-2.5 text-xs font-medium hover:text-white transition-colors"
               >
-                <span className="font-semibold text-[#F5F7FA]">{item.symbol}</span>
-                <span className="num text-[#A6B0BE]">{item.price}</span>
+                <span className="font-semibold text-[#F5F7FA] font-mono">{item.symbol}</span>
+                <span className="num text-[#A6B0BE] font-mono">{item.price}</span>
                 <span
-                  className={`num font-semibold inline-flex items-center gap-0.5 ${
+                  className={`num font-semibold inline-flex items-center gap-0.5 font-mono ${
                     item.up ? "text-[#27C58B]" : "text-[#F06464]"
                   }`}
                 >

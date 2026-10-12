@@ -13,28 +13,29 @@ import {
   X,
 } from "lucide-react";
 import { api } from "@/lib/api";
+import { toNum, formatCrypto, formatPercent } from "@/lib/format";
 
 interface Plan {
   id: string;
   name: string;
   description: string;
-  min_amount: number;
-  max_amount: number | null;
-  return_percentage: number;
+  min_amount: number | string;
+  max_amount: number | string | null;
+  return_percentage: number | string;
   duration_days: number;
-  referral_bonus_percentage: number;
+  referral_bonus_percentage: number | string;
 }
 
 interface WalletItem {
   currency: string;
-  balance: number;
+  balance: number | string;
 }
 
 interface InvestmentItem {
   id: string;
-  amount: number;
+  amount: number | string;
   currency: string;
-  expected_return: number;
+  expected_return: number | string;
   status: string;
   start_date: string;
   maturity_date: string;
@@ -130,7 +131,7 @@ export default function InvestmentsPage() {
   const activeUserWallet = wallets.find(
     (w) => w.currency.toUpperCase() === purchaseCurrency.toUpperCase()
   );
-  const availableBalance = activeUserWallet ? activeUserWallet.balance : 0;
+  const availableBalance = activeUserWallet ? toNum(activeUserWallet.balance) : 0;
 
   // Filter lists
   const activeContracts = investments.filter((i) => i.status === "active");
@@ -239,7 +240,7 @@ export default function InvestmentsPage() {
                   <div className="my-5 p-4 inset rounded-lg">
                     <div className="flex items-baseline gap-2">
                       <span className="text-3xl font-extrabold text-text num font-mono">
-                        {p.return_percentage.toFixed(1)}%
+                        {formatPercent(p.return_percentage, 1)}
                       </span>
                       <span className="text-xs text-text-muted font-medium">Net Fixed ROI</span>
                     </div>
@@ -254,19 +255,19 @@ export default function InvestmentsPage() {
                     <div className="flex justify-between py-1 border-b border-border-subtle">
                       <span className="text-text-muted">Minimum Capital:</span>
                       <span className="font-mono text-text font-bold num">
-                        ${p.min_amount.toLocaleString()} USD
+                        ${toNum(p.min_amount).toLocaleString()} USD
                       </span>
                     </div>
                     <div className="flex justify-between py-1 border-b border-border-subtle">
                       <span className="text-text-muted">Maximum Allocation:</span>
                       <span className="font-mono text-text font-medium num">
-                        {p.max_amount ? `$${p.max_amount.toLocaleString()} USD` : "Unlimited"}
+                        {p.max_amount ? `$${toNum(p.max_amount).toLocaleString()} USD` : "Unlimited"}
                       </span>
                     </div>
                     <div className="flex justify-between py-1 border-b border-border-subtle">
                       <span className="text-text-muted">Affiliate Rebate:</span>
                       <span className="font-mono text-accent font-semibold num">
-                        {p.referral_bonus_percentage.toFixed(1)}% Tier
+                        {formatPercent(p.referral_bonus_percentage, 1)} Tier
                       </span>
                     </div>
                     <div className="flex justify-between py-1">
@@ -370,7 +371,7 @@ export default function InvestmentsPage() {
                     <div className="pt-3 border-t border-border-subtle flex items-center justify-between text-xs">
                       <span className="text-text-muted">Settlement Capital:</span>
                       <span className="font-mono text-accent font-bold text-sm num">
-                        {inv.expected_return.toFixed(5)} {inv.currency}
+                        {formatCrypto(inv.expected_return, 5)} {inv.currency}
                       </span>
                     </div>
                   </div>
@@ -406,7 +407,7 @@ export default function InvestmentsPage() {
                   <div className="pt-3 border-t border-border-subtle flex items-center justify-between text-xs">
                     <span className="text-text-muted">Settled Payout:</span>
                     <span className="font-mono text-success font-bold text-sm num">
-                      {inv.expected_return.toFixed(5)} {inv.currency}
+                      {formatCrypto(inv.expected_return, 5)} {inv.currency}
                     </span>
                   </div>
                 </div>
@@ -475,7 +476,7 @@ export default function InvestmentsPage() {
                 <div className="flex justify-between text-[11px] text-text-faint px-1">
                   <span>Available Balance:</span>
                   <span className="font-mono text-accent font-semibold num">
-                    {availableBalance.toFixed(6)} {purchaseCurrency}
+                    {formatCrypto(availableBalance, 6)} {purchaseCurrency}
                   </span>
                 </div>
               </div>

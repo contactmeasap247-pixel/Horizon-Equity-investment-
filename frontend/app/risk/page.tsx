@@ -117,7 +117,7 @@ export default function RiskPage() {
               Fixed-Yield Maturity Contract Particulars
             </h3>
             <p className="text-xs sm:text-sm text-[#A0AEC0] leading-relaxed">
-              Horizon Equity&apos;s structured investment plans (Silver, Gold, Platinum, and Diamond) operate on designated fixed-term commitment schedules (ranging from 14 to 90 days). Principal allocations remain committed to automated hedging algorithms for the entire cycle duration.
+              Horizon Equity&apos;s structured investment plans (Silver, Gold, Platinum, and Diamond) operate on designated fixed-term commitment schedules (ranging from 2 to 7 days: Silver 2 days, Gold 3 days, Platinum &amp; Diamond 7 days). Principal allocations remain committed to automated hedging algorithms for the entire cycle duration.
             </p>
             <p className="text-xs sm:text-sm text-[#A0AEC0] leading-relaxed">
               While our protocol employs delta-neutral algorithmic hedges and cold vault custodial collateral, no algorithmic strategy is immune to catastrophic systemic systemic solvency risks of underlying global settlement networks.

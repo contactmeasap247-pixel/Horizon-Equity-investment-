@@ -9,12 +9,13 @@ import {
   FileSpreadsheet,
 } from "lucide-react";
 import { api } from "@/lib/api";
+import { toNum, formatCrypto } from "@/lib/format";
 
 interface TransactionItem {
   id: string;
   type: string;
-  amount: number;
-  fee: number;
+  amount: number | string;
+  fee: number | string;
   currency: string;
   status: string;
   reference: string;
@@ -164,8 +165,9 @@ export default function TransactionsPage() {
                     </tr>
                   ) : (
                     transactions.map((tx) => {
-                      const isCredit = tx.amount > 0;
-                      const amountText = isCredit ? `+${tx.amount.toFixed(6)}` : tx.amount.toFixed(6);
+                      const numAmt = toNum(tx.amount);
+                      const isCredit = numAmt > 0;
+                      const amountText = isCredit ? `+${formatCrypto(numAmt, 6)}` : formatCrypto(numAmt, 6);
 
                       return (
                         <tr key={tx.id}>

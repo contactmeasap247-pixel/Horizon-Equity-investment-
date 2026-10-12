@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { LanguageProvider } from "@/lib/language-context";
+import NavigationProgress from "@/app/components/NavigationProgress";
 
 export const metadata: Metadata = {
   title: "Horizon Equity | Premium Multi-Asset Investment Platform",
@@ -25,6 +26,7 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark scroll-smooth">
       <body className="min-h-screen bg-canvas text-text selection:bg-accent/25 selection:text-text antialiased">
+        <NavigationProgress />
         <LanguageProvider>{children}</LanguageProvider>
       </body>
     </html>

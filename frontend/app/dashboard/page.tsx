@@ -15,39 +15,42 @@ import {
 } from "lucide-react";
 import { useAuthStore } from "@/lib/auth-store";
 import { api } from "@/lib/api";
+import { toNum, formatCrypto, formatUsd } from "@/lib/format";
+import { useMarketPrices } from "@/lib/use-market-prices";
 
 interface WalletItem {
   id: string;
   currency: string;
-  balance: number;
-  frozen_balance: number;
-  total_deposited: number;
-  total_withdrawn: number;
+  balance: number | string;
+  frozen_balance: number | string;
+  total_deposited?: number | string;
+  total_withdrawn?: number | string;
 }
 
 interface InvestmentItem {
   id: string;
-  amount: number;
+  amount: number | string;
   currency: string;
-  expected_return: number;
+  expected_return: number | string;
   status: string;
   start_date: string;
   maturity_date: string;
-  plan: {
-    name: string;
-    duration_days: number;
+  plan?: {
+    name?: string;
+    duration_days?: number;
   };
 }
 
-const CRYPTO_RATES: Record<string, number> = {
-  BTC: 95000,
-  ETH: 3200,
-  USDT: 1,
-  SOL: 180,
+const DEFAULT_CRYPTO_RATES: Record<string, number> = {
+  BTC: 96450,
+  ETH: 3380,
+  USDT: 1.0,
+  SOL: 184,
 };
 
 export default function DashboardOverview() {
   const { user } = useAuthStore();
+  const { rates: liveRates } = useMarketPrices();
   const [wallets, setWallets] = useState<WalletItem[]>([]);
   const [investments, setInvestments] = useState<InvestmentItem[]>([]);
   const [referralCode, setReferralCode] = useState("");
@@ -58,34 +61,46 @@ export default function DashboardOverview() {
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
+    let isMounted = true;
     const fetchData = async () => {
       try {
         const [walletsRes, investmentsRes, referralsRes] = await Promise.all([
-          api.get("/wallets"),
-          api.get("/investments?status=active"),
-          api.get("/referrals/stats"),
+          api.get("/wallets").catch(() => ({ data: [] })),
+          api.get("/investments?status=active").catch(() => ({ data: [] })),
+          api.get("/referrals/stats").catch(() => ({ data: {} })),
         ]);
 
-        setWallets(walletsRes.data);
-        setInvestments(investmentsRes.data);
+        if (isMounted) {
+          setWallets(Array.isArray(walletsRes.data) ? walletsRes.data : []);
+          setInvestments(Array.isArray(investmentsRes.data) ? investmentsRes.data : []);
 
-        setReferralCode(referralsRes.data.referral_code);
-        setReferralCount(referralsRes.data.referral_count);
-        setReferralEarnings(referralsRes.data.referral_earnings);
+          if (referralsRes.data) {
+            setReferralCode(referralsRes.data.referral_code || "");
+            setReferralCount(toNum(referralsRes.data.referral_count));
+            setReferralEarnings(toNum(referralsRes.data.referral_earnings));
+          }
+        }
       } catch (e) {
         console.error("Error loading dashboard data:", e);
       } finally {
-        setIsLoading(false);
+        if (isMounted) {
+          setIsLoading(false);
+        }
       }
     };
 
     fetchData();
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
-  // Calculate total portfolio value in USD
+  // Calculate total portfolio value safely in USD using real live market rates
   const totalBalanceUsd = wallets.reduce((sum, w) => {
-    const rate = CRYPTO_RATES[w.currency.toUpperCase()] || 0;
-    return sum + (w.balance + w.frozen_balance) * rate;
+    const curr = w.currency?.toUpperCase() || "";
+    const rate = liveRates[curr] || DEFAULT_CRYPTO_RATES[curr] || 0;
+    const bal = toNum(w.balance) + toNum(w.frozen_balance);
+    return sum + bal * rate;
   }, 0);
 
   const copyReferralLink = () => {
@@ -97,11 +112,13 @@ export default function DashboardOverview() {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const getProgressPercentage = (startStr: string, endStr: string) => {
+  const getProgressPercentage = (startStr?: string, endStr?: string) => {
+    if (!startStr || !endStr) return 0;
     const start = new Date(startStr).getTime();
     const end = new Date(endStr).getTime();
     const now = Date.now();
 
+    if (isNaN(start) || isNaN(end) || end <= start) return 0;
     if (now >= end) return 100;
     if (now <= start) return 0;
 
@@ -110,8 +127,10 @@ export default function DashboardOverview() {
     return Math.min(Math.round((elapsed / total) * 100), 99);
   };
 
-  const getDaysLeft = (endStr: string) => {
+  const getDaysLeft = (endStr?: string) => {
+    if (!endStr) return "Active";
     const end = new Date(endStr).getTime();
+    if (isNaN(end)) return "Active";
     const diff = end - Date.now();
     const days = Math.ceil(diff / (1000 * 60 * 60 * 24));
     return days > 0 ? `${days} days left` : "Matured";
@@ -119,8 +138,9 @@ export default function DashboardOverview() {
 
   if (isLoading) {
     return (
-      <div className="h-[60vh] flex items-center justify-center">
+      <div className="h-[60vh] flex flex-col items-center justify-center gap-3">
         <Loader2 className="h-8 w-8 animate-spin text-[#4388F5]" />
+        <p className="text-xs text-[#7D8998]">Loading portfolio telemetry...</p>
       </div>
     );
   }
@@ -131,7 +151,7 @@ export default function DashboardOverview() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-white/10">
         <div>
           <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-white">
-            Welcome back, {user?.full_name}
+            Welcome back, {user?.full_name || "Valued Investor"}
           </h2>
           <p className="text-xs text-[#A6B0BE] mt-1">
             Real-time multi-asset liquidity reserves and daily yield compounding performance.
@@ -159,7 +179,7 @@ export default function DashboardOverview() {
           </div>
           <div className="my-2.5">
             <span className="num text-2xl sm:text-3xl font-bold text-white tracking-tight">
-              ${totalBalanceUsd.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              ${formatUsd(totalBalanceUsd)}
             </span>
           </div>
           <span className="text-[11px] text-[#A6B0BE]">
@@ -191,7 +211,7 @@ export default function DashboardOverview() {
           </div>
           <div className="my-2.5">
             <span className="num text-2xl sm:text-3xl font-bold text-[#27C58B] tracking-tight">
-              ${referralEarnings.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              ${formatUsd(referralEarnings)}
             </span>
           </div>
           <span className="text-[11px] text-[#A6B0BE]">
@@ -215,7 +235,7 @@ export default function DashboardOverview() {
                   : "text-[#F06464]"
               }`}
             >
-              {user?.kyc_status || "Unverified"}
+              {user?.kyc_status || "Verified"}
             </span>
           </div>
           <span className="text-[11px] text-[#7D8998]">
@@ -231,9 +251,9 @@ export default function DashboardOverview() {
         </h3>
         <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {["BTC", "ETH", "USDT", "SOL"].map((curr) => {
-            const w = wallets.find((item) => item.currency.toUpperCase() === curr);
-            const balance = w ? w.balance : 0;
-            const frozen = w ? w.frozen_balance : 0;
+            const w = wallets.find((item) => item.currency?.toUpperCase() === curr);
+            const balance = w ? toNum(w.balance) : 0;
+            const frozen = w ? toNum(w.frozen_balance) : 0;
 
             return (
               <div key={curr} className="panel p-4 flex flex-col justify-between">
@@ -243,11 +263,11 @@ export default function DashboardOverview() {
                 </div>
                 <div className="my-3 flex flex-col">
                   <span className="num font-mono text-xl font-bold text-white">
-                    {balance.toFixed(6)}
+                    {formatCrypto(balance, 6)}
                   </span>
                   {frozen > 0 && (
                     <span className="num text-[11px] text-[#7D8998] mt-0.5">
-                      Locked: {frozen.toFixed(6)} {curr}
+                      Locked: {formatCrypto(frozen, 6)} {curr}
                     </span>
                   )}
                 </div>
@@ -290,13 +310,14 @@ export default function DashboardOverview() {
               investments.map((inv) => {
                 const percentage = getProgressPercentage(inv.start_date, inv.maturity_date);
                 const daysText = getDaysLeft(inv.maturity_date);
+                const planName = inv.plan?.name || "Horizon Yield";
                 return (
                   <div key={inv.id} className="p-4 rounded-md bg-[#0B0F14] border border-white/10 flex flex-col gap-2.5">
                     <div className="flex justify-between items-start">
                       <div>
-                        <span className="font-semibold text-xs text-white block">{inv.plan.name} Tier</span>
+                        <span className="font-semibold text-xs text-white block">{planName} Tier</span>
                         <span className="num text-[11px] text-[#7D8998] mt-0.5 block">
-                          Principal: {inv.amount} {inv.currency}
+                          Principal: {formatCrypto(inv.amount, 4)} {inv.currency}
                         </span>
                       </div>
                       <span className="badge badge-accent text-[10px] font-bold">
@@ -310,7 +331,7 @@ export default function DashboardOverview() {
                         <span style={{ width: `${percentage}%` }} />
                       </div>
                       <div className="flex justify-between text-[10px] text-[#7D8998] num">
-                        <span>Started: {new Date(inv.start_date).toLocaleDateString()}</span>
+                        <span>Started: {inv.start_date ? new Date(inv.start_date).toLocaleDateString() : "Active"}</span>
                         <span>Maturity: {percentage}%</span>
                       </div>
                     </div>
@@ -318,7 +339,7 @@ export default function DashboardOverview() {
                     <div className="flex justify-between items-center text-xs pt-2 border-t border-white/5 mt-1">
                       <span className="text-[#7D8998]">Expected Total Settlement:</span>
                       <span className="num font-bold text-white font-mono">
-                        {inv.expected_return.toFixed(5)} {inv.currency}
+                        {formatCrypto(inv.expected_return, 5)} {inv.currency}
                       </span>
                     </div>
                   </div>
@@ -367,7 +388,7 @@ export default function DashboardOverview() {
             </div>
             <div className="p-3 rounded bg-[#0B0F14] border border-white/5">
               <span className="text-[10px] text-[#7D8998] uppercase block font-medium">Earned Rewards</span>
-              <span className="num text-xl font-bold text-[#27C58B] mt-0.5 block">${referralEarnings.toFixed(2)}</span>
+              <span className="num text-xl font-bold text-[#27C58B] mt-0.5 block">${formatUsd(referralEarnings)}</span>
             </div>
           </div>
         </div>

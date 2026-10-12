@@ -7,10 +7,10 @@ import PublicNav from "@/app/components/PublicNav";
 import PublicFooter from "@/app/components/PublicFooter";
 
 const TIERS = [
-  { id: "silver", name: "Silver Tier", rate: 8.0, days: 14, min: 100, max: 499, unlimited: false },
-  { id: "gold", name: "Gold Tier", rate: 16.0, days: 30, min: 500, max: 999, unlimited: false },
-  { id: "platinum", name: "Platinum Tier", rate: 28.0, days: 60, min: 1000, max: 4999, unlimited: false },
-  { id: "diamond", name: "Diamond Tier", rate: 45.0, days: 90, min: 5000, max: 100000, unlimited: true },
+  { id: "silver", name: "Silver Tier", rate: 8.0, days: 2, min: 100, max: 499, unlimited: false },
+  { id: "gold", name: "Gold Tier", rate: 16.0, days: 3, min: 500, max: 999, unlimited: false },
+  { id: "platinum", name: "Platinum Tier", rate: 28.0, days: 7, min: 1000, max: 4999, unlimited: false },
+  { id: "diamond", name: "Diamond Tier", rate: 45.0, days: 7, min: 5000, max: 100000, unlimited: true },
 ];
 
 export default function CalculatorPage() {

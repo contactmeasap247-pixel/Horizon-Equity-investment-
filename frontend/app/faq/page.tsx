@@ -22,7 +22,7 @@ const FAQS: FAQItem[] = [
   {
     category: "plans",
     q: "How do Horizon Equity structured investment plans work?",
-    a: "Horizon Equity offers four structured tiers: Silver ($100–$499, 14 days, 8% ROI), Gold ($500–$999, 30 days, 16% ROI), Platinum ($1,000–$4,999, 60 days, 28% ROI), and Diamond ($5,000+ Unlimited, 90 days, 45% ROI). When you allocate capital into a plan, our automated algorithms deploy your capital across market-making and arbitrage strategies. Principal is returned automatically upon maturity.",
+    a: "Horizon Equity offers four structured tiers: Silver ($100–$499, 2 days, 8% ROI), Gold ($500–$999, 3 days, 16% ROI), Platinum ($1,000–$4,999, 7 days, 28% ROI), and Diamond ($5,000+ Unlimited, 7 days, 45% ROI). When you allocate capital into a plan, our automated algorithms deploy your capital across market-making and arbitrage strategies. Principal is returned automatically upon maturity.",
   },
   {
     category: "plans",

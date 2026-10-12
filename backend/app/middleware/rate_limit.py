@@ -41,6 +41,9 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
             return await call_next(request)
 
         client_ip = request.client.host if request.client else "unknown"
+        if client_ip in ["127.0.0.1", "localhost", "::1", "testclient"]:
+            return await call_next(request)
+
         # Track limit per client IP
         key = f"rate_limit:{client_ip}"
 

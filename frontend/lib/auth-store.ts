@@ -35,17 +35,14 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   login: async (email, password) => {
     try {
       const response = await api.post("/auth/login", { email, password });
-      const { access_token, refresh_token, user } = response.data;
+      const { access_token, refresh_token } = response.data;
 
       if (typeof window !== "undefined") {
         localStorage.setItem("he_access_token", access_token);
         localStorage.setItem("he_refresh_token", refresh_token);
       }
 
-      set({
-        user,
-        isAuthenticated: true,
-      });
+      await get().fetchProfile();
     } catch (error: unknown) {
       const detail =
         (error as { response?: { data?: { detail?: string } } })?.response?.data?.detail ||

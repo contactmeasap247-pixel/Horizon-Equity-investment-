@@ -11,6 +11,7 @@ import {
   Award,
 } from "lucide-react";
 import { api } from "@/lib/api";
+import { formatCrypto } from "@/lib/format";
 
 interface ReferredUser {
   id: string;
@@ -23,7 +24,7 @@ interface ReferredUser {
 interface CommissionItem {
   id: string;
   referred_user_id: string;
-  commission_amount: number;
+  commission_amount: number | string;
   currency: string;
   status: string;
   created_at: string;
@@ -31,10 +32,10 @@ interface CommissionItem {
 
 interface Stats {
   referral_code: string;
-  referral_count: number;
-  referral_earnings: number;
-  pending_commissions: Record<string, number>;
-  paid_commissions: Record<string, number>;
+  referral_count: number | string;
+  referral_earnings: number | string;
+  pending_commissions: Record<string, number | string>;
+  paid_commissions: Record<string, number | string>;
 }
 
 export default function ReferralsPage() {
@@ -198,16 +199,16 @@ export default function ReferralsPage() {
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
               {["BTC", "ETH", "USDT", "SOL"].map((curr) => {
-                const pending = stats?.pending_commissions?.[curr] || 0;
-                const paid = stats?.paid_commissions?.[curr] || 0;
+                const pending = stats?.pending_commissions?.[curr] ?? 0;
+                const paid = stats?.paid_commissions?.[curr] ?? 0;
                 return (
                   <div key={curr} className="inset p-2.5 rounded-md border border-border-subtle">
                     <div className="text-xs font-bold text-text">{curr}</div>
                     <div className="text-[11px] text-accent font-mono num mt-1">
-                      Pending: {pending.toFixed(4)}
+                      Pending: {formatCrypto(pending, 4)}
                     </div>
                     <div className="text-[10px] text-text-faint font-mono num">
-                      Settled: {paid.toFixed(4)}
+                      Settled: {formatCrypto(paid, 4)}
                     </div>
                   </div>
                 );
@@ -319,7 +320,7 @@ export default function ReferralsPage() {
                         {new Date(comm.created_at).toLocaleDateString()}
                       </td>
                       <td className="font-mono text-xs font-bold text-success num">
-                        +{comm.commission_amount.toFixed(6)}
+                        +{formatCrypto(comm.commission_amount, 6)}
                       </td>
                       <td>
                         <span className="font-semibold text-text text-xs">
