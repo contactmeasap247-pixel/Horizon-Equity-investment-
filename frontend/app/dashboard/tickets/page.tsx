@@ -6,13 +6,12 @@ import {
   Plus,
   Send,
   MessageSquare,
-  Clock,
-  ShieldCheck,
-  ShieldAlert,
+  AlertCircle,
+  CheckCircle2,
   Loader2,
-  ChevronRight,
   User,
   Headphones,
+  X,
 } from "lucide-react";
 import { api } from "@/lib/api";
 
@@ -39,7 +38,7 @@ interface SupportTicket {
 export default function TicketsPage() {
   const [tickets, setTickets] = useState<SupportTicket[]>([]);
   const [selectedTicket, setSelectedTicket] = useState<SupportTicket | null>(null);
-  
+
   const [isLoading, setIsLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [openModal, setOpenModal] = useState(false);
@@ -49,10 +48,10 @@ export default function TicketsPage() {
   const [message, setMessage] = useState("");
   const [category, setCategory] = useState("general");
   const [priority, setPriority] = useState("medium");
-  
+
   // Reply input state
   const [replyMessage, setReplyMessage] = useState("");
-  
+
   const [formError, setFormError] = useState<string | null>(null);
   const [formSuccess, setFormSuccess] = useState<string | null>(null);
 
@@ -61,7 +60,7 @@ export default function TicketsPage() {
   const fetchTicketsList = async () => {
     try {
       const response = await api.get("/tickets");
-      setTickets(response.data);
+      setTickets(response.data || []);
     } catch (e) {
       console.error("Error loading tickets list:", e);
     } finally {
@@ -90,7 +89,7 @@ export default function TicketsPage() {
   const handleOpenTicketSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!subject || !message) {
-      setFormError("Please populate both Subject and Message fields.");
+      setFormError("Please populate both the subject and the message details.");
       return;
     }
 
@@ -106,19 +105,18 @@ export default function TicketsPage() {
         priority,
       });
 
-      setFormSuccess("Support ticket opened successfully!");
+      setFormSuccess("Support ticket registered successfully. An account officer has been assigned.");
       setSubject("");
       setMessage("");
-      
+
       setTimeout(() => {
         setOpenModal(false);
         setFormSuccess(null);
         fetchTicketsList();
-        // Load this ticket directly
         fetchTicketDetails(response.data.id);
       }, 1500);
     } catch (error: any) {
-      setFormError(error.response?.data?.detail || "Submission failed. Please verify fields.");
+      setFormError(error.response?.data?.detail || "Ticket submission failed. Please verify inputs.");
     } finally {
       setSubmitting(false);
     }
@@ -130,11 +128,10 @@ export default function TicketsPage() {
 
     setSubmitting(true);
     try {
-      const response = await api.post(`/tickets/${selectedTicket.id}/reply`, {
+      await api.post(`/tickets/${selectedTicket.id}/reply`, {
         message: replyMessage.trim(),
       });
-      
-      // Append reply to state
+
       setReplyMessage("");
       fetchTicketDetails(selectedTicket.id);
     } catch (error) {
@@ -146,238 +143,316 @@ export default function TicketsPage() {
 
   if (isLoading) {
     return (
-      <div className="h-[60vh] flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-gold-300" />
+      <div className="min-h-[50vh] flex flex-col items-center justify-center gap-3">
+        <Loader2 className="w-8 h-8 text-accent animate-spin" />
+        <p className="text-xs text-text-muted">Loading support desk tickets...</p>
       </div>
     );
   }
 
   return (
-    <div className="grid lg:grid-cols-12 gap-8 items-start stagger-1 animate-slide-up h-[calc(100vh-12rem)] min-h-[500px]">
-      {/* Left side: Tickets listing */}
-      <div className="lg:col-span-5 card bg-[#0D2D4A]/80 border-white/10 p-6 flex flex-col gap-6 h-full overflow-y-auto">
-        <div className="flex justify-between items-center border-b border-white/5 pb-4">
-          <h3 className="font-extrabold text-base flex items-center gap-2">
-            <MessageSquare className="h-4.5 w-4.5 text-gold-300" /> Support Conversations
-          </h3>
+    <div className="space-y-8">
+      {/* Page Header */}
+      <div className="border-b border-border pb-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <span className="badge badge-accent">Help Desk</span>
+              <span className="text-xs text-text-faint font-mono">PRIORITY RESOLUTION</span>
+            </div>
+            <h1 className="t-page">Client Support Desk</h1>
+            <p className="text-sm text-text-muted mt-1 max-w-2xl">
+              Direct access to our 24/7 institutional trading desk, custody verification specialists, and compliance officers.
+            </p>
+          </div>
           <button
-            onClick={() => { setOpenModal(true); setFormError(null); setFormSuccess(null); }}
-            className="btn-primary py-1.5 px-3 text-xs font-semibold"
+            type="button"
+            onClick={() => {
+              setOpenModal(true);
+              setFormError(null);
+              setFormSuccess(null);
+            }}
+            className="btn btn-primary px-4 py-2 flex items-center gap-2 flex-shrink-0"
           >
-            Open Ticket <Plus className="h-3.5 w-3.5" />
+            <Plus className="w-4 h-4" />
+            Open Ticket
           </button>
         </div>
+      </div>
 
-        <div className="flex flex-col gap-3">
-          {tickets.length === 0 ? (
-            <div className="p-8 text-center text-xs text-text-muted border border-dashed border-white/5 rounded-xl">
-              No support tickets found. Click "Open Ticket" above to get assistance.
-            </div>
-          ) : (
-            tickets.map((t) => {
-              const isSelected = selectedTicket?.id === t.id;
-              return (
-                <button
-                  key={t.id}
-                  onClick={() => fetchTicketDetails(t.id)}
-                  className={`w-full text-left p-4 rounded-xl border transition-all flex flex-col gap-2 ${
-                    isSelected
-                      ? "border-gold-300 bg-gold-300/5 shadow-md shadow-gold-300/5"
-                      : "border-white/5 bg-white/[0.01] hover:bg-white/[0.03]"
+      {/* Main Support Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        {/* Left Side: Ticket Listing */}
+        <div className="lg:col-span-5 panel p-5 space-y-4 max-h-[700px] overflow-y-auto">
+          <div className="flex items-center justify-between pb-3 border-b border-border">
+            <h3 className="t-title flex items-center gap-2">
+              <MessageSquare className="w-4 h-4 text-accent" />
+              Your Tickets
+            </h3>
+            <span className="badge font-mono text-[10px]">
+              {tickets.length} Registered
+            </span>
+          </div>
+
+          <div className="space-y-2.5">
+            {tickets.length === 0 ? (
+              <div className="p-8 text-center inset rounded-lg border border-dashed border-border">
+                <HelpCircle className="w-8 h-8 text-text-faint mx-auto mb-2" />
+                <p className="text-xs text-text-muted">
+                  No support tickets found. Click &ldquo;Open Ticket&rdquo; to connect with our trading desk.
+                </p>
+              </div>
+            ) : (
+              tickets.map((t) => {
+                const isSelected = selectedTicket?.id === t.id;
+                return (
+                  <button
+                    key={t.id}
+                    type="button"
+                    onClick={() => fetchTicketDetails(t.id)}
+                    className={`w-full text-left p-4 rounded-lg border transition-all space-y-2 cursor-pointer ${
+                      isSelected
+                        ? "border-accent bg-accent/10 shadow-sm"
+                        : "border-border bg-surface-raised hover:border-border-hover"
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="font-semibold text-sm text-text truncate max-w-[220px]">
+                        {t.subject}
+                      </div>
+                      <span
+                        className={`badge text-[10px] uppercase font-mono ${
+                          t.status === "open"
+                            ? "badge-warning"
+                            : t.status === "in_progress"
+                            ? "badge-accent"
+                            : "badge-success"
+                        }`}
+                      >
+                        {t.status.replace("_", " ")}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center justify-between text-[11px] text-text-muted">
+                      <span>Category: <strong className="text-text font-normal capitalize">{t.category}</strong></span>
+                      <span className="font-mono text-text-faint">{new Date(t.created_at).toLocaleDateString()}</span>
+                    </div>
+                  </button>
+                );
+              })
+            )}
+          </div>
+        </div>
+
+        {/* Right Side: Conversation Thread */}
+        <div className="lg:col-span-7 panel p-6 flex flex-col min-h-[500px] max-h-[700px] justify-between">
+          {selectedTicket ? (
+            <div className="flex flex-col h-full justify-between space-y-4">
+              {/* Ticket Top Meta */}
+              <div className="border-b border-border pb-4 flex items-start justify-between gap-4">
+                <div>
+                  <h2 className="text-base font-bold text-text">{selectedTicket.subject}</h2>
+                  <div className="flex flex-wrap items-center gap-3 text-xs text-text-muted mt-1.5">
+                    <span>Category: <strong className="text-text capitalize">{selectedTicket.category}</strong></span>
+                    <span>Priority: <span className="text-accent font-semibold uppercase">{selectedTicket.priority}</span></span>
+                    <span className="font-mono text-text-faint">Opened: {new Date(selectedTicket.created_at).toLocaleDateString()}</span>
+                  </div>
+                </div>
+                <span
+                  className={`badge text-[10px] uppercase font-mono ${
+                    selectedTicket.status === "open"
+                      ? "badge-warning"
+                      : selectedTicket.status === "in_progress"
+                      ? "badge-accent"
+                      : "badge-success"
                   }`}
                 >
-                  <div className="flex justify-between items-start">
-                    <span className="font-bold text-sm text-white truncate max-w-[200px]">{t.subject}</span>
-                    <span className={`badge uppercase text-[8px] py-0.5 px-1.5 ${
-                      t.status === "open" ? "badge-warning" : t.status === "in_progress" ? "badge-info" : "badge-success"
-                    }`}>
-                      {t.status}
+                  {selectedTicket.status.replace("_", " ")}
+                </span>
+              </div>
+
+              {/* Message scroll area */}
+              <div className="flex-1 overflow-y-auto space-y-4 pr-1 py-2 max-h-[440px]">
+                {/* Initial Client Message */}
+                <div className="inset p-4 rounded-lg border border-border space-y-2">
+                  <div className="flex items-center justify-between text-xs">
+                    <div className="flex items-center gap-2">
+                      <div className="w-6 h-6 rounded bg-surface border border-border flex items-center justify-center text-text-muted">
+                        <User className="w-3.5 h-3.5" />
+                      </div>
+                      <span className="font-semibold text-text">You</span>
+                    </div>
+                    <span className="text-[11px] text-text-faint font-mono">
+                      {new Date(selectedTicket.created_at).toLocaleString()}
                     </span>
                   </div>
-                  <div className="flex justify-between items-center text-[10px] text-text-muted mt-1">
-                    <span>Category: {t.category}</span>
-                    <span>{new Date(t.created_at).toLocaleDateString()}</span>
+                  <p className="text-xs text-text leading-relaxed whitespace-pre-wrap pl-8">
+                    {selectedTicket.message}
+                  </p>
+                </div>
+
+                {/* Replies Thread */}
+                {selectedTicket.replies?.map((rep) => (
+                  <div
+                    key={rep.id}
+                    className={`p-4 rounded-lg border space-y-2 ${
+                      rep.is_admin
+                        ? "bg-accent/5 border-accent/25"
+                        : "inset border-border"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between text-xs">
+                      <div className="flex items-center gap-2">
+                        <div
+                          className={`w-6 h-6 rounded flex items-center justify-center border ${
+                            rep.is_admin
+                              ? "bg-accent/15 border-accent/40 text-accent"
+                              : "bg-surface border-border text-text-muted"
+                          }`}
+                        >
+                          {rep.is_admin ? (
+                            <Headphones className="w-3.5 h-3.5" />
+                          ) : (
+                            <User className="w-3.5 h-3.5" />
+                          )}
+                        </div>
+                        <span
+                          className={`font-semibold ${
+                            rep.is_admin ? "text-accent" : "text-text"
+                          }`}
+                        >
+                          {rep.is_admin ? "Horizon Support Officer" : "You"}
+                        </span>
+                      </div>
+                      <span className="text-[11px] text-text-faint font-mono">
+                        {new Date(rep.created_at).toLocaleString()}
+                      </span>
+                    </div>
+                    <p className="text-xs text-text leading-relaxed whitespace-pre-wrap pl-8">
+                      {rep.message}
+                    </p>
                   </div>
-                </button>
-              );
-            })
+                ))}
+                <div ref={threadEndRef} />
+              </div>
+
+              {/* Reply Input Form */}
+              {selectedTicket.status !== "closed" && selectedTicket.status !== "resolved" ? (
+                <form onSubmit={handleReplySubmit} className="pt-3 border-t border-border flex gap-2">
+                  <input
+                    type="text"
+                    value={replyMessage}
+                    onChange={(e) => setReplyMessage(e.target.value)}
+                    placeholder="Type your message reply..."
+                    className="input flex-1 text-xs"
+                    required
+                    disabled={submitting}
+                  />
+                  <button
+                    type="submit"
+                    disabled={submitting || !replyMessage.trim()}
+                    className="btn btn-primary px-4 py-2 text-xs flex items-center gap-1.5 flex-shrink-0"
+                  >
+                    {submitting ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <>
+                        <Send className="w-3.5 h-3.5" />
+                        <span>Send</span>
+                      </>
+                    )}
+                  </button>
+                </form>
+              ) : (
+                <div className="p-3 inset border border-border text-center text-xs text-text-muted rounded-lg">
+                  This support ticket is resolved. Please open a new ticket if you have another query.
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="flex-1 flex flex-col items-center justify-center text-center p-8 space-y-3">
+              <div className="w-12 h-12 rounded-lg bg-surface-raised border border-border flex items-center justify-center text-text-faint">
+                <HelpCircle className="w-6 h-6" />
+              </div>
+              <h4 className="text-sm font-semibold text-text">No Ticket Selected</h4>
+              <p className="text-xs text-text-muted max-w-sm">
+                Select any open ticket from the sidebar to inspect conversation details or submit a response.
+              </p>
+            </div>
           )}
         </div>
       </div>
 
-      {/* Right side: Selected ticket messaging thread */}
-      <div className="lg:col-span-7 card bg-[#0D2D4A]/85 border-white/10 p-6 flex flex-col gap-6 h-full">
-        {selectedTicket ? (
-          <div className="flex flex-col h-full justify-between">
-            {/* Header info */}
-            <div className="border-b border-white/5 pb-4 flex justify-between items-center">
-              <div className="flex flex-col">
-                <h4 className="font-bold text-base text-white">{selectedTicket.subject}</h4>
-                <div className="flex items-center gap-3 text-[10px] text-text-secondary mt-1">
-                  <span>Category: <span className="text-white font-medium">{selectedTicket.category}</span></span>
-                  <span>Priority: <span className="text-gold-300 font-semibold uppercase">{selectedTicket.priority}</span></span>
-                </div>
-              </div>
-              <span className={`badge uppercase text-xs py-0.5 px-2 ${
-                selectedTicket.status === "open" ? "badge-warning" : selectedTicket.status === "in_progress" ? "badge-info" : "badge-success"
-              }`}>
-                {selectedTicket.status}
-              </span>
-            </div>
-
-            {/* Conversation thread viewport */}
-            <div className="flex-1 overflow-y-auto py-4 flex flex-col gap-4 max-h-[360px] min-h-[220px]">
-              {/* Initial message */}
-              <div className="p-4 bg-white/[0.01] border border-white/5 rounded-xl flex gap-3.5 text-xs text-text-secondary leading-relaxed">
-                <div className="h-8 w-8 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center flex-shrink-0 text-text-secondary mt-0.5">
-                  <User className="h-4 w-4" />
-                </div>
-                <div className="flex flex-col gap-1.5">
-                  <div className="flex justify-between items-center">
-                    <span className="font-bold text-white">Alex Mercer (You)</span>
-                    <span className="text-[10px] text-text-muted">{new Date(selectedTicket.created_at).toLocaleString()}</span>
-                  </div>
-                  <p>{selectedTicket.message}</p>
-                </div>
-              </div>
-
-              {/* Replies list */}
-              {selectedTicket.replies?.map((rep) => (
-                <div
-                  key={rep.id}
-                  className={`p-4 border rounded-xl flex gap-3.5 text-xs leading-relaxed ${
-                    rep.is_admin
-                      ? "border-gold-300/20 bg-gold-300/[0.02]"
-                      : "border-white/5 bg-white/[0.01]"
-                  }`}
-                >
-                  <div className={`h-8 w-8 rounded-lg border flex items-center justify-center flex-shrink-0 mt-0.5 ${
-                    rep.is_admin
-                      ? "bg-gold-300/10 border-gold-300/20 text-gold-300"
-                      : "bg-white/5 border-white/10 text-text-secondary"
-                  }`}>
-                    {rep.is_admin ? <Headphones className="h-4 w-4" /> : <User className="h-4 w-4" />}
-                  </div>
-                  
-                  <div className="flex flex-col gap-1.5 flex-1 min-w-0">
-                    <div className="flex justify-between items-center">
-                      <span className={`font-bold ${rep.is_admin ? "text-gold-300" : "text-white"}`}>
-                        {rep.is_admin ? "Support Representative" : "Alex Mercer (You)"}
-                      </span>
-                      <span className="text-[10px] text-text-muted">{new Date(rep.created_at).toLocaleString()}</span>
-                    </div>
-                    <p className="text-text-secondary whitespace-pre-line">{rep.message}</p>
-                  </div>
-                </div>
-              ))}
-              <div ref={threadEndRef} />
-            </div>
-
-            {/* Input message form */}
-            {selectedTicket.status !== "closed" && selectedTicket.status !== "resolved" ? (
-              <form onSubmit={handleReplySubmit} className="flex gap-3 pt-4 border-t border-white/5 mt-4">
-                <input
-                  type="text"
-                  value={replyMessage}
-                  onChange={(e) => setReplyMessage(e.target.value)}
-                  placeholder="Type your response message..."
-                  className="input flex-1"
-                  required
-                  disabled={submitting}
-                />
-                <button
-                  type="submit"
-                  className="h-10 px-4 bg-gold-300 text-[#0A2540] hover:bg-gold-200 rounded-lg flex items-center justify-center gap-1 transition-colors font-bold text-xs"
-                  disabled={submitting || !replyMessage.trim()}
-                >
-                  {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Send className="h-3.5 w-3.5" /> Send</>}
-                </button>
-              </form>
-            ) : (
-              <div className="p-4 bg-white/5 border border-white/5 text-center text-xs text-text-muted rounded-xl mt-4">
-                This support ticket has been resolved or closed. You can open a new ticket for further questions.
-              </div>
-            )}
-          </div>
-        ) : (
-          <div className="h-full flex flex-col items-center justify-center text-center gap-3">
-            <div className="h-12 w-12 rounded-xl bg-white/5 border border-white/5 flex items-center justify-center text-text-muted">
-              <HelpCircle className="h-6 w-6" />
-            </div>
-            <h4 className="font-bold text-sm text-white">No Conversation Active</h4>
-            <p className="text-xs text-text-secondary max-w-xs leading-relaxed">
-              Select an open ticket from the sidebar lists to view conversations and replies thread.
-            </p>
-          </div>
-        )}
-      </div>
-
       {/* Open Ticket Modal */}
       {openModal && (
-        <div className="modal-overlay">
-          <div className="modal flex flex-col gap-6 border-white/10 max-w-[480px]">
-            <div className="flex justify-between items-start border-b border-white/5 pb-4">
-              <div className="flex flex-col">
-                <span className="text-[10px] text-gold-300 font-semibold uppercase tracking-wider">Help Desk</span>
-                <h3 className="text-xl font-bold mt-0.5">Open Support Ticket</h3>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-canvas/80 backdrop-blur-sm animate-fade-in">
+          <div className="panel p-6 max-w-lg w-full space-y-6 border border-border shadow-2xl animate-slide-up">
+            <div className="flex items-start justify-between border-b border-border pb-4">
+              <div>
+                <span className="text-[10px] text-accent font-mono uppercase tracking-wider font-semibold">
+                  Institutional Support
+                </span>
+                <h3 className="text-lg font-bold text-text mt-0.5">Submit Support Ticket</h3>
               </div>
-              <button onClick={() => setOpenModal(false)} className="text-text-muted hover:text-white">
-                ✕
+              <button
+                type="button"
+                onClick={() => setOpenModal(false)}
+                className="btn btn-ghost p-1 text-text-muted hover:text-text"
+              >
+                <X className="w-5 h-5" />
               </button>
             </div>
 
             {formError && (
-              <div className="flex gap-2.5 items-start p-3 bg-danger/10 border border-danger/20 rounded-lg text-xs text-[#ff6b6b]">
-                <ShieldAlert className="h-4 w-4 flex-shrink-0 mt-0.5" />
-                <span>{formError}</span>
+              <div className="alert alert-danger text-xs">
+                <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5 text-danger" />
+                <div className="leading-relaxed">{formError}</div>
               </div>
             )}
             {formSuccess && (
-              <div className="flex gap-2.5 items-start p-3 bg-success/10 border border-success/20 rounded-lg text-xs text-[#00d4aa]">
-                <ShieldCheck className="h-4 w-4 flex-shrink-0 mt-0.5" />
-                <span>{formSuccess}</span>
+              <div className="alert alert-success text-xs">
+                <CheckCircle2 className="w-4 h-4 flex-shrink-0 mt-0.5 text-success" />
+                <div className="leading-relaxed">{formSuccess}</div>
               </div>
             )}
 
-            <form onSubmit={handleOpenTicketSubmit} className="flex flex-col gap-4">
-              {/* Subject */}
-              <div className="flex flex-col gap-1.5">
-                <label className="input-label">Subject *</label>
+            <form onSubmit={handleOpenTicketSubmit} className="space-y-4">
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-text-muted">Subject / Summary *</label>
                 <input
                   type="text"
                   value={subject}
                   onChange={(e) => setSubject(e.target.value)}
-                  placeholder="Brief summary of the issue"
-                  className="input font-semibold"
+                  placeholder="Summary of your inquiry or issue"
+                  className="input"
                   required
                   disabled={submitting}
                 />
               </div>
 
-              {/* Category / Priority */}
               <div className="grid grid-cols-2 gap-4">
-                <div className="flex flex-col gap-1.5">
-                  <label className="input-label">Category</label>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-text-muted">Inquiry Category</label>
                   <select
                     value={category}
                     onChange={(e) => setCategory(e.target.value)}
-                    className="input bg-[#0D2D4A] border-white/5"
+                    className="select"
                     disabled={submitting}
                   >
                     <option value="general">General Queries</option>
-                    <option value="billing">Billing/Deposit</option>
-                    <option value="withdrawal">Withdrawal</option>
-                    <option value="kyc">KYC Verification</option>
-                    <option value="plans">Investments</option>
+                    <option value="billing">Deposit &amp; Funding</option>
+                    <option value="withdrawal">Withdrawal &amp; Custody</option>
+                    <option value="kyc">KYC &amp; Verification</option>
+                    <option value="plans">Investment Contracts</option>
                   </select>
                 </div>
-                
-                <div className="flex flex-col gap-1.5">
-                  <label className="input-label">Priority</label>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-text-muted">Urgency / Priority</label>
                   <select
                     value={priority}
                     onChange={(e) => setPriority(e.target.value)}
-                    className="input bg-[#0D2D4A] border-white/5"
+                    className="select"
                     disabled={submitting}
                   >
                     <option value="low">Low</option>
@@ -388,26 +463,34 @@ export default function TicketsPage() {
                 </div>
               </div>
 
-              {/* Message */}
-              <div className="flex flex-col gap-1.5">
-                <label className="input-label">Detailed Description *</label>
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-text-muted">Detailed Inquiry *</label>
                 <textarea
                   value={message}
                   onChange={(e) => setMessage(e.target.value)}
-                  placeholder="Explain your problem in detail..."
-                  className="input min-h-[100px] leading-relaxed resize-y"
+                  placeholder="Provide complete details including transaction hashes, wallet addresses, or contract IDs if applicable..."
+                  className="textarea min-h-[120px]"
                   required
                   disabled={submitting}
                 />
               </div>
 
-              <button
-                type="submit"
-                className="btn-primary w-full justify-center mt-3 disabled:opacity-50"
-                disabled={submitting || formSuccess !== null}
-              >
-                {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Submit Support Ticket"}
-              </button>
+              <div className="pt-2">
+                <button
+                  type="submit"
+                  disabled={submitting || formSuccess !== null}
+                  className="btn btn-primary w-full justify-center py-2.5 text-xs font-bold"
+                >
+                  {submitting ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                      Assigning Support Officer...
+                    </>
+                  ) : (
+                    "Submit Ticket to Desk"
+                  )}
+                </button>
+              </div>
             </form>
           </div>
         </div>

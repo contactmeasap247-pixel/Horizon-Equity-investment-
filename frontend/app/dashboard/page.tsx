@@ -11,7 +11,6 @@ import {
   ChevronRight,
   ArrowUpRight,
   Clock,
-  Sparkles,
   Loader2,
 } from "lucide-react";
 import { useAuthStore } from "@/lib/auth-store";
@@ -40,6 +39,13 @@ interface InvestmentItem {
   };
 }
 
+const CRYPTO_RATES: Record<string, number> = {
+  BTC: 95000,
+  ETH: 3200,
+  USDT: 1,
+  SOL: 180,
+};
+
 export default function DashboardOverview() {
   const { user } = useAuthStore();
   const [wallets, setWallets] = useState<WalletItem[]>([]);
@@ -47,17 +53,9 @@ export default function DashboardOverview() {
   const [referralCode, setReferralCode] = useState("");
   const [referralCount, setReferralCount] = useState(0);
   const [referralEarnings, setReferralEarnings] = useState(0);
-  
+
   const [isLoading, setIsLoading] = useState(true);
   const [copied, setCopied] = useState(false);
-
-  // Exchange rates for visual USD total calculation
-  const cryptoRates: Record<string, number> = {
-    BTC: 95000,
-    ETH: 3200,
-    USDT: 1,
-    SOL: 180,
-  };
 
   useEffect(() => {
     const fetchData = async () => {
@@ -67,10 +65,10 @@ export default function DashboardOverview() {
           api.get("/investments?status=active"),
           api.get("/referrals/stats"),
         ]);
-        
+
         setWallets(walletsRes.data);
         setInvestments(investmentsRes.data);
-        
+
         setReferralCode(referralsRes.data.referral_code);
         setReferralCount(referralsRes.data.referral_count);
         setReferralEarnings(referralsRes.data.referral_earnings);
@@ -86,7 +84,7 @@ export default function DashboardOverview() {
 
   // Calculate total portfolio value in USD
   const totalBalanceUsd = wallets.reduce((sum, w) => {
-    const rate = cryptoRates[w.currency.toUpperCase()] || 0;
+    const rate = CRYPTO_RATES[w.currency.toUpperCase()] || 0;
     return sum + (w.balance + w.frozen_balance) * rate;
   }, 0);
 
@@ -99,7 +97,6 @@ export default function DashboardOverview() {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  // Helper to calculate progress percentage for active investments
   const getProgressPercentage = (startStr: string, endStr: string) => {
     const start = new Date(startStr).getTime();
     const end = new Date(endStr).getTime();
@@ -123,168 +120,204 @@ export default function DashboardOverview() {
   if (isLoading) {
     return (
       <div className="h-[60vh] flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-gold-300" />
+        <Loader2 className="h-8 w-8 animate-spin text-[#4388F5]" />
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col gap-8">
+    <div className="flex flex-col gap-8 max-w-7xl mx-auto">
       {/* Welcome Banner */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 stagger-1 animate-slide-up">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-white/10">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">Welcome back, {user?.full_name}</h1>
-          <p className="text-sm text-text-secondary mt-1">Here is your crypto portfolio performance overview.</p>
+          <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-white">
+            Welcome back, {user?.full_name}
+          </h2>
+          <p className="text-xs text-[#A6B0BE] mt-1">
+            Real-time multi-asset liquidity reserves and daily yield compounding performance.
+          </p>
         </div>
 
-        {/* Quick action buttons */}
         <div className="flex items-center gap-3">
-          <Link href="/dashboard/wallets" className="btn-secondary py-2 px-4 text-xs font-semibold">
-            Deposit Funds
+          <Link href="/dashboard/wallets" className="btn btn-secondary btn-sm font-semibold">
+            <span>Deposit Funds</span>
           </Link>
-          <Link href="/dashboard/investments" className="btn-primary py-2 px-4 text-xs font-semibold">
-            Invest Now <ArrowUpRight className="h-3.5 w-3.5" />
+          <Link href="/dashboard/investments" className="btn btn-primary btn-sm font-semibold shadow-sm">
+            <span>Invest Now</span>
+            <ArrowUpRight className="h-3.5 w-3.5 ml-1" />
           </Link>
         </div>
       </div>
 
-      {/* Portfolio valuation card */}
-      <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6 stagger-2 animate-slide-up">
-        {/* Total Assets Balance Card */}
-        <div className="stat-card bg-gradient-to-tr from-[#0D2D4A] via-[#0D2D4A] to-gold-500/5 relative overflow-hidden flex flex-col gap-2">
-          <div className="absolute top-0 right-0 p-4 opacity-5 pointer-events-none">
-            <Wallet className="h-20 w-20" />
+      {/* Top 4 Key Metrics */}
+      <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Total Assets */}
+        <div className="panel p-5 flex flex-col justify-between">
+          <div className="flex items-center justify-between text-[#7D8998] text-xs font-medium">
+            <span>Estimated Total Assets</span>
+            <Wallet className="h-4 w-4 text-[#4388F5]" />
           </div>
-          <span className="text-xs text-text-secondary">Estimated Total Assets</span>
-          <span className="text-3xl font-extrabold tracking-tight mt-1 text-gradient">
-            ${totalBalanceUsd.toLocaleString(undefined, { maximumFractionDigits: 2 })}
-          </span>
-          <span className="text-[10px] text-text-muted mt-1 uppercase tracking-wide">
-            Aggregated Wallet Balances
-          </span>
-        </div>
-
-        {/* Total Earnings Card */}
-        <div className="stat-card flex flex-col gap-2">
-          <span className="text-xs text-text-secondary">Referral Earnings</span>
-          <span className="text-3xl font-extrabold tracking-tight mt-1 text-white">
-            ${referralEarnings.toLocaleString(undefined, { maximumFractionDigits: 2 })}
-          </span>
-          <span className="text-[10px] text-text-muted mt-1 uppercase tracking-wide">
-            Earned via {referralCount} Referees
+          <div className="my-2.5">
+            <span className="num text-2xl sm:text-3xl font-bold text-white tracking-tight">
+              ${totalBalanceUsd.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            </span>
+          </div>
+          <span className="text-[11px] text-[#A6B0BE]">
+            Aggregated Live Balances (USD)
           </span>
         </div>
 
-        {/* Active Investments Count Card */}
-        <div className="stat-card flex flex-col gap-2">
-          <span className="text-xs text-text-secondary">Active Contracts</span>
-          <span className="text-3xl font-extrabold tracking-tight mt-1 text-white">
-            {investments.length}
-          </span>
-          <span className="text-[10px] text-text-muted mt-1 uppercase tracking-wide">
-            Accruing yield compounds
+        {/* Active Yield Contracts */}
+        <div className="panel p-5 flex flex-col justify-between">
+          <div className="flex items-center justify-between text-[#7D8998] text-xs font-medium">
+            <span>Active Contracts</span>
+            <TrendingUp className="h-4 w-4 text-[#4388F5]" />
+          </div>
+          <div className="my-2.5">
+            <span className="num text-2xl sm:text-3xl font-bold text-white tracking-tight">
+              {investments.length}
+            </span>
+          </div>
+          <span className="text-[11px] text-[#27C58B]">
+            Accruing yield daily
           </span>
         </div>
 
-        {/* Support Tickets Open Card */}
-        <div className="stat-card flex flex-col gap-2">
-          <span className="text-xs text-text-secondary">KYC Status</span>
-          <span className={`text-xl font-bold tracking-tight mt-3 uppercase ${
-            user?.kyc_status === "verified" ? "text-green-400" : user?.kyc_status === "pending" ? "text-gold-300 animate-pulse" : "text-[#ff6b6b]"
-          }`}>
-            {user?.kyc_status || "Unverified"}
+        {/* Referral Earnings */}
+        <div className="panel p-5 flex flex-col justify-between">
+          <div className="flex items-center justify-between text-[#7D8998] text-xs font-medium">
+            <span>Referral Earnings</span>
+            <Users className="h-4 w-4 text-[#27C58B]" />
+          </div>
+          <div className="my-2.5">
+            <span className="num text-2xl sm:text-3xl font-bold text-[#27C58B] tracking-tight">
+              ${referralEarnings.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            </span>
+          </div>
+          <span className="text-[11px] text-[#A6B0BE]">
+            {referralCount} affiliated members
           </span>
-          <span className="text-[10px] text-text-muted mt-1 uppercase tracking-wide">
-            Identity verification details
+        </div>
+
+        {/* Compliance Standing */}
+        <div className="panel p-5 flex flex-col justify-between">
+          <div className="flex items-center justify-between text-[#7D8998] text-xs font-medium">
+            <span>KYC Compliance</span>
+            <Clock className="h-4 w-4 text-[#7D8998]" />
+          </div>
+          <div className="my-2.5">
+            <span
+              className={`text-lg font-bold uppercase tracking-wider ${
+                user?.kyc_status === "verified"
+                  ? "text-[#27C58B]"
+                  : user?.kyc_status === "pending"
+                  ? "text-[#F3B94F]"
+                  : "text-[#F06464]"
+              }`}
+            >
+              {user?.kyc_status || "Unverified"}
+            </span>
+          </div>
+          <span className="text-[11px] text-[#7D8998]">
+            Tier-1 Regulatory Standing
           </span>
         </div>
       </div>
 
-      {/* Individual Cryptocurrencies grid */}
-      <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6 stagger-3 animate-slide-up">
-        {["BTC", "ETH", "USDT", "SOL"].map((curr) => {
-          const w = wallets.find((item) => item.currency.toUpperCase() === curr);
-          const balance = w ? w.balance : 0;
-          const frozen = w ? w.frozen_balance : 0;
-          
-          let colorClass = "text-white";
-          if (curr === "BTC") colorClass = "text-btc";
-          else if (curr === "ETH") colorClass = "text-eth";
-          else if (curr === "USDT") colorClass = "text-usdt";
-          else if (curr === "SOL") colorClass = "text-sol";
+      {/* Individual Cryptocurrencies Grid */}
+      <div>
+        <h3 className="text-xs font-semibold uppercase tracking-wider text-[#7D8998] mb-3">
+          Liquid Asset Reserves
+        </h3>
+        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {["BTC", "ETH", "USDT", "SOL"].map((curr) => {
+            const w = wallets.find((item) => item.currency.toUpperCase() === curr);
+            const balance = w ? w.balance : 0;
+            const frozen = w ? w.frozen_balance : 0;
 
-          return (
-            <div key={curr} className="card p-5 flex flex-col justify-between border-white/5 bg-white/[0.01]">
-              <div className="flex justify-between items-center">
-                <span className={`font-extrabold text-sm ${colorClass}`}>{curr} Wallet</span>
-                <span className="badge badge-gold uppercase text-[9px] py-0.5 px-2">{curr}</span>
-              </div>
-              <div className="mt-4 flex flex-col">
-                <span className="text-xl font-bold">{balance.toFixed(6)}</span>
-                {frozen > 0 && (
-                  <span className="text-[10px] text-text-muted mt-0.5">
-                    Frozen: {frozen.toFixed(6)} {curr}
+            return (
+              <div key={curr} className="panel p-4 flex flex-col justify-between">
+                <div className="flex justify-between items-center">
+                  <span className="font-bold text-xs text-white">{curr} Wallet</span>
+                  <span className="badge badge-accent text-[10px] font-bold">{curr}</span>
+                </div>
+                <div className="my-3 flex flex-col">
+                  <span className="num font-mono text-xl font-bold text-white">
+                    {balance.toFixed(6)}
                   </span>
-                )}
+                  {frozen > 0 && (
+                    <span className="num text-[11px] text-[#7D8998] mt-0.5">
+                      Locked: {frozen.toFixed(6)} {curr}
+                    </span>
+                  )}
+                </div>
+                <Link
+                  href="/dashboard/wallets"
+                  className="inline-flex items-center gap-1 text-[11px] font-semibold text-[#4388F5] hover:text-[#5A9AFF] pt-2 border-t border-white/5"
+                >
+                  <span>Deposit / Withdraw</span>
+                  <ChevronRight className="w-3 h-3" />
+                </Link>
               </div>
-            </div>
-          );
-        })}
+            );
+          })}
+        </div>
       </div>
 
-      {/* Active Investments & Referrals columns */}
-      <div className="grid lg:grid-cols-12 gap-8 stagger-4 animate-slide-up">
-        {/* Active Investments lists */}
-        <div className="lg:col-span-7 card bg-[#0D2D4A]/80 border-white/10 p-6 flex flex-col gap-6">
-          <div className="flex justify-between items-center">
-            <h3 className="font-extrabold text-base flex items-center gap-2">
-              <TrendingUp className="h-4.5 w-4.5 text-gold-300" /> Active Yield Contracts
+      {/* Active Yield Contracts & Referral Columns */}
+      <div className="grid lg:grid-cols-12 gap-8 items-start">
+        {/* Active Contracts */}
+        <div className="lg:col-span-7 panel p-6 flex flex-col gap-5">
+          <div className="flex justify-between items-center pb-4 border-b border-white/10">
+            <h3 className="font-semibold text-sm text-white flex items-center gap-2">
+              <TrendingUp className="h-4 w-4 text-[#4388F5]" /> Active Yield Contracts
             </h3>
-            <Link href="/dashboard/investments" className="text-xs font-semibold text-gold-300 hover:text-gold-200 flex items-center gap-1">
-              View All Tiers <ChevronRight className="h-3.5 w-3.5" />
+            <Link
+              href="/dashboard/investments"
+              className="text-xs font-semibold text-[#4388F5] hover:text-[#5A9AFF] inline-flex items-center gap-0.5"
+            >
+              <span>Explore Tiers</span>
+              <ChevronRight className="h-3.5 w-3.5" />
             </Link>
           </div>
 
-          <div className="flex flex-col gap-4">
+          <div className="flex flex-col gap-3">
             {investments.length === 0 ? (
-              <div className="p-8 text-center text-xs text-text-muted border border-dashed border-white/5 rounded-xl">
-                No active investment contracts currently accruing yield.
+              <div className="p-8 text-center text-xs text-[#7D8998] border border-dashed border-white/10 rounded-md">
+                No active yield contracts running. Explore our structured tiers to start earning.
               </div>
             ) : (
               investments.map((inv) => {
                 const percentage = getProgressPercentage(inv.start_date, inv.maturity_date);
                 const daysText = getDaysLeft(inv.maturity_date);
                 return (
-                  <div key={inv.id} className="p-4 border border-white/5 bg-white/[0.01] rounded-xl flex flex-col gap-3">
+                  <div key={inv.id} className="p-4 rounded-md bg-[#0B0F14] border border-white/10 flex flex-col gap-2.5">
                     <div className="flex justify-between items-start">
-                      <div className="flex flex-col">
-                        <span className="font-bold text-sm text-white">{inv.plan.name} Tier</span>
-                        <span className="text-[10px] text-text-muted mt-0.5">
-                          Amount: {inv.amount} {inv.currency}
+                      <div>
+                        <span className="font-semibold text-xs text-white block">{inv.plan.name} Tier</span>
+                        <span className="num text-[11px] text-[#7D8998] mt-0.5 block">
+                          Principal: {inv.amount} {inv.currency}
                         </span>
                       </div>
-                      <span className="badge badge-gold py-0.5 px-2 text-[9px] font-bold uppercase">
+                      <span className="badge badge-accent text-[10px] font-bold">
                         {daysText}
                       </span>
                     </div>
 
-                    {/* Progress slider bar */}
-                    <div className="flex flex-col gap-1.5 mt-1">
-                      <div className="w-full h-1.5 rounded-full bg-white/5 overflow-hidden">
-                        <div
-                          className="h-full bg-gradient-to-r from-gold-500 to-gold-300 rounded-full"
-                          style={{ width: `${percentage}%` }}
-                        />
+                    {/* Progress Bar */}
+                    <div className="flex flex-col gap-1 mt-1">
+                      <div className="progress">
+                        <span style={{ width: `${percentage}%` }} />
                       </div>
-                      <div className="flex justify-between text-[9px] text-text-muted">
+                      <div className="flex justify-between text-[10px] text-[#7D8998] num">
                         <span>Started: {new Date(inv.start_date).toLocaleDateString()}</span>
                         <span>Maturity: {percentage}%</span>
                       </div>
                     </div>
 
                     <div className="flex justify-between items-center text-xs pt-2 border-t border-white/5 mt-1">
-                      <span className="text-text-secondary">Expected Total Settlement:</span>
-                      <span className="font-bold text-gold-300">
+                      <span className="text-[#7D8998]">Expected Total Settlement:</span>
+                      <span className="num font-bold text-white font-mono">
                         {inv.expected_return.toFixed(5)} {inv.currency}
                       </span>
                     </div>
@@ -295,48 +328,46 @@ export default function DashboardOverview() {
           </div>
         </div>
 
-        {/* Affiliate Copy Card */}
-        <div className="lg:col-span-5 flex flex-col gap-6">
-          <div className="card bg-[#0D2D4A]/80 border-white/10 p-6 flex flex-col gap-5">
-            <h3 className="font-extrabold text-base flex items-center gap-2">
-              <Users className="h-4.5 w-4.5 text-gold-300" /> Referral Program
-            </h3>
-            
-            <p className="text-xs text-text-secondary leading-relaxed">
-              Earn direct commissions when your friends register and purchase investment tiers. Payouts are made instantly to your wallet.
-            </p>
+        {/* Referral Card */}
+        <div className="lg:col-span-5 panel p-6 flex flex-col gap-5">
+          <h3 className="font-semibold text-sm text-white flex items-center gap-2 pb-4 border-b border-white/10">
+            <Users className="h-4 w-4 text-[#4388F5]" /> Partner Program
+          </h3>
 
-            <div className="flex flex-col gap-1.5 mt-2">
-              <span className="input-label text-[10px] uppercase tracking-wider">Your Referral Code</span>
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  readOnly
-                  value={referralCode || "Generating code..."}
-                  className="input text-xs font-mono select-all bg-white/[0.02]"
-                />
-                <button
-                  onClick={copyReferralLink}
-                  className="h-10 px-3 bg-gold-300 text-[#0A2540] hover:bg-gold-200 font-semibold rounded-lg flex items-center justify-center gap-1 flex-shrink-0 transition-colors"
-                >
-                  {copied ? (
-                    <Check className="h-4 w-4" />
-                  ) : (
-                    <Copy className="h-4 w-4" />
-                  )}
-                </button>
-              </div>
+          <p className="text-xs text-[#A6B0BE] leading-relaxed">
+            Earn direct compounding commissions when your partners register and fund investment tiers. Commissions credit immediately to your liquid balance.
+          </p>
+
+          <div className="flex flex-col gap-1.5">
+            <label className="text-[11px] font-semibold text-[#7D8998] uppercase tracking-wider">
+              Your Referral Link
+            </label>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                readOnly
+                value={referralCode ? `${typeof window !== "undefined" ? window.location.origin : ""}/register?ref=${referralCode}` : "Generating..."}
+                className="input text-xs font-mono select-all"
+              />
+              <button
+                type="button"
+                onClick={copyReferralLink}
+                className="btn btn-primary px-3 text-xs shrink-0"
+                aria-label="Copy referral link"
+              >
+                {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+              </button>
             </div>
+          </div>
 
-            <div className="grid grid-cols-2 gap-4 text-center mt-3 pt-4 border-t border-white/5 bg-white/[0.01] rounded-xl p-3">
-              <div className="flex flex-col">
-                <span className="text-[10px] text-text-muted uppercase">Registered Users</span>
-                <span className="text-lg font-bold text-white mt-0.5">{referralCount}</span>
-              </div>
-              <div className="flex flex-col">
-                <span className="text-[10px] text-text-muted uppercase">Earnings Match</span>
-                <span className="text-lg font-bold text-gold-300 mt-0.5">${referralEarnings.toFixed(2)}</span>
-              </div>
+          <div className="grid grid-cols-2 gap-3 text-center pt-3 border-t border-white/10">
+            <div className="p-3 rounded bg-[#0B0F14] border border-white/5">
+              <span className="text-[10px] text-[#7D8998] uppercase block font-medium">Referred Members</span>
+              <span className="num text-xl font-bold text-white mt-0.5 block">{referralCount}</span>
+            </div>
+            <div className="p-3 rounded bg-[#0B0F14] border border-white/5">
+              <span className="text-[10px] text-[#7D8998] uppercase block font-medium">Earned Rewards</span>
+              <span className="num text-xl font-bold text-[#27C58B] mt-0.5 block">${referralEarnings.toFixed(2)}</span>
             </div>
           </div>
         </div>

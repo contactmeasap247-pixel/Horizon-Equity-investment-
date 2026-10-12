@@ -46,8 +46,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         user,
         isAuthenticated: true,
       });
-    } catch (error: any) {
-      throw new Error(error.response?.data?.detail || "Authentication failed. Please verify credentials.");
+    } catch (error: unknown) {
+      const detail =
+        (error as { response?: { data?: { detail?: string } } })?.response?.data?.detail ||
+        "Authentication failed. Please verify credentials.";
+      throw new Error(detail);
     }
   },
 
@@ -59,8 +62,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         full_name: fullName,
         referred_by_code: referralCode || undefined,
       });
-    } catch (error: any) {
-      throw new Error(error.response?.data?.detail || "Registration failed. Please check input parameters.");
+    } catch (error: unknown) {
+      const detail =
+        (error as { response?: { data?: { detail?: string } } })?.response?.data?.detail ||
+        "Registration failed. Please check input parameters.";
+      throw new Error(detail);
     }
   },
 
@@ -91,7 +97,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         user: response.data,
         isAuthenticated: true,
       });
-    } catch (error) {
+    } catch {
       set({
         user: null,
         isAuthenticated: false,
@@ -106,7 +112,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     if (accessToken) {
       try {
         await get().fetchProfile();
-      } catch (e) {
+      } catch {
         console.warn("Session restore failed, cleaning tokens.");
         if (typeof window !== "undefined") {
           localStorage.removeItem("he_access_token");

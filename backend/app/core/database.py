@@ -24,6 +24,9 @@ else:
         settings.DATABASE_URL,
         pool_size=settings.DATABASE_POOL_SIZE,
         max_overflow=settings.DATABASE_MAX_OVERFLOW,
+        pool_pre_ping=True,   # detect connections dropped by the pooler
+        pool_recycle=300,     # recycle before managed poolers close idle connections
+        connect_args={"timeout": 30},
         echo=settings.DEBUG,
         future=True,
     )

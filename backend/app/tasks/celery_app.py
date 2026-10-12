@@ -2,6 +2,8 @@
 # HORIZON EQUITY - CELERY APPLICATION INSTANCE
 # ============================================
 
+import ssl
+
 from celery import Celery
 from app.core.config import settings
 
@@ -18,6 +20,12 @@ celery_app.conf.update(
     timezone="UTC",
     enable_utc=True,
 )
+
+# TLS settings for managed Redis (e.g. Upstash) that uses rediss:// URLs
+if settings.CELERY_BROKER_URL.startswith("rediss://"):
+    celery_app.conf.broker_use_ssl = {"ssl_cert_reqs": ssl.CERT_REQUIRED}
+if settings.CELERY_RESULT_BACKEND.startswith("rediss://"):
+    celery_app.conf.redis_backend_use_ssl = {"ssl_cert_reqs": ssl.CERT_REQUIRED}
 
 # Load task modules
 celery_app.conf.imports = [

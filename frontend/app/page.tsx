@@ -1,1217 +1,929 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
-import Image from "next/image";
+import { useState, useId } from "react";
 import Link from "next/link";
 import {
-  TrendingUp,
-  ShieldCheck,
-  Users,
-  Layers,
   ArrowRight,
   ChevronRight,
-  Sparkles,
+  Percent,
+  Coins,
+  Globe,
+  BarChart3,
+  Users,
+  ShieldCheck,
+  CheckCircle2,
+  Lock,
   Zap,
-  Crown,
-  Award,
-  Clock,
-  Gift,
+  Headphones,
   ArrowUpRight,
   ArrowDownRight,
-  Activity,
-  Menu,
-  X,
-  Building2,
-  Coins,
-  Flame,
-  Globe,
-  Gem,
-  Lock,
-  Briefcase,
-  UserPlus,
-  Wallet,
-  BarChart3,
-  CheckCircle2,
-  Eye,
-  Headphones,
+  Plus,
 } from "lucide-react";
+import PublicNav from "@/app/components/PublicNav";
+import PublicFooter from "@/app/components/PublicFooter";
+import { useLanguage } from "@/lib/language-context";
 
-/* ──────────────────────────────────────────
-   STATIC DATA
-   ────────────────────────────────────────── */
+/* ---------------------------------------------------------------------
+   DATA DEFINITIONS
+   --------------------------------------------------------------------- */
 
-const tickerItems = [
+const TICKER_ITEMS = [
+  { symbol: "BTC/USD", name: "Bitcoin", price: "$97,243.50", change: "+2.41%", up: true },
+  { symbol: "ETH/USD", name: "Ethereum", price: "$3,412.18", change: "-0.45%", up: false },
+  { symbol: "SOL/USD", name: "Solana", price: "$184.62", change: "+5.12%", up: true },
   { symbol: "SPX", name: "S&P 500", price: "5,432.10", change: "+0.85%", up: true },
   { symbol: "GOLD", name: "Gold Spot", price: "$2,510.40", change: "+1.20%", up: true },
-  { symbol: "BTC", name: "Bitcoin", price: "$97,243.50", change: "+2.41%", up: true },
-  { symbol: "ETH", name: "Ethereum", price: "$3,412.18", change: "-0.45%", up: false },
-  { symbol: "SOL", name: "Solana", price: "$184.62", change: "+5.12%", up: true },
-  { symbol: "EUR/USD", name: "EUR/USD", price: "1.0924", change: "+0.15%", up: true },
+  { symbol: "EUR/USD", name: "Euro / USD", price: "1.0924", change: "+0.15%", up: true },
+  { symbol: "NVDA", name: "Nvidia Corp", price: "$128.40", change: "+3.85%", up: true },
   { symbol: "AAPL", name: "Apple Inc.", price: "$198.50", change: "+0.92%", up: true },
-  { symbol: "TSLA", name: "Tesla Inc.", price: "$267.30", change: "-1.24%", up: false },
-  { symbol: "OIL", name: "Crude Oil", price: "$74.80", change: "-0.80%", up: false },
+  { symbol: "USDT", name: "Tether USD", price: "$1.0001", change: "+0.01%", up: true },
 ];
 
-const mockDeposits = [
-  { user: "J***n D.", amount: "0.245", currency: "BTC", time: "2 mins ago" },
-  { user: "S***a K.", amount: "$5,000", currency: "USDT", time: "5 mins ago" },
-  { user: "M***s R.", amount: "12.5", currency: "ETH", time: "8 mins ago" },
-  { user: "A***e L.", amount: "$3,200", currency: "USDT", time: "12 mins ago" },
-  { user: "R***t P.", amount: "0.087", currency: "BTC", time: "18 mins ago" },
-  { user: "L***a W.", amount: "45.2", currency: "SOL", time: "23 mins ago" },
-  { user: "D***d H.", amount: "$8,500", currency: "USDT", time: "31 mins ago" },
-  { user: "C***e B.", amount: "1.82", currency: "ETH", time: "38 mins ago" },
+const INVESTMENT_PLANS = [
+  {
+    id: "starter",
+    name: "Starter Allocation",
+    badge: "Entry Tier",
+    dailyRate: 1.8,
+    durationDays: 7,
+    minDeposit: 250,
+    maxDeposit: 2500,
+    popular: false,
+    features: [
+      "1.8% daily automated return",
+      "7-day maturity period",
+      "Automatic principal return on maturity",
+      "Automated portfolio rebalancing",
+      "Multi-currency support (BTC, ETH, USDT, SOL)",
+    ],
+  },
+  {
+    id: "growth",
+    name: "Growth Momentum",
+    badge: "Most Popular",
+    dailyRate: 2.5,
+    durationDays: 14,
+    minDeposit: 2500,
+    maxDeposit: 10000,
+    popular: true,
+    features: [
+      "2.5% daily automated return",
+      "14-day maturity period",
+      "Daily automated yield compounding",
+      "Priority automated withdrawal channel",
+      "Dedicated account portfolio strategist",
+      "Zero management or performance exit fees",
+    ],
+  },
+  {
+    id: "institutional",
+    name: "Institutional Yield",
+    badge: "High Yield",
+    dailyRate: 3.2,
+    durationDays: 30,
+    minDeposit: 10000,
+    maxDeposit: 50000,
+    popular: false,
+    features: [
+      "3.2% daily automated return",
+      "30-day maturity period",
+      "Institutional orderbook matching",
+      "Direct VIP communication desk",
+      "Multi-asset algorithmic hedging protocol",
+      "Principal insurance protection guarantee",
+    ],
+  },
+  {
+    id: "executive",
+    name: "Executive Syndicate",
+    badge: "VIP Allocation",
+    dailyRate: 4.0,
+    durationDays: 60,
+    minDeposit: 50000,
+    maxDeposit: 250000,
+    popular: false,
+    features: [
+      "4.0% daily automated return",
+      "60-day maximum compounding cycle",
+      "Bespoke private wealth management",
+      "Priority on-chain & wire settlements",
+      "Direct algorithmic hedging protocol",
+      "Quarterly institutional audit certificates",
+    ],
+  },
 ];
 
-const mockWithdrawals = [
-  { user: "K***n M.", amount: "0.156", currency: "BTC", time: "4 mins ago" },
-  { user: "E***a T.", amount: "$2,800", currency: "USDT", time: "9 mins ago" },
-  { user: "P***l S.", amount: "7.3", currency: "ETH", time: "14 mins ago" },
-  { user: "N***a F.", amount: "$1,500", currency: "USDT", time: "19 mins ago" },
-  { user: "T***s G.", amount: "22.8", currency: "SOL", time: "25 mins ago" },
-  { user: "B***n J.", amount: "0.041", currency: "BTC", time: "33 mins ago" },
-  { user: "H***y V.", amount: "$4,200", currency: "USDT", time: "40 mins ago" },
-  { user: "W***m C.", amount: "3.15", currency: "ETH", time: "47 mins ago" },
+const MASTER_TRADERS = [
+  {
+    name: "Alexandre Vance",
+    handle: "@vance_alpha",
+    winRate: "98.4%",
+    monthlyRoi: "+184.2%",
+    copiers: 1420,
+    strategy: "Arbitrage & Perpetual Futures",
+    badge: "Top Performer",
+    initials: "AV",
+  },
+  {
+    name: "Elena Rostova",
+    handle: "@elena_quant",
+    winRate: "96.8%",
+    monthlyRoi: "+142.6%",
+    copiers: 980,
+    strategy: "Quantitative Forex & Macro",
+    badge: "Consistent Yield",
+    initials: "ER",
+  },
+  {
+    name: "Marcus Thorne",
+    handle: "@thorne_hedge",
+    winRate: "95.2%",
+    monthlyRoi: "+119.8%",
+    copiers: 2150,
+    strategy: "Global Equities & Breakouts",
+    badge: "High Volume",
+    initials: "MT",
+  },
 ];
 
-// Pool of 200 names for the dynamic transaction ticker
-const poolNames = [
-  "J***n D.", "S***a K.", "M***s R.", "A***e L.", "R***t P.", "L***a W.", "D***d H.", "C***e B.",
-  "K***n M.", "E***a T.", "P***l S.", "N***a F.", "T***s G.", "B***n J.", "H***y V.", "W***m C.",
-  "A***x O.", "O***r W.", "M***a L.", "I***h M.", "S***h C.", "G***e N.", "E***n P.", "F***a R.",
-  "H***n K.", "L***s J.", "Z***e Y.", "V***t F.", "Y***n S.", "X***r B.", "U***h G.", "Q***n D.",
-  "R***a E.", "O***d H.", "T***y A.", "J***s L.", "P***a C.", "K***e W.", "L***n R.", "J***d H.",
-  "F***k M.", "C***l B.", "A***n T.", "R***h Y.", "N***h P.", "D***l S.", "J***e V.", "S***n G.",
-  "A***t K.", "M***y C.", "E***d W.", "R***o Q.", "T***a O.", "N***i P.", "L***i D.", "E***s M.",
-  "J***n S.", "O***a F.", "L***m H.", "A***a Z.", "W***t B.", "K***a C.", "D***o R.", "P***r T.",
-  "M***n W.", "R***a G.", "S***u L.", "B***t P.", "G***a K.", "F***n M.", "C***a D.", "A***d S.",
-  "J***o H.", "K***t B.", "E***e C.", "L***y R.", "T***r V.", "D***a O.", "N***n M.", "M***k G.",
-  "H***a Y.", "V***a F.", "W***e L.", "S***y S.", "B***y B.", "C***n K.", "A***u P.", "R***n J.",
-  "J***a T.", "K***n A.", "E***r M.", "L***a R.", "T***m D.", "D***n S.", "N***y B.", "M***e H.",
-  "H***d G.", "V***r K.", "W***r M.", "S***a Q.", "B***a O.", "C***o V.", "A***i L.", "R***t F.",
-  "J***m Y.", "K***h W.", "E***n D.", "L***s C.", "T***d P.", "D***y R.", "N***o B.", "M***n J.",
-  "H***s S.", "V***i T.", "W***n G.", "S***o K.", "B***n M.", "C***u A.", "A***a R.", "R***y H.",
-  "J***e B.", "K***y E.", "E***d G.", "L***n N.", "T***s M.", "D***a C.", "N***e T.", "M***s O.",
-  "H***y K.", "V***n D.", "W***a F.", "S***e H.", "B***r W.", "C***l M.", "A***n G.", "R***o S.",
-  "J***n P.", "K***a L.", "E***a C.", "L***o Y.", "T***a B.", "D***l H.", "N***i R.", "M***y T.",
-  "H***e M.", "V***t B.", "W***y O.", "S***n N.", "B***t C.", "C***n L.", "A***t G.", "R***a F.",
-  "J***o R.", "K***y P.", "E***e K.", "L***y T.", "T***r D.", "D***a M.", "N***n G.", "M***k S.",
-  "H***a W.", "V***a L.", "W***e J.", "S***y B.", "B***y C.", "C***n O.", "A***u F.", "R***n K.",
-  "J***a M.", "K***n N.", "E***r L.", "L***a D.", "T***m S.", "D***n T.", "N***y G.", "M***e P.",
-  "H***d R.", "V***r H.", "W***r F.", "S***a J.", "B***a B.", "C***o K.", "A***i S.", "R***t D.",
-  "J***m G.", "K***h O.", "E***n R.", "L***s T.", "T***d B.", "D***y W.", "N***o A.", "M***n K.",
-  "H***s M.", "V***i L.", "W***n Y.", "S***o C.", "B***n P.", "C***u H.", "A***a D.", "R***y S."
+const FAQ_ITEMS = [
+  {
+    q: "How does Horizon Equity generate yield on managed allocations?",
+    a: "Yields are generated through automated cross-market statistical arbitrage, market-making liquidity provision on digital asset and forex perpetuals, and structured fixed-income allocations backed by institutional counterparties.",
+  },
+  {
+    q: "What deposit and withdrawal methods are supported?",
+    a: "We natively support Bitcoin (BTC), Ethereum (ETH), Tether (USDT on ERC-20 / TRC-20), and Solana (SOL). Withdrawals are processed automatically through dedicated private node clusters with zero artificial holding delays.",
+  },
+  {
+    q: "How is principal capital secured against market volatility?",
+    a: "Over 98% of reserves are stored in geographically distributed, air-gapped cold vaults. Algorithmic hedging models dynamically adjust delta-neutral positions to protect capital during sharp market downturns.",
+  },
+  {
+    q: "Can I compound my earnings automatically?",
+    a: "Yes. All active investment tiers allow optional auto-renew and automated daily compounding, enabling your returns to compound seamlessly across consecutive maturity cycles.",
+  },
+  {
+    q: "What regulatory and compliance standards are maintained?",
+    a: "Horizon Equity operates under strict AML/KYC guidelines, performs regular internal and third-party smart contract audits, and maintains complete segregation between client deposits and operational treasury capital.",
+  },
 ];
 
-const executives = [
-  { name: "Jonathan Hale", role: "Founder & Chief Executive Officer", photo: "/team-jonathan.jpg" },
-  { name: "Sophia Reynolds", role: "Chief Investment Officer", photo: "/team-sophia.jpg" },
-  { name: "Marcus Ellison", role: "Chief Technology Officer", photo: "/team-marcus.jpg" },
-  { name: "Priya Sharma", role: "Chief Financial Officer", photo: "/team-priya.jpg" },
-  { name: "David Okonkwo", role: "Head of Risk & Compliance", photo: "/team-david.jpg" },
-];
+export default function HomePage() {
+  const { t, dir } = useLanguage();
+  const [calcPlan, setCalcPlan] = useState(INVESTMENT_PLANS[1]);
+  const [calcAmount, setCalcAmount] = useState(5000);
+  const [openFaq, setOpenFaq] = useState<number | null>(0);
+  const calcAmountId = useId();
 
-const timeframeData: Record<string, { price: string; change: string; up: boolean; points: number[] }> = {
-  "1H": {
-    price: "$97,243.50",
-    change: "+0.41%",
-    up: true,
-    points: [96800, 96920, 96750, 97100, 96980, 97050, 97243, 97150, 97243],
-  },
-  "24H": {
-    price: "$97,243.50",
-    change: "+2.41%",
-    up: true,
-    points: [94800, 95100, 94600, 95800, 96100, 95900, 96800, 96700, 97243],
-  },
-  "7D": {
-    price: "$98,110.20",
-    change: "+8.62%",
-    up: true,
-    points: [90200, 91500, 89400, 92800, 94100, 93500, 96400, 95800, 98110],
-  },
-  "30D": {
-    price: "$101,450.80",
-    change: "+18.75%",
-    up: true,
-    points: [85000, 87200, 84300, 89500, 91200, 89800, 94500, 93800, 101450],
-  },
-};
-
-const legalContents: Record<string, { title: string; content: string }> = {
-  terms: {
-    title: "Terms & Conditions",
-    content: "By accessing this platform, you agree that you are solely responsible for any and all investment decisions and capital allocations. Horizon Equity and its founders, operators, affiliates, and representatives shall not be liable for any direct, indirect, incidental, special, or consequential losses, including but not limited to loss of capital, digital asset depreciation, real estate devaluation, or resource clearing failures. All services and portfolios are provided on an 'as-is' and 'as-available' basis. The platform reserves the right to modify investment terms, return schedules, and payout options at its absolute discretion without prior notification. User agrees to defend, indemnify, and hold harmless the platform and its operators from any claims, regulatory actions, liabilities, or losses."
-  },
-  privacy: {
-    title: "Privacy Policy",
-    content: "We collect personal and transactional data to maintain compliance audits and clear ledgers. By registering, you consent to the storage and auditing of your identifiers. While we implement security protocols, Horizon Equity is not responsible for database compromises, cyber breaches, unauthorized modifications, or regulatory disclosures. User acknowledges that data transmission is at their own risk. The platform does not guarantee absolute privacy, and all actions arising from database breaches are absorbed entirely by the user."
-  },
-  risk: {
-    title: "Risk Disclosure",
-    content: "All investment activities are highly speculative and carry substantial risk of total loss. Past performance does not guarantee future results. User agrees that they are fully capable of absorbing complete capital loss. By depositing assets or funds, User waives all claims to refunds, capital reclamation, legal recourse, or regulatory complaints against the platform, its founders, and custodian networks. Horizon Equity is not an advisory service, and all market indicators represent raw data cleared at the user's sole risk."
-  },
-  investment: {
-    title: "Investment Terms",
-    content: "Each investment plan operates on structural clearing terms defined by the platform. Payouts and yield releases are subject to network confirmations and liquidity conditions. The platform reserves the right to freeze capital, restrict withdrawals, or offset ledger balances in the event of compliance checks, market instability, or custodial adjustments. All transactions are cleared based on user's acceptance of these terms. Any loss resulting from network delays or balance offsets is borne entirely by the user."
-  },
-  contact: {
-    title: "Contact Relations",
-    content: "Official institutional communications must be directed through our verified clearing relation desk. General support tickets do not constitute binding agreements, legal advice, or guaranteed support. Relations and advisory parameters may be adjusted by the platform at any time. By initiating contact, you agree that all correspondence is private and subject to the platform's non-disclosure and limitation of liability clauses."
-  }
-};
-
-const currencyBadgeClass: Record<string, string> = {
-  BTC: "badge-btc",
-  ETH: "badge-eth",
-  USDT: "badge-usdt",
-  SOL: "badge-sol",
-};
-
-/* ──────────────────────────────────────────
-   SVG CHART COMPONENT (Demo Mode)
-   ────────────────────────────────────────── */
-
-interface ChartProps {
-  points: number[];
-}
-
-function MarketOverviewChart({ points }: ChartProps) {
-  const width = 800;
-  const height = 220;
-  const maxVal = Math.max(...points);
-  const minVal = Math.min(...points);
-
-  const pathData = points
-    .map((p, i) => {
-      const x = (i / (points.length - 1)) * width;
-      const y = height - ((p - minVal) / (maxVal - minVal)) * (height - 30) - 15;
-      return `${i === 0 ? "M" : "L"} ${x} ${y}`;
-    })
-    .join(" ");
-
-  const areaPath = `${pathData} L ${width} ${height} L 0 ${height} Z`;
+  // Dynamic yields
+  const dailyProfit = calcAmount * (calcPlan.dailyRate / 100);
+  const totalProfit = dailyProfit * calcPlan.durationDays;
+  const totalReturn = calcAmount + totalProfit;
+  const netPercentage = ((totalProfit / calcAmount) * 100).toFixed(1);
 
   return (
-    <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-full" preserveAspectRatio="none">
-      <defs>
-        <linearGradient id="chartGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-          <stop offset="0%" stopColor="rgba(201,162,39,0.15)" />
-          <stop offset="100%" stopColor="rgba(7,17,31,0)" />
-        </linearGradient>
-        <linearGradient id="lineGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-          <stop offset="0%" stopColor="#C9A227" />
-          <stop offset="100%" stopColor="#E0BE52" />
-        </linearGradient>
-      </defs>
-      {/* Grid lines */}
-      {[0.2, 0.4, 0.6, 0.8].map((pct) => (
-        <line
-          key={pct}
-          x1={0}
-          y1={height * pct}
-          x2={width}
-          y2={height * pct}
-          stroke="rgba(30, 53, 82, 0.25)"
-          strokeDasharray="4 4"
-        />
-      ))}
-      <path d={areaPath} fill="url(#chartGradient)" />
-      <path d={pathData} fill="none" stroke="url(#lineGradient)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
+    <div dir={dir} className="min-h-screen bg-[#0B0F14] text-[#F5F7FA] selection:bg-[#4388F5]/30">
+      {/* ──────────────────────────────────────────
+          GLOBAL NAVIGATION
+          ────────────────────────────────────────── */}
+      <PublicNav />
 
-/* ──────────────────────────────────────────
-   TRADINGVIEW WIDGET COMPONENT
-   ────────────────────────────────────────── */
+      {/* ──────────────────────────────────────────
+          HERO SECTION
+          ────────────────────────────────────────── */}
+      <section className="relative pt-16 pb-20 md:pt-24 md:pb-28 overflow-hidden border-b border-white/5">
+        <div className="hero-backdrop" />
+        <div className="hero-grid" />
 
-function TradingViewWidget() {
-  const containerRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!containerRef.current) return;
-    // Clear any existing content
-    containerRef.current.innerHTML = "";
-
-    const script = document.createElement("script");
-    script.src = "https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js";
-    script.type = "text/javascript";
-    script.async = true;
-    script.innerHTML = JSON.stringify({
-      autosize: true,
-      symbol: "BINANCE:BTCUSDT",
-      interval: "60",
-      timezone: "Etc/UTC",
-      theme: "dark",
-      style: "1",
-      locale: "en",
-      backgroundColor: "rgba(7, 17, 31, 1)",
-      gridColor: "rgba(30, 53, 82, 0.2)",
-      hide_top_toolbar: false,
-      hide_legend: false,
-      allow_symbol_change: true,
-      save_image: false,
-      calendar: false,
-      hide_volume: false,
-      support_host: "https://www.tradingview.com",
-    });
-
-    containerRef.current.appendChild(script);
-  }, []);
-
-  return (
-    <div className="tradingview-container" style={{ height: "420px" }}>
-      <div ref={containerRef} style={{ height: "100%", width: "100%" }} />
-    </div>
-  );
-}
-
-/* ──────────────────────────────────────────
-   MAIN PAGE
-   ────────────────────────────────────────── */
-
-export default function LandingPage() {
-  const [chartTimeframe, setChartTimeframe] = useState("24H");
-  const [chartMode, setChartMode] = useState<"live" | "demo">("live");
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-
-  // Dynamic Transaction Lists
-  const [deposits, setDeposits] = useState(mockDeposits);
-  const [withdrawals, setWithdrawals] = useState(mockWithdrawals);
-
-  // Modal active content state
-  const [activeLegalKey, setActiveLegalKey] = useState<string | null>(null);
-
-  const activeChart = timeframeData[chartTimeframe] || timeframeData["24H"];
-
-  // Constantly update transaction list every 2.5s with a random name from the 200 pool
-  useEffect(() => {
-    const currencies = ["BTC", "USDT", "ETH", "SOL"];
-    
-    const interval = setInterval(() => {
-      const isDeposit = Math.random() > 0.4;
-      const isWithdrawal = Math.random() > 0.4;
-      
-      const getRandomAmount = (curr: string) => {
-        if (curr === "BTC") return (Math.random() * 0.5 + 0.01).toFixed(3);
-        if (curr === "ETH") return (Math.random() * 5 + 0.1).toFixed(2);
-        if (curr === "SOL") return (Math.random() * 50 + 1).toFixed(1);
-        return "$" + Math.floor(Math.random() * 15000 + 100).toLocaleString();
-      };
-      
-      const getRandomName = () => {
-        return poolNames[Math.floor(Math.random() * poolNames.length)];
-      };
-
-      if (isDeposit) {
-        setDeposits((prev) => {
-          const curr = currencies[Math.floor(Math.random() * currencies.length)];
-          const newTx = {
-            user: getRandomName(),
-            amount: getRandomAmount(curr),
-            currency: curr,
-            time: "just now",
-          };
-          const updated = prev.map((tx, idx) => {
-            const minutes = idx + 1;
-            return { ...tx, time: `${minutes} min${minutes > 1 ? "s" : ""} ago` };
-          });
-          return [newTx, ...updated.slice(0, 7)];
-        });
-      }
-      
-      if (isWithdrawal) {
-        setWithdrawals((prev) => {
-          const curr = currencies[Math.floor(Math.random() * currencies.length)];
-          const newTx = {
-            user: getRandomName(),
-            amount: getRandomAmount(curr),
-            currency: curr,
-            time: "just now",
-          };
-          const updated = prev.map((tx, idx) => {
-            const minutes = idx + 1;
-            return { ...tx, time: `${minutes} min${minutes > 1 ? "s" : ""} ago` };
-          });
-          return [newTx, ...updated.slice(0, 7)];
-        });
-      }
-    }, 2500);
-
-    return () => clearInterval(interval);
-  }, []);
-
-  return (
-    <div className="min-h-screen bg-[#07111F] text-[#F8FAFC] flex flex-col selection:bg-[#C9A227] selection:text-[#07111F]">
-
-      {/* ═══════ TOP REAL-TIME PRICE TICKER ═══════ */}
-      <div className="ticker-bar">
-        <div className="ticker-track">
-          {/* Simulated data label */}
-          <div className="ticker-item flex-shrink-0">
-            <span className="text-[9px] font-bold uppercase tracking-widest text-[#64748b] border border-[#1E3552] rounded px-1.5 py-0.5">⚡ Simulated</span>
+        <div className="container-page relative z-10 flex flex-col items-center text-center">
+          {/* Eyebrow */}
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#151F2B] border border-white/10 text-xs font-semibold text-[#A6B0BE] mb-6 animate-fade">
+            <span className="w-1.5 h-1.5 rounded-full bg-[#4388F5]" />
+            <span>{t("hero_badge") || "Institutional Multi-Asset Financial Ecosystem"}</span>
           </div>
-          {[...tickerItems, ...tickerItems].map((item, i) => (
-            <div key={i} className="ticker-item">
-              <span className="symbol">{item.symbol}</span>
-              <span className="price">{item.price}</span>
-              <span className={item.up ? "change-up" : "change-down"}>
-                {item.up ? <ArrowUpRight className="inline h-3 w-3" /> : <ArrowDownRight className="inline h-3 w-3" />}
-                {item.change}
+
+          {/* Heading */}
+          <h1 className="t-display max-w-4xl font-semibold mb-6 animate-rise">
+            {t("hero_title_1") || "One Platform."}{" "}
+            <span className="text-[#4388F5]">{t("hero_title_2") || "Every Market."}</span>
+          </h1>
+
+          {/* Subtitle */}
+          <p className="t-lead text-center mb-10 text-[#A6B0BE] animate-rise delay-1">
+            {t("hero_subtitle") ||
+              "Institutional execution across crypto perpetuals, automated fixed-yield allocations, forex liquidity, and sovereign securities. Transparent compounding returns backed by air-gapped custody."}
+          </p>
+
+          {/* Call to Actions */}
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 w-full sm:w-auto mb-16 animate-rise delay-2">
+            <Link
+              href="/register"
+              className="btn btn-primary btn-lg w-full sm:w-auto shadow-md"
+            >
+              <span>{t("hero_cta_invest") || "Start Investing"}</span>
+              <ArrowRight className="w-4 h-4 ml-1" />
+            </Link>
+
+            <Link
+              href="/plans"
+              className="btn btn-secondary btn-lg w-full sm:w-auto"
+            >
+              <span>{t("hero_cta_explore") || "Explore Allocation Plans"}</span>
+              <ChevronRight className="w-4 h-4 ml-0.5 text-[#7D8998]" />
+            </Link>
+          </div>
+
+          {/* Key Metrics Strip (One unified container, crisp dividers) */}
+          <div className="w-full max-w-5xl metric-strip text-left animate-rise delay-3">
+            <div className="metric">
+              <span className="metric-label">{t("hero_stat_vol") || "Aggregated Volume"}</span>
+              <span className="metric-value">$2.48B+</span>
+              <span className="metric-sub text-[#27C58B]">
+                {t("hero_stat_vol_sub") || "+24% Year-over-Year"}
               </span>
             </div>
-          ))}
+
+            <div className="metric">
+              <span className="metric-label">{t("hero_stat_investors") || "Active Accounts"}</span>
+              <span className="metric-value">142,500+</span>
+              <span className="metric-sub">
+                {t("hero_stat_investors_sub") || "140+ Global Jurisdictions"}
+              </span>
+            </div>
+
+            <div className="metric">
+              <span className="metric-label">{t("hero_stat_roi") || "Daily Yield Cap"}</span>
+              <span className="metric-value">Up to 4.0%</span>
+              <span className="metric-sub text-[#27C58B]">
+                {t("hero_stat_roi_sub") || "Daily Automated Payouts"}
+              </span>
+            </div>
+
+            <div className="metric">
+              <span className="metric-label">{t("hero_stat_speed") || "Execution Latency"}</span>
+              <span className="metric-value">&lt; 12ms</span>
+              <span className="metric-sub">
+                {t("hero_stat_speed_sub") || "Tier-1 Frankfurt / London"}
+              </span>
+            </div>
+          </div>
         </div>
-      </div>
+      </section>
 
-      {/* ═══════ HEADER / NAVIGATION ═══════ */}
-      <header className="sticky top-0 z-50 border-b border-[#1E3552] bg-[#07111F]/90 backdrop-blur-xl">
-        <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
-          {/* Logo */}
-          <Link href="/" className="flex items-center gap-3.5 group">
-            <div className="h-14 w-14 rounded-xl bg-white p-1 flex items-center justify-center shadow-md relative overflow-hidden flex-shrink-0">
-              <Image 
-                src="/logo.jpg" 
-                alt="Horizon Equity Logo" 
-                width={50} 
-                height={50} 
-                className="object-contain" 
-                priority 
-              />
-            </div>
-            <div className="flex flex-col">
-              <span className="text-base font-black tracking-wider text-gradient">HORIZON</span>
-              <span className="text-[10px] font-bold uppercase tracking-[0.3em] text-[#94A3B8] -mt-1">EQUITY</span>
-            </div>
-          </Link>
-
-          {/* Desktop Navigation */}
-          <nav className="hidden md:flex items-center gap-8 text-sm font-semibold text-[#94A3B8]">
-            <Link href="/" className="hover:text-[#F8FAFC] transition-colors">Home</Link>
-            <a href="#plans" className="hover:text-[#F8FAFC] transition-colors">Investments</a>
-            <a href="#market" className="hover:text-[#F8FAFC] transition-colors">Markets</a>
-            <a href="#team" className="hover:text-[#F8FAFC] transition-colors">About</a>
-          </nav>
-
-          {/* User actions */}
-          <div className="hidden md:flex items-center gap-4">
-            <Link href="/login" className="text-sm font-bold text-[#C9A227] hover:text-[#E0BE52] px-4 py-2 transition-colors">
-              Sign In
-            </Link>
-            <Link href="/register" className="btn-primary text-sm py-2.5 px-6 font-bold">
-              Get Started
-            </Link>
+      {/* ──────────────────────────────────────────
+          REAL-TIME MARKET TICKER TAPE
+          ────────────────────────────────────────── */}
+      <section
+        className="py-3 bg-[#0B0F14] border-b border-white/10 overflow-hidden"
+        aria-label="Market Data"
+      >
+        <div className="flex gap-4 items-center whitespace-nowrap overflow-x-auto scrollbar-none px-6">
+          <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-[#7D8998] shrink-0 pr-4 border-r border-white/10">
+            <span className="w-2 h-2 rounded-full bg-[#27C58B] animate-pulse" />
+            <span>Markets</span>
           </div>
 
-          {/* Mobile menu trigger */}
-          <button 
-            onClick={() => setMobileMenuOpen(true)}
-            className="md:hidden text-[#94A3B8] hover:text-[#F8FAFC] p-1.5 transition-colors"
-          >
-            <Menu className="h-6 w-6" />
-          </button>
-        </div>
-      </header>
-
-      {/* Mobile Drawer */}
-      {mobileMenuOpen && (
-        <div className="fixed inset-0 z-50 flex justify-end bg-black/60 backdrop-blur-sm animate-fade-in">
-          <div className="w-72 bg-[#07111F] border-l border-[#1E3552] h-full p-6 flex flex-col justify-between animate-slide-up">
-            <div className="flex flex-col gap-8">
-              {/* Header */}
-              <div className="flex justify-between items-center">
-                <div className="flex items-center gap-2">
-                  <div className="h-10 w-10 rounded-lg bg-white p-0.5 flex items-center justify-center shadow-sm relative overflow-hidden flex-shrink-0">
-                    <Image src="/logo.jpg" alt="Horizon Equity Logo" width={36} height={36} className="object-contain" />
-                  </div>
-                  <span className="font-extrabold text-sm tracking-wider text-gradient">HORIZON</span>
-                </div>
-                <button 
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="text-[#94A3B8] hover:text-[#F8FAFC] p-1 transition-colors"
+          <div className="flex items-center gap-6 shrink-0">
+            {TICKER_ITEMS.map((item, idx) => (
+              <Link
+                key={idx}
+                href="/markets"
+                className="inline-flex items-center gap-2.5 text-xs font-medium hover:text-white transition-colors"
+              >
+                <span className="font-semibold text-[#F5F7FA]">{item.symbol}</span>
+                <span className="num text-[#A6B0BE]">{item.price}</span>
+                <span
+                  className={`num font-semibold inline-flex items-center gap-0.5 ${
+                    item.up ? "text-[#27C58B]" : "text-[#F06464]"
+                  }`}
                 >
-                  <X className="h-5 w-5" />
-                </button>
-              </div>
+                  {item.up ? (
+                    <ArrowUpRight className="w-3 h-3" />
+                  ) : (
+                    <ArrowDownRight className="w-3 h-3" />
+                  )}
+                  {item.change}
+                </span>
+              </Link>
+            ))}
+          </div>
+        </div>
+      </section>
 
-              {/* Links */}
-              <nav className="flex flex-col gap-4 text-base font-semibold text-[#94A3B8]">
-                <Link href="/" onClick={() => setMobileMenuOpen(false)} className="hover:text-[#F8FAFC] py-1 border-b border-white/5 transition-colors">Home</Link>
-                <a href="#plans" onClick={() => setMobileMenuOpen(false)} className="hover:text-[#F8FAFC] py-1 border-b border-white/5 transition-colors">Investments</a>
-                <a href="#market" onClick={() => setMobileMenuOpen(false)} className="hover:text-[#F8FAFC] py-1 border-b border-white/5 transition-colors">Markets</a>
-                <a href="#team" onClick={() => setMobileMenuOpen(false)} className="hover:text-[#F8FAFC] py-1 border-b border-white/5 transition-colors">About</a>
-              </nav>
+      {/* ──────────────────────────────────────────
+          CORE CAPABILITIES / ECOSYSTEM PILLARS
+          ────────────────────────────────────────── */}
+      <section className="section" id="capabilities">
+        <div className="container-page">
+          <div className="max-w-2xl mb-14">
+            <span className="t-eyebrow mb-2 block">{t("feat_badge") || "Architecture"}</span>
+            <h2 className="t-section mb-3">
+              {t("feat_title") || "Why and How We Stand Out"}
+            </h2>
+            <p className="t-body">
+              {t("feat_subtitle") ||
+                "Institutional financial engineering packaged into a seamless, high-yield digital environment."}
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {/* 1. Fixed Return */}
+            <div className="panel p-6 sm:p-7 flex flex-col justify-between hover:border-white/20 transition-colors">
+              <div>
+                <div className="icon-tile mb-5 text-[#4388F5]">
+                  <Percent className="w-5 h-5" />
+                </div>
+                <h3 className="t-card mb-2">{t("feat_fixed_title") || "Fixed Return Investment"}</h3>
+                <p className="t-small text-[#A6B0BE] leading-relaxed mb-6">
+                  {t("feat_fixed_desc") ||
+                    "Automated capital allocation into non-correlated yield strategies with guaranteed daily compounding."}
+                </p>
+              </div>
+              <Link
+                href="/plans"
+                className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#4388F5] hover:text-[#5A9AFF]"
+              >
+                <span>View Allocation Tiers</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </Link>
             </div>
 
-            {/* CTA Auth links */}
-            <div className="flex flex-col gap-3 pt-6 border-t border-[#1E3552]">
-              <Link 
-                href="/login" 
-                onClick={() => setMobileMenuOpen(false)}
-                className="text-center font-bold text-[#C9A227] hover:text-[#E0BE52] py-2.5 rounded-lg border border-[#C9A227]/20 transition-all"
+            {/* 2. Crypto Perpetuals */}
+            <div className="panel p-6 sm:p-7 flex flex-col justify-between hover:border-white/20 transition-colors">
+              <div>
+                <div className="icon-tile mb-5 text-[#4388F5]">
+                  <Coins className="w-5 h-5" />
+                </div>
+                <h3 className="t-card mb-2">{t("feat_crypto_title") || "Crypto Perpetuals"}</h3>
+                <p className="t-small text-[#A6B0BE] leading-relaxed mb-6">
+                  {t("feat_crypto_desc") ||
+                    "Deep liquidity books for BTC, ETH, SOL, and 120+ pairs with zero slippage and sub-millisecond settlement."}
+                </p>
+              </div>
+              <Link
+                href="/markets"
+                className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#4388F5] hover:text-[#5A9AFF]"
               >
-                Sign In
+                <span>Explore Orderbooks</span>
+                <ArrowRight className="w-3.5 h-3.5" />
               </Link>
-              <Link 
-                href="/register" 
-                onClick={() => setMobileMenuOpen(false)}
-                className="btn-primary justify-center text-center py-2.5 font-bold"
+            </div>
+
+            {/* 3. Global Forex Hub */}
+            <div className="panel p-6 sm:p-7 flex flex-col justify-between hover:border-white/20 transition-colors">
+              <div>
+                <div className="icon-tile mb-5 text-[#4388F5]">
+                  <Globe className="w-5 h-5" />
+                </div>
+                <h3 className="t-card mb-2">{t("feat_forex_title") || "Global Forex Hub"}</h3>
+                <p className="t-small text-[#A6B0BE] leading-relaxed mb-6">
+                  {t("feat_forex_desc") ||
+                    "Institutional pricing on G10 currency pairs with micro-pip spreads and automated liquidity aggregation."}
+                </p>
+              </div>
+              <Link
+                href="/markets"
+                className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#4388F5] hover:text-[#5A9AFF]"
               >
-                Get Started
+                <span>Forex Liquidity</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </Link>
+            </div>
+
+            {/* 4. Global Equities */}
+            <div className="panel p-6 sm:p-7 flex flex-col justify-between hover:border-white/20 transition-colors">
+              <div>
+                <div className="icon-tile mb-5 text-[#4388F5]">
+                  <BarChart3 className="w-5 h-5" />
+                </div>
+                <h3 className="t-card mb-2">{t("feat_stocks_title") || "Global Equities"}</h3>
+                <p className="t-small text-[#A6B0BE] leading-relaxed mb-6">
+                  {t("feat_stocks_desc") ||
+                    "Direct exposure to top global tech conglomerates, blue chips, and dividend-yielding industrial leaders."}
+                </p>
+              </div>
+              <Link
+                href="/markets"
+                className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#4388F5] hover:text-[#5A9AFF]"
+              >
+                <span>Index Allocations</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </Link>
+            </div>
+
+            {/* 5. Mirror Trading Protocol */}
+            <div className="panel p-6 sm:p-7 flex flex-col justify-between hover:border-white/20 transition-colors">
+              <div>
+                <div className="icon-tile mb-5 text-[#4388F5]">
+                  <Users className="w-5 h-5" />
+                </div>
+                <h3 className="t-card mb-2">{t("feat_copy_title") || "Mirror Trading Protocol"}</h3>
+                <p className="t-small text-[#A6B0BE] leading-relaxed mb-6">
+                  {t("feat_copy_desc") ||
+                    "Follow verified master algorithmic traders and automatically mirror profitable execution signals in real-time."}
+                </p>
+              </div>
+              <Link
+                href="/copy-trading"
+                className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#4388F5] hover:text-[#5A9AFF]"
+              >
+                <span>View Trader Leaderboard</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </Link>
+            </div>
+
+            {/* 6. Sovereign Bonds */}
+            <div className="panel p-6 sm:p-7 flex flex-col justify-between hover:border-white/20 transition-colors">
+              <div>
+                <div className="icon-tile mb-5 text-[#4388F5]">
+                  <ShieldCheck className="w-5 h-5" />
+                </div>
+                <h3 className="t-card mb-2">{t("feat_bonds_title") || "Sovereign Bonds"}</h3>
+                <p className="t-small text-[#A6B0BE] leading-relaxed mb-6">
+                  {t("feat_bonds_desc") ||
+                    "Treasury-backed sovereign debt vehicles safeguarding your portfolio capital against market drawdowns."}
+                </p>
+              </div>
+              <Link
+                href="/security"
+                className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#4388F5] hover:text-[#5A9AFF]"
+              >
+                <span>Compliance & Safeguards</span>
+                <ArrowRight className="w-3.5 h-3.5" />
               </Link>
             </div>
           </div>
         </div>
-      )}
+      </section>
 
-      {/* ═══════ HERO SECTION ═══════ */}
-      <section className="relative py-28 lg:py-44 overflow-hidden border-b border-[#1E3552]">
-        {/* Background gradient */}
-        <div className="absolute top-0 inset-x-0 h-full pointer-events-none -z-10 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-[#0A2540]/40 via-[#07111F] to-[#07111F]" />
-
-        <div className="max-w-7xl mx-auto px-6 grid lg:grid-cols-12 gap-16 items-center">
-          {/* Left — Copy */}
-          <div className="lg:col-span-7 flex flex-col gap-8 text-left animate-slide-up">
-            <div className="inline-flex self-start items-center gap-2 px-3.5 py-1.5 rounded-full border border-[#1E3552] bg-[#0A2540]/40 text-[#C9A227] text-xs font-bold tracking-wider uppercase">
-              <Sparkles className="h-3.5 w-3.5" /> Multi-Asset Investment Platform
-            </div>
-
-            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight leading-[1.1] text-white">
-              Invest Beyond the <span className="text-gradient">Horizon.</span>
-            </h1>
-
-            <div className="flex flex-col gap-4">
-              <p className="text-base sm:text-lg text-[#94A3B8] max-w-lg leading-relaxed font-medium">
-                Access institutional-grade allocations across digital assets, real estate, energy, currencies, and mineral resources — all through one unified dashboard.
+      {/* ──────────────────────────────────────────
+          STRUCTURED INVESTMENT PLANS
+          ────────────────────────────────────────── */}
+      <section className="section bg-[#0E141B] border-y border-white/5" id="plans">
+        <div className="container-page">
+          <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-14">
+            <div className="max-w-2xl">
+              <span className="t-eyebrow mb-2 block">{t("plans_badge") || "Capital Strategies"}</span>
+              <h2 className="t-section mb-3">
+                {t("plans_title") || "Managed Intelligence."}
+              </h2>
+              <p className="t-body">
+                {t("plans_subtitle") ||
+                  "Structured investment tiers engineered for sustainable growth, daily liquidity, and full principal protection."}
               </p>
-              <div className="inline-flex self-start items-center gap-3 px-5 py-2 rounded-full border border-[#C9A227]/30 bg-[#C9A227]/5">
-                <span className="text-xs font-bold tracking-widest uppercase text-[#C9A227]">Crypto Investments</span>
-                <span className="text-[#C9A227]/40">|</span>
-                <span className="text-xs font-bold tracking-widest uppercase text-[#C9A227]">Real Returns</span>
-              </div>
             </div>
 
-            <div className="flex flex-wrap items-center gap-4 pt-2">
-              <a href="#plans" className="btn-primary px-8 py-3.5 font-bold text-sm">
-                Explore Investments <ChevronRight className="h-4 w-4" />
-              </a>
-              <Link href="/register" className="btn-secondary px-8 py-3.5 font-bold text-sm">
-                Get Started
-              </Link>
-            </div>
+            <Link
+              href="/plans"
+              className="inline-flex items-center gap-1.5 text-sm font-semibold text-[#4388F5] hover:text-[#5A9AFF] shrink-0"
+            >
+              <span>Compare All Plan Specifications</span>
+              <ChevronRight className="w-4 h-4" />
+            </Link>
           </div>
 
-          {/* Right — Hero Visual */}
-          <div className="lg:col-span-5 relative w-full h-[420px] rounded-2xl overflow-hidden border border-[#1E3552] animate-fade-in animate-hero-float">
-            <Image 
-              src="/hero-bg.jpg" 
-              alt="Multi-Asset Investment Platform — Digital Assets, Real Estate, Energy, Currencies, Minerals" 
-              fill 
-              className="object-cover" 
-              priority 
-            />
-            {/* Dark vignette overlay */}
-            <div className="absolute inset-0 bg-gradient-to-t from-[#07111F] via-[#07111F]/20 to-transparent opacity-70" />
-            <div className="absolute bottom-6 left-6 right-6 p-4 rounded-xl bg-[#07111F]/80 backdrop-blur-md border border-[#1E3552]/50 flex flex-col gap-1">
-              <span className="text-[10px] font-bold text-[#C9A227] tracking-wider uppercase">Institutional Allocations</span>
-              <span className="text-xs text-[#94A3B8]">Multi-ledger clearing engines</span>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ═══════ TRUST / VALUE STRIP ═══════ */}
-      <section className="py-10 border-b border-[#1E3552] bg-[#050d18]">
-        <div className="max-w-7xl mx-auto px-6">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
-            <div className="flex flex-col gap-1.5 md:border-r border-[#1E3552]/30 md:last:border-none md:px-6">
-              <span className="text-xs font-bold text-[#C9A227] tracking-wider uppercase">Multi-Asset Access</span>
-              <span className="text-xs text-[#94A3B8]">Digital, real estate, energy, metals</span>
-            </div>
-            <div className="flex flex-col gap-1.5 md:border-r border-[#1E3552]/30 md:last:border-none md:px-6">
-              <span className="text-xs font-bold text-[#C9A227] tracking-wider uppercase">Transparent Info</span>
-              <span className="text-xs text-[#94A3B8]">Clear investment terms</span>
-            </div>
-            <div className="flex flex-col gap-1.5 md:border-r border-[#1E3552]/30 md:last:border-none md:px-6">
-              <span className="text-xs font-bold text-[#C9A227] tracking-wider uppercase">Secure Infrastructure</span>
-              <span className="text-xs text-[#94A3B8]">Platform security architecture</span>
-            </div>
-            <div className="flex flex-col gap-1.5 md:px-6">
-              <span className="text-xs font-bold text-[#C9A227] tracking-wider uppercase">Centralized Platform</span>
-              <span className="text-xs text-[#94A3B8]">One console for management</span>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ═══════ EXPLORE INVESTMENT CATEGORIES ═══════ */}
-      <section id="about" className="py-28 md:py-36 border-b border-[#1E3552]">
-        <div className="max-w-7xl mx-auto px-6">
-          <div className="text-left flex flex-col gap-2 mb-16 max-w-xl">
-            <span className="text-xs font-bold uppercase tracking-[0.25em] text-[#C9A227]">Diverse Portfolio Allocation</span>
-            <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-white">Explore Investment Opportunities</h2>
-            <p className="text-[#94A3B8] text-sm leading-relaxed mt-2 max-w-md">
-              One platform. Multiple markets. Allocate across asset classes under balanced frameworks.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-5">
-            {/* Category 1: Digital Assets */}
-            <div className="card flex flex-col p-7 h-[240px] justify-between group hover:border-[#C9A227]/20 transition-all duration-300">
-              <div className="h-10 w-10 rounded-lg bg-[#C9A227]/5 border border-[#C9A227]/10 flex items-center justify-center text-[#C9A227]">
-                <Coins className="h-5 w-5" />
-              </div>
-              <div className="flex flex-col gap-2">
-                <h4 className="font-extrabold text-xs text-[#F8FAFC] tracking-wider uppercase">Digital Assets</h4>
-                <p className="text-xs text-[#94A3B8] leading-relaxed">Cryptocurrency and blockchain opportunities.</p>
-              </div>
-            </div>
-
-            {/* Category 2: Real Estate */}
-            <div className="card flex flex-col p-7 h-[240px] justify-between group hover:border-[#C9A227]/20 transition-all duration-300">
-              <div className="h-10 w-10 rounded-lg bg-[#C9A227]/5 border border-[#C9A227]/10 flex items-center justify-center text-[#C9A227]">
-                <Building2 className="h-5 w-5" />
-              </div>
-              <div className="flex flex-col gap-2">
-                <h4 className="font-extrabold text-xs text-[#F8FAFC] tracking-wider uppercase">Real Estate</h4>
-                <p className="text-xs text-[#94A3B8] leading-relaxed">Property and real-estate opportunities.</p>
-              </div>
-            </div>
-
-            {/* Category 3: Energy */}
-            <div className="card flex flex-col p-7 h-[240px] justify-between group hover:border-[#C9A227]/20 transition-all duration-300">
-              <div className="h-10 w-10 rounded-lg bg-[#C9A227]/5 border border-[#C9A227]/10 flex items-center justify-center text-[#C9A227]">
-                <Flame className="h-5 w-5" />
-              </div>
-              <div className="flex flex-col gap-2">
-                <h4 className="font-extrabold text-xs text-[#F8FAFC] tracking-wider uppercase">Energy</h4>
-                <p className="text-xs text-[#94A3B8] leading-relaxed">Oil, gas and energy opportunities.</p>
-              </div>
-            </div>
-
-            {/* Category 4: Currencies */}
-            <div className="card flex flex-col p-7 h-[240px] justify-between group hover:border-[#C9A227]/20 transition-all duration-300">
-              <div className="h-10 w-10 rounded-lg bg-[#C9A227]/5 border border-[#C9A227]/10 flex items-center justify-center text-[#C9A227]">
-                <Globe className="h-5 w-5" />
-              </div>
-              <div className="flex flex-col gap-2">
-                <h4 className="font-extrabold text-xs text-[#F8FAFC] tracking-wider uppercase">Currencies</h4>
-                <p className="text-xs text-[#94A3B8] leading-relaxed">Global currency opportunities.</p>
-              </div>
-            </div>
-
-            {/* Category 5: Mineral Resources */}
-            <div className="card flex flex-col p-7 h-[240px] justify-between group hover:border-[#C9A227]/20 transition-all duration-300">
-              <div className="h-10 w-10 rounded-lg bg-[#C9A227]/5 border border-[#C9A227]/10 flex items-center justify-center text-[#C9A227]">
-                <Gem className="h-5 w-5" />
-              </div>
-              <div className="flex flex-col gap-2">
-                <h4 className="font-extrabold text-xs text-[#F8FAFC] tracking-wider uppercase">Mineral Resources</h4>
-                <p className="text-xs text-[#94A3B8] leading-relaxed">Gold, precious metals and strategic resources.</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ═══════ INVESTMENT PLANS ═══════ */}
-      <section id="plans" className="py-28 md:py-36 border-b border-[#1E3552] section-alt">
-        <div className="max-w-[1440px] mx-auto px-6">
-          <div className="text-center flex flex-col items-center gap-3 mb-20">
-            <span className="text-xs font-bold uppercase tracking-[0.25em] text-[#C9A227]">Investment Portfolios</span>
-            <h2 className="text-3xl sm:text-4xl font-black tracking-tight text-white">Choose Your Investment Plan</h2>
-            <p className="text-[#94A3B8] max-w-xl text-sm leading-relaxed mt-1">
-              Select an investment plan based on your capital and preferred investment duration.
-            </p>
-          </div>
-
-          <div className="plans-grid">
-            {/* 1. Horizon Starter */}
-            <div className="plan-card tier-starter flex flex-col gap-5">
-              <div className="flex justify-between items-start">
-                <div className="flex flex-col">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-[#64748b]">Tier 01</span>
-                  <h3 className="text-sm font-extrabold mt-1 text-white">Horizon Starter</h3>
-                </div>
-                <span className="plan-badge">Popular</span>
-              </div>
-              <div className="flex items-baseline gap-1.5 py-4 border-y border-[#1E3552]/30">
-                <span className="text-4xl font-black text-[#C9A227] tracking-tight">2.5%</span>
-                <span className="text-[#64748b] text-xs font-bold">Return</span>
-              </div>
-              <div className="flex flex-col gap-2 text-xs text-[#94A3B8]">
-                <div className="plan-detail-row"><span className="label"><Clock className="inline h-3.5 w-3.5 mr-1.5" />Duration</span><span className="value">7 Days</span></div>
-                <div className="plan-detail-row"><span className="label">Min Investment</span><span className="value">$50</span></div>
-                <div className="plan-detail-row"><span className="label">Max Investment</span><span className="value">$499</span></div>
-                <div className="plan-detail-row"><span className="label"><Gift className="inline h-3.5 w-3.5 mr-1.5" />Referral</span><span className="value-gold">3%</span></div>
-              </div>
-              <Link href="/register" className="btn-secondary w-full justify-center mt-auto text-xs py-3 font-bold">
-                Invest Now
-              </Link>
-            </div>
-
-            {/* 2. Horizon Rise */}
-            <div className="plan-card tier-rise flex flex-col gap-5">
-              <div className="flex justify-between items-start">
-                <div className="flex flex-col">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-[#64748b]">Tier 02</span>
-                  <h3 className="text-sm font-extrabold mt-1 text-white">Horizon Rise</h3>
-                </div>
-                <span className="plan-badge">Best Value</span>
-              </div>
-              <div className="flex items-baseline gap-1.5 py-4 border-y border-[#1E3552]/30">
-                <span className="text-4xl font-black text-[#C9A227] tracking-tight">4%</span>
-                <span className="text-[#64748b] text-xs font-bold">Return</span>
-              </div>
-              <div className="flex flex-col gap-2 text-xs text-[#94A3B8]">
-                <div className="plan-detail-row"><span className="label"><Clock className="inline h-3.5 w-3.5 mr-1.5" />Duration</span><span className="value">14 Days</span></div>
-                <div className="plan-detail-row"><span className="label">Min Investment</span><span className="value">$500</span></div>
-                <div className="plan-detail-row"><span className="label">Max Investment</span><span className="value">$1,999</span></div>
-                <div className="plan-detail-row"><span className="label"><Gift className="inline h-3.5 w-3.5 mr-1.5" />Referral</span><span className="value-gold">4%</span></div>
-              </div>
-              <Link href="/register" className="btn-secondary w-full justify-center mt-auto text-xs py-3 font-bold">
-                Invest Now
-              </Link>
-            </div>
-
-            {/* 3. Horizon Peak */}
-            <div className="plan-card tier-peak flex flex-col gap-5">
-              <div className="flex justify-between items-start">
-                <div className="flex flex-col">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-[#C9A227]">Tier 03</span>
-                  <h3 className="text-sm font-extrabold mt-1 text-white">Horizon Peak</h3>
-                </div>
-                <span className="plan-badge bg-[#E0BE52]/15 border-[#E0BE52]/25 text-[#E0BE52]"><Sparkles className="h-2.5 w-2.5 mr-0.5" />Recommended</span>
-              </div>
-              <div className="flex items-baseline gap-1.5 py-4 border-y border-[#1E3552]/30">
-                <span className="text-4xl font-black text-[#E0BE52] tracking-tight">6%</span>
-                <span className="text-[#64748b] text-xs font-bold">Return</span>
-              </div>
-              <div className="flex flex-col gap-2 text-xs text-[#94A3B8]">
-                <div className="plan-detail-row"><span className="label"><Clock className="inline h-3.5 w-3.5 mr-1.5" />Duration</span><span className="value">30 Days</span></div>
-                <div className="plan-detail-row"><span className="label">Min Investment</span><span className="value">$2,000</span></div>
-                <div className="plan-detail-row"><span className="label">Max Investment</span><span className="value">$9,999</span></div>
-                <div className="plan-detail-row"><span className="label"><Gift className="inline h-3.5 w-3.5 mr-1.5" />Referral</span><span className="value-gold">5%</span></div>
-              </div>
-              <Link href="/register" className="btn-primary w-full justify-center mt-auto text-xs py-3 font-bold">
-                Invest Now <Zap className="h-3.5 w-3.5 fill-current" />
-              </Link>
-            </div>
-
-            {/* 4. Horizon Apex */}
-            <div className="plan-card tier-apex flex flex-col gap-5">
-              <div className="flex justify-between items-start">
-                <div className="flex flex-col">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-[#C9A227]">Tier 04</span>
-                  <h3 className="text-sm font-extrabold mt-1 text-white">Horizon Apex</h3>
-                </div>
-                <span className="plan-badge border-[#C9A227]/30 text-[#C9A227]"><Award className="h-2.5 w-2.5 mr-0.5" />Premium</span>
-              </div>
-              <div className="flex items-baseline gap-1.5 py-4 border-y border-[#1E3552]/30">
-                <span className="text-4xl font-black text-[#C9A227] tracking-tight">8%</span>
-                <span className="text-[#64748b] text-xs font-bold">Return</span>
-              </div>
-              <div className="flex flex-col gap-2 text-xs text-[#94A3B8]">
-                <div className="plan-detail-row"><span className="label"><Clock className="inline h-3.5 w-3.5 mr-1.5" />Duration</span><span className="value">60 Days</span></div>
-                <div className="plan-detail-row"><span className="label">Min Investment</span><span className="value">$10,000</span></div>
-                <div className="plan-detail-row"><span className="label">Max Investment</span><span className="value">$49,999</span></div>
-                <div className="plan-detail-row"><span className="label"><Gift className="inline h-3.5 w-3.5 mr-1.5" />Referral</span><span className="value-gold">6%</span></div>
-              </div>
-              <Link href="/register" className="btn-secondary w-full justify-center mt-auto text-xs py-3 font-bold">
-                Invest Now
-              </Link>
-            </div>
-
-            {/* 5. Horizon Legacy */}
-            <div className="plan-card tier-legacy flex flex-col gap-5">
-              <div className="flex justify-between items-start">
-                <div className="flex flex-col">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-[#A7841B]">Tier 05</span>
-                  <h3 className="text-sm font-extrabold mt-1 text-white">Horizon Legacy</h3>
-                </div>
-                <span className="plan-badge elite-badge"><Crown className="h-2.5 w-2.5 mr-0.5" />Elite</span>
-              </div>
-              <div className="flex items-baseline gap-1.5 py-4 border-y border-[#1E3552]/30">
-                <span className="text-4xl font-black text-[#E0BE52] tracking-tight">10%</span>
-                <span className="text-[#64748b] text-xs font-bold">Return</span>
-              </div>
-              <div className="flex flex-col gap-2 text-xs text-[#94A3B8]">
-                <div className="plan-detail-row"><span className="label"><Clock className="inline h-3.5 w-3.5 mr-1.5" />Duration</span><span className="value">90 Days</span></div>
-                <div className="plan-detail-row"><span className="label">Min Investment</span><span className="value">$50,000</span></div>
-                <div className="plan-detail-row"><span className="label">Max Investment</span><span className="value">Unlimited</span></div>
-                <div className="plan-detail-row"><span className="label"><Gift className="inline h-3.5 w-3.5 mr-1.5" />Referral</span><span className="value-gold">8%</span></div>
-              </div>
-              <Link href="/register" className="btn-primary w-full justify-center mt-auto text-xs py-3 font-bold bg-[#A7841B] hover:bg-[#C9A227] border-[#A7841B]">
-                Invest Now <Crown className="h-3.5 w-3.5" />
-              </Link>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ═══════ MARKET OVERVIEW / CHART ═══════ */}
-      <section id="market" className="py-28 md:py-36 border-b border-[#1E3552]">
-        <div className="max-w-7xl mx-auto px-6">
-          <div className="chart-container">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6 mb-8">
-              <div className="flex flex-col gap-2">
-                <div className="flex items-center gap-2">
-                  <Activity className="h-4.5 w-4.5 text-[#C9A227]" />
-                  <h2 className="text-xl font-bold tracking-wide">Market Overview</h2>
-                </div>
-                {chartMode === "demo" && (
-                  <div className="flex items-baseline gap-3 mt-1">
-                    <span className="text-3xl font-black text-white tracking-tight transition-all duration-300">{activeChart.price}</span>
-                    <span className="text-xs font-bold text-[#00d4aa] flex items-center gap-0.5 py-0.5 px-2.5 rounded-full bg-[#00d4aa]/10">
-                      <ArrowUpRight className="h-3.5 w-3.5" />{activeChart.change}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {INVESTMENT_PLANS.map((plan) => (
+              <div
+                key={plan.id}
+                className={`panel p-6 sm:p-7 flex flex-col justify-between relative ${
+                  plan.popular
+                    ? "border-[#4388F5]/40 bg-[#131B26] shadow-lg"
+                    : "bg-[#111821]"
+                }`}
+              >
+                <div>
+                  {/* Top Bar */}
+                  <div className="flex items-center justify-between gap-2 mb-4">
+                    <span className="text-xs font-semibold uppercase tracking-wider text-[#A6B0BE]">
+                      {plan.name}
                     </span>
-                    <span className="text-xs text-[#64748b] font-bold uppercase tracking-wider">BTC/USD</span>
+                    <span
+                      className={`badge ${
+                        plan.popular ? "badge-accent font-semibold" : ""
+                      }`}
+                    >
+                      {plan.badge}
+                    </span>
                   </div>
-                )}
-              </div>
 
-              <div className="flex items-center gap-3">
-                {/* Mode Toggle */}
-                <div className="chart-mode-toggle">
-                  <button
-                    onClick={() => setChartMode("live")}
-                    className={`chart-mode-btn ${chartMode === "live" ? "active" : ""}`}
-                  >
-                    <span className="flex items-center gap-1"><Activity className="h-3 w-3" /> Live Trading</span>
-                  </button>
-                  <button
-                    onClick={() => setChartMode("demo")}
-                    className={`chart-mode-btn ${chartMode === "demo" ? "active" : ""}`}
-                  >
-                    <span className="flex items-center gap-1"><Eye className="h-3 w-3" /> Demo Simulated</span>
-                  </button>
-                </div>
+                  {/* Rate */}
+                  <div className="mb-6 flex items-baseline gap-2">
+                    <span className="num text-3xl sm:text-4xl font-bold text-[#F5F7FA]">
+                      {plan.dailyRate}%
+                    </span>
+                    <span className="text-xs text-[#7D8998] font-medium">/ daily</span>
+                  </div>
 
-                {/* Timeframe buttons — only for demo mode */}
-                {chartMode === "demo" && (
-                  <div className="flex gap-1 p-1 bg-[#07111F] rounded-lg border border-[#1E3552]">
-                    {["1H", "24H", "7D", "30D"].map((tf) => (
-                      <button
-                        key={tf}
-                        onClick={() => setChartTimeframe(tf)}
-                        className={`chart-timeframe-btn px-3 py-1.5 text-xs rounded transition-all duration-200 ${chartTimeframe === tf ? "active" : ""}`}
-                      >
-                        {tf}
-                      </button>
+                  {/* Conditions List */}
+                  <div className="inset p-3.5 mb-6 text-xs flex flex-col gap-2">
+                    <div className="flex justify-between">
+                      <span className="text-[#7D8998]">Min Entry:</span>
+                      <span className="num font-semibold text-white">
+                        ${plan.minDeposit.toLocaleString()}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-[#7D8998]">Max Entry:</span>
+                      <span className="num font-semibold text-white">
+                        ${plan.maxDeposit.toLocaleString()}
+                      </span>
+                    </div>
+                    <div className="flex justify-between border-t border-white/5 pt-2">
+                      <span className="text-[#7D8998]">Cycle Duration:</span>
+                      <span className="num font-semibold text-[#4388F5]">
+                        {plan.durationDays} Days
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Features */}
+                  <ul className="flex flex-col gap-2.5 mb-8 text-xs text-[#A6B0BE]">
+                    {plan.features.map((feat, idx) => (
+                      <li key={idx} className="flex items-start gap-2">
+                        <CheckCircle2 className="w-3.5 h-3.5 text-[#27C58B] shrink-0 mt-0.5" />
+                        <span>{feat}</span>
+                      </li>
                     ))}
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Chart Area */}
-            {chartMode === "live" ? (
-              <TradingViewWidget />
-            ) : (
-              <div className="h-56 sm:h-64 w-full">
-                <MarketOverviewChart points={activeChart.points} />
-              </div>
-            )}
-          </div>
-        </div>
-      </section>
-
-      {/* ═══════ FEATURED OPPORTUNITIES ═══════ */}
-      <section className="py-28 md:py-36 border-b border-[#1E3552] section-alt">
-        <div className="max-w-7xl mx-auto px-6">
-          <div className="text-left flex flex-col gap-2 mb-14 max-w-md">
-            <span className="text-xs font-bold uppercase tracking-[0.25em] text-[#C9A227]">Private Placements</span>
-            <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-white">Featured Opportunities</h2>
-            <p className="text-[#94A3B8] text-sm leading-relaxed mt-2">
-              Access dynamic private investment opportunities tailored to strategic asset growth.
-            </p>
-          </div>
-
-          <div className="card p-14 text-center flex flex-col items-center justify-center max-w-xl mx-auto gap-6 border border-dashed border-[#1E3552]">
-            <div className="h-14 w-14 rounded-full bg-[#0A2540] border border-[#1E3552] flex items-center justify-center text-[#64748b]">
-              <Lock className="h-6 w-6" />
-            </div>
-            <div className="flex flex-col gap-3">
-              <h4 className="text-sm font-extrabold text-white uppercase tracking-wider">Private Access Required</h4>
-              <p className="text-xs text-[#94A3B8] leading-relaxed max-w-md">
-                Public offerings are currently fully subscribed. Sign in to your dashboard to review private placements, or contact your portfolio manager to request allocation terms.
-              </p>
-            </div>
-            <div className="flex items-center gap-3 pt-2">
-              <Link href="/login" className="btn-primary text-xs py-2.5 px-6 font-bold">
-                Access Dashboard
-              </Link>
-              <a href="#plans" className="btn-secondary text-xs py-2.5 px-6 font-bold">
-                View All Plans
-              </a>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ═══════ HOW IT WORKS ═══════ */}
-      <section className="py-28 md:py-36 border-b border-[#1E3552]">
-        <div className="max-w-7xl mx-auto px-6">
-          <div className="text-center flex flex-col items-center gap-3 mb-20">
-            <span className="text-xs font-bold uppercase tracking-[0.25em] text-[#C9A227]">Getting Started</span>
-            <h2 className="text-3xl sm:text-4xl font-black tracking-tight text-white">How It Works</h2>
-            <p className="text-[#94A3B8] max-w-lg text-sm leading-relaxed mt-1">
-              Four simple steps to begin your investment journey with Horizon Equity.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
-            <div className="step-card">
-              <div className="step-number">1</div>
-              <div className="h-10 w-10 flex items-center justify-center text-[#C9A227]">
-                <UserPlus className="h-5 w-5" />
-              </div>
-              <h4 className="text-xs font-extrabold uppercase tracking-wider text-white">Create Account</h4>
-              <p className="text-xs text-[#94A3B8] leading-relaxed">Register and verify your identity in under 5 minutes.</p>
-            </div>
-
-            <div className="step-card">
-              <div className="step-number">2</div>
-              <div className="h-10 w-10 flex items-center justify-center text-[#C9A227]">
-                <Layers className="h-5 w-5" />
-              </div>
-              <h4 className="text-xs font-extrabold uppercase tracking-wider text-white">Choose a Plan</h4>
-              <p className="text-xs text-[#94A3B8] leading-relaxed">Select from five structured investment tiers.</p>
-            </div>
-
-            <div className="step-card">
-              <div className="step-number">3</div>
-              <div className="h-10 w-10 flex items-center justify-center text-[#C9A227]">
-                <Wallet className="h-5 w-5" />
-              </div>
-              <h4 className="text-xs font-extrabold uppercase tracking-wider text-white">Fund Your Wallet</h4>
-              <p className="text-xs text-[#94A3B8] leading-relaxed">Deposit via crypto or fiat with instant confirmation.</p>
-            </div>
-
-            <div className="step-card">
-              <div className="step-number">4</div>
-              <div className="h-10 w-10 flex items-center justify-center text-[#C9A227]">
-                <TrendingUp className="h-5 w-5" />
-              </div>
-              <h4 className="text-xs font-extrabold uppercase tracking-wider text-white">Earn Returns</h4>
-              <p className="text-xs text-[#94A3B8] leading-relaxed">Track growth and withdraw earnings at maturity.</p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ═══════ LATEST DEPOSITS & WITHDRAWALS ═══════ */}
-      <section id="activity" className="py-28 md:py-36 border-b border-[#1E3552] section-alt">
-        <div className="max-w-7xl mx-auto px-6">
-          <div className="text-center flex flex-col items-center gap-3 mb-16">
-            <span className="text-xs font-bold uppercase tracking-[0.25em] text-[#C9A227]">Global Flow</span>
-            <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-white">Transaction Feeds</h2>
-            <p className="text-[10px] font-bold uppercase tracking-widest text-[#64748b] mt-2 border border-[#1E3552] rounded-full px-3 py-1">
-              ⚡ Simulated Activity
-            </p>
-          </div>
-
-          <div className="grid md:grid-cols-2 gap-8">
-            {/* Deposits Feed */}
-            <div className="chart-container">
-              <div className="flex items-center justify-between mb-6 border-b border-[#1E3552]/30 pb-4">
-                <h3 className="font-extrabold text-xs tracking-wider uppercase flex items-center gap-2 text-white">
-                  <ArrowDownRight className="h-4.5 w-4.5 text-[#00d4aa]" /> Latest Deposits
-                </h3>
-                <div className="live-indicator"><span className="live-dot" /> LIVE</div>
-              </div>
-              <div className="flex flex-col divide-y divide-[#1E3552]/15">
-                {deposits.map((tx, idx) => (
-                  <div key={idx} className="py-3 flex flex-row items-center justify-between text-xs sm:text-sm animate-row-slide-in" style={{ animationDelay: `${idx * 50}ms` }}>
-                    <span className="text-[#94A3B8] font-semibold">{tx.user}</span>
-                    <div className="flex items-center gap-2">
-                      <span className="font-bold text-white">{tx.amount}</span>
-                      <span className={`text-[10px] font-bold uppercase py-0.5 px-2 rounded ${currencyBadgeClass[tx.currency] || "badge-gold"}`}>
-                        {tx.currency}
-                      </span>
-                    </div>
-                    <span className="text-[#64748b] text-[10px] font-semibold">{tx.time}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Withdrawals Feed */}
-            <div className="chart-container">
-              <div className="flex items-center justify-between mb-6 border-b border-[#1E3552]/30 pb-4">
-                <h3 className="font-extrabold text-xs tracking-wider uppercase flex items-center gap-2 text-white">
-                  <ArrowUpRight className="h-4.5 w-4.5 text-[#ff6b6b]" /> Latest Withdrawals
-                </h3>
-                <div className="live-indicator"><span className="live-dot" /> LIVE</div>
-              </div>
-              <div className="flex flex-col divide-y divide-[#1E3552]/15">
-                {withdrawals.map((tx, idx) => (
-                  <div key={idx} className="py-3 flex flex-row items-center justify-between text-xs sm:text-sm animate-row-slide-in" style={{ animationDelay: `${idx * 50}ms` }}>
-                    <span className="text-[#94A3B8] font-semibold">{tx.user}</span>
-                    <div className="flex items-center gap-2">
-                      <span className="font-bold text-white">{tx.amount}</span>
-                      <span className={`text-[10px] font-bold uppercase py-0.5 px-2 rounded ${currencyBadgeClass[tx.currency] || "badge-gold"}`}>
-                        {tx.currency}
-                      </span>
-                    </div>
-                    <span className="text-[#64748b] text-[10px] font-semibold">{tx.time}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ═══════ WHY HORIZON EQUITY ═══════ */}
-      <section className="py-28 md:py-36 border-b border-[#1E3552]">
-        <div className="max-w-7xl mx-auto px-6">
-          <div className="text-center flex flex-col items-center gap-3 mb-20">
-            <span className="text-xs font-bold uppercase tracking-[0.25em] text-[#C9A227]">Our Advantages</span>
-            <h2 className="text-3xl sm:text-4xl font-black tracking-tight text-white">Why Horizon Equity</h2>
-            <p className="text-[#94A3B8] max-w-lg text-sm leading-relaxed mt-1">
-              Built for investors who demand institutional quality with personal service.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            <div className="card p-8 flex flex-col gap-4 text-left">
-              <div className="h-10 w-10 rounded-lg bg-[#C9A227]/5 border border-[#C9A227]/10 flex items-center justify-center text-[#C9A227]">
-                <Layers className="h-5 w-5" />
-              </div>
-              <h4 className="text-xs font-extrabold uppercase tracking-wider text-white">Multi-Asset Access</h4>
-              <p className="text-xs text-[#94A3B8] leading-relaxed">Diversify across digital assets, real estate, energy, currencies, and mineral resources through one platform.</p>
-            </div>
-
-            <div className="card p-8 flex flex-col gap-4 text-left">
-              <div className="h-10 w-10 rounded-lg bg-[#C9A227]/5 border border-[#C9A227]/10 flex items-center justify-center text-[#C9A227]">
-                <CheckCircle2 className="h-5 w-5" />
-              </div>
-              <h4 className="text-xs font-extrabold uppercase tracking-wider text-white">Transparent Terms</h4>
-              <p className="text-xs text-[#94A3B8] leading-relaxed">Clear investment terms, visible return structures, and no hidden fees across all tier plans.</p>
-            </div>
-
-            <div className="card p-8 flex flex-col gap-4 text-left">
-              <div className="h-10 w-10 rounded-lg bg-[#C9A227]/5 border border-[#C9A227]/10 flex items-center justify-center text-[#C9A227]">
-                <ShieldCheck className="h-5 w-5" />
-              </div>
-              <h4 className="text-xs font-extrabold uppercase tracking-wider text-white">Secure Infrastructure</h4>
-              <p className="text-xs text-[#94A3B8] leading-relaxed">Multi-signature vaults, encrypted communications, and institutional-grade security protocols.</p>
-            </div>
-
-            <div className="card p-8 flex flex-col gap-4 text-left">
-              <div className="h-10 w-10 rounded-lg bg-[#C9A227]/5 border border-[#C9A227]/10 flex items-center justify-center text-[#C9A227]">
-                <Headphones className="h-5 w-5" />
-              </div>
-              <h4 className="text-xs font-extrabold uppercase tracking-wider text-white">24/7 Support</h4>
-              <p className="text-xs text-[#94A3B8] leading-relaxed">Dedicated portfolio managers and round-the-clock support for all account tiers.</p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ═══════ EXECUTIVE TEAM ═══════ */}
-      <section id="team" className="py-28 md:py-36 border-b border-[#1E3552] section-alt">
-        <div className="max-w-7xl mx-auto px-6">
-          <div className="text-center flex flex-col items-center gap-3 mb-20">
-            <span className="text-xs font-bold uppercase tracking-[0.25em] text-[#C9A227]">Corporate Governance</span>
-            <h2 className="text-3xl sm:text-4xl font-black tracking-tight text-white">Our Leadership</h2>
-            <p className="text-[#94A3B8] max-w-lg text-sm leading-relaxed mt-1">
-              Experienced professionals driving innovation across global asset management.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-5 gap-6">
-            {executives.map((exec) => (
-              <div key={exec.name} className="team-card">
-                <div className="relative w-full overflow-hidden bg-[#0A2540]" style={{ aspectRatio: "3 / 4" }}>
-                  <Image
-                    src={exec.photo}
-                    alt={exec.name}
-                    fill
-                    className="object-cover object-top transition-transform duration-500 group-hover:scale-105"
-                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 33vw, 20vw"
-                  />
+                  </ul>
                 </div>
-                <div className="team-card-info">
-                  <h4>{exec.name}</h4>
-                  <div className="gold-line" />
-                  <p>{exec.role}</p>
-                </div>
+
+                <Link
+                  href="/register"
+                  className={`btn btn-block text-xs font-semibold ${
+                    plan.popular ? "btn-primary" : "btn-secondary"
+                  }`}
+                >
+                  <span>Select {plan.name.split(" ")[0]}</span>
+                  <ArrowRight className="w-3.5 h-3.5 ml-1" />
+                </Link>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* ═══════ CINEMATIC BRAND SECTION ═══════ */}
-      <section className="relative py-36 overflow-hidden border-b border-[#1E3552] bg-gradient-to-tr from-[#07111F] via-[#0A2540]/20 to-[#07111F]">
-        <div className="absolute inset-0 pointer-events-none -z-10">
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[250px] rounded-full bg-[#C9A227]/3 blur-[120px]" />
-        </div>
+      {/* ──────────────────────────────────────────
+          INTERACTIVE GROWTH CALCULATOR
+          ────────────────────────────────────────── */}
+      <section className="section" id="calculator">
+        <div className="container-page">
+          <div className="panel max-w-4xl mx-auto p-7 sm:p-10 lg:p-12">
+            <div className="max-w-xl mx-auto text-center mb-10">
+              <span className="t-eyebrow mb-2 block">{t("calc_badge") || "Simulator"}</span>
+              <h2 className="t-section mb-3">
+                {t("calc_title") || "Project Your Financial Growth"}
+              </h2>
+              <p className="t-small text-[#A6B0BE]">
+                {t("calc_subtitle") ||
+                  "Select your preferred allocation tier and capital to simulate anticipated daily compounding returns."}
+              </p>
+            </div>
 
-        <div className="max-w-4xl mx-auto px-6 text-center flex flex-col items-center gap-8">
-          <span className="text-xs font-bold uppercase tracking-[0.25em] text-[#C9A227]">Global Outlook</span>
-          <h2 className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight leading-tight text-white">
-            Look Beyond the Obvious.
-          </h2>
-          <p className="text-base text-[#94A3B8] max-w-xl leading-relaxed">
-            Opportunities exist across markets. Horizon Equity brings them together in one institutional investment experience.
-          </p>
-          <a href="#market" className="btn-primary mt-2 px-8 py-3.5 font-bold text-sm">
-            Explore Markets
-          </a>
+            {/* Plan Tier Selector */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 mb-8">
+              {INVESTMENT_PLANS.map((p) => {
+                const isSelected = calcPlan.id === p.id;
+                return (
+                  <button
+                    type="button"
+                    key={p.id}
+                    onClick={() => {
+                      setCalcPlan(p);
+                      if (calcAmount < p.minDeposit) setCalcAmount(p.minDeposit);
+                      if (calcAmount > p.maxDeposit) setCalcAmount(p.maxDeposit);
+                    }}
+                    className={`p-3 rounded-md border text-left transition-colors cursor-pointer ${
+                      isSelected
+                        ? "bg-[#151F2B] border-[#4388F5] text-white"
+                        : "bg-[#111821] border-white/10 text-[#A6B0BE] hover:border-white/20 hover:text-white"
+                    }`}
+                  >
+                    <span className="block text-xs font-semibold text-white">
+                      {p.name.split(" ")[0]}
+                    </span>
+                    <span className="num text-[11px] text-[#27C58B] mt-0.5 block font-medium">
+                      {p.dailyRate}% Daily
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Capital Slider */}
+            <div className="mb-10">
+              <div className="flex justify-between items-baseline mb-3">
+                <label
+                  htmlFor={calcAmountId}
+                  className="text-xs font-semibold uppercase tracking-wider text-[#A6B0BE]"
+                >
+                  {t("calc_capital") || "Investment Capital (USD)"}
+                </label>
+                <span className="num text-xl sm:text-2xl font-bold text-white bg-[#151F2B] px-3 py-1 rounded border border-white/10">
+                  ${calcAmount.toLocaleString()}
+                </span>
+              </div>
+
+              <input
+                id={calcAmountId}
+                type="range"
+                min={calcPlan.minDeposit}
+                max={calcPlan.maxDeposit}
+                step={50}
+                value={calcAmount}
+                onChange={(e) => setCalcAmount(Number(e.target.value))}
+                className="range"
+                style={{
+                  ["--fill" as any]: `${
+                    ((calcAmount - calcPlan.minDeposit) /
+                      (calcPlan.maxDeposit - calcPlan.minDeposit)) *
+                    100
+                  }%`,
+                }}
+              />
+
+              <div className="flex justify-between text-xs text-[#7D8998] mt-2 num">
+                <span>Min: ${calcPlan.minDeposit.toLocaleString()}</span>
+                <span>Max: ${calcPlan.maxDeposit.toLocaleString()}</span>
+              </div>
+            </div>
+
+            {/* Results Grid */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-5 sm:p-6 rounded-lg bg-[#0B0F14] border border-white/10 mb-8">
+              <div className="metric">
+                <span className="metric-label">{t("calc_daily_profit") || "Daily Return"}</span>
+                <span className="num text-xl sm:text-2xl font-bold text-[#27C58B]">
+                  +${dailyProfit.toFixed(2)}
+                </span>
+              </div>
+
+              <div className="metric">
+                <span className="metric-label">{t("calc_duration") || "Duration"}</span>
+                <span className="num text-xl sm:text-2xl font-bold text-white">
+                  {calcPlan.durationDays} Days
+                </span>
+              </div>
+
+              <div className="metric">
+                <span className="metric-label">{t("calc_net_profit") || "Net Yield"}</span>
+                <span className="num text-xl sm:text-2xl font-bold text-[#4388F5]">
+                  +{netPercentage}%
+                </span>
+              </div>
+
+              <div className="metric">
+                <span className="metric-label">{t("calc_total_payout") || "Total Settlement"}</span>
+                <span className="num text-xl sm:text-2xl font-bold text-white">
+                  ${totalReturn.toFixed(2)}
+                </span>
+              </div>
+            </div>
+
+            {/* Action */}
+            <div className="text-center">
+              <Link
+                href="/register"
+                className="btn btn-primary btn-lg px-8 font-semibold shadow-md"
+              >
+                <span>{t("calc_cta") || "Proceed to Fund With This Allocation"}</span>
+                <ArrowRight className="w-4 h-4 ml-1.5" />
+              </Link>
+            </div>
+          </div>
         </div>
       </section>
 
-      {/* ═══════ TRUST / CREDIBILITY ═══════ */}
-      <section className="py-28 md:py-36 border-b border-[#1E3552]">
-        <div className="max-w-7xl mx-auto px-6 grid md:grid-cols-12 gap-16 items-center">
-          <div className="md:col-span-6 flex flex-col gap-6 text-left">
-            <span className="text-xs font-bold uppercase tracking-[0.25em] text-[#C9A227]">Verified Quality</span>
-            <h2 className="text-3xl font-bold tracking-tight text-white">Institutional Credibility</h2>
-            <p className="text-sm text-[#94A3B8] leading-relaxed">
-              We employ strict risk frameworks, regulatory alignments, and secure custodian partnerships to deliver capital stability. Focus is given to asset growth with absolute clarity.
+      {/* ──────────────────────────────────────────
+          COPY TRADING SHOWCASE
+          ────────────────────────────────────────── */}
+      <section className="section bg-[#0E141B] border-y border-white/5" id="copy-trading">
+        <div className="container-page">
+          <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-14">
+            <div className="max-w-2xl">
+              <span className="t-eyebrow mb-2 block">{t("copy_badge") || "Mirror Protocol"}</span>
+              <h2 className="t-section mb-3">
+                {t("copy_title") || "Mirror Verified Pros. Zero Manual Overhead."}
+              </h2>
+              <p className="t-body">
+                {t("copy_subtitle") ||
+                  "Follow elite quantitative traders with verified on-chain track records. Replicate trades automatically with customized stop-loss rules."}
+              </p>
+            </div>
+
+            <Link
+              href="/copy-trading"
+              className="inline-flex items-center gap-1.5 text-sm font-semibold text-[#4388F5] hover:text-[#5A9AFF] shrink-0"
+            >
+              <span>Explore All Verified Masters</span>
+              <ChevronRight className="w-4 h-4" />
+            </Link>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {MASTER_TRADERS.map((trader, idx) => (
+              <div key={idx} className="panel p-6 sm:p-7 flex flex-col justify-between">
+                <div>
+                  <div className="flex items-center justify-between mb-5">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-md bg-[#151F2B] border border-white/10 flex items-center justify-center font-bold text-white text-sm">
+                        {trader.initials}
+                      </div>
+                      <div>
+                        <h3 className="font-semibold text-sm text-white">{trader.name}</h3>
+                        <span className="text-xs text-[#7D8998]">{trader.handle}</span>
+                      </div>
+                    </div>
+                    <span className="badge badge-accent text-[11px]">
+                      {trader.badge}
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3 p-3.5 rounded-md bg-[#0B0F14] border border-white/10 mb-5">
+                    <div>
+                      <span className="text-[10px] text-[#7D8998] uppercase font-semibold block">
+                        30D Win Rate
+                      </span>
+                      <span className="num text-base font-bold text-[#27C58B]">
+                        {trader.winRate}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-[10px] text-[#7D8998] uppercase font-semibold block">
+                        30D Net ROI
+                      </span>
+                      <span className="num text-base font-bold text-[#4388F5]">
+                        {trader.monthlyRoi}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between text-xs text-[#A6B0BE] mb-6">
+                    <span className="truncate pr-2">
+                      Strategy: <strong className="text-white font-medium">{trader.strategy}</strong>
+                    </span>
+                    <span className="num shrink-0 text-[#7D8998]">
+                      {trader.copiers.toLocaleString()} Copiers
+                    </span>
+                  </div>
+                </div>
+
+                <Link
+                  href="/register"
+                  className="btn btn-secondary btn-block text-xs font-semibold"
+                >
+                  <span>Mirror Strategy</span>
+                  <ArrowRight className="w-3.5 h-3.5 ml-1" />
+                </Link>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ──────────────────────────────────────────
+          SECURITY, COLD CUSTODY & GOVERNANCE
+          ────────────────────────────────────────── */}
+      <section className="section" id="security">
+        <div className="container-page">
+          <div className="max-w-2xl mb-14">
+            <span className="t-eyebrow mb-2 block">{t("sec_badge") || "Governance"}</span>
+            <h2 className="t-section mb-3">
+              {t("sec_title") || "Regulated, Compliant, Trusted."}
+            </h2>
+            <p className="t-body">
+              {t("sec_subtitle") ||
+                "Multi-layer cryptography, rigorous custody audits, and redundant institutional security safeguards."}
             </p>
-            <div className="flex flex-col gap-4 mt-2">
-              <div className="flex items-center gap-3 text-xs text-[#F8FAFC]">
-                <ShieldCheck className="h-4.5 w-4.5 text-[#C9A227] flex-shrink-0" />
-                <span>Multi-signature vaults and custodian security.</span>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
+            <div className="panel p-6 sm:p-7">
+              <div className="icon-tile mb-5 text-[#4388F5]">
+                <Lock className="w-5 h-5" />
               </div>
-              <div className="flex items-center gap-3 text-xs text-[#F8FAFC]">
-                <ShieldCheck className="h-4.5 w-4.5 text-[#C9A227] flex-shrink-0" />
-                <span>Strict risk controls managed by compliance boards.</span>
+              <h3 className="t-card mb-2">{t("sec_card1_title") || "Military AES-256 Storage"}</h3>
+              <p className="t-small text-[#A6B0BE] leading-relaxed">
+                {t("sec_card1_desc") ||
+                  "98% of digital client reserves are held in geographically distributed, air-gapped cold vaults."}
+              </p>
+            </div>
+
+            <div className="panel p-6 sm:p-7">
+              <div className="icon-tile mb-5 text-[#4388F5]">
+                <Zap className="w-5 h-5" />
               </div>
-              <div className="flex items-center gap-3 text-xs text-[#F8FAFC]">
-                <ShieldCheck className="h-4.5 w-4.5 text-[#C9A227] flex-shrink-0" />
-                <span>Comprehensive auditing tracking all plan maturities.</span>
+              <h3 className="t-card mb-2">{t("sec_card2_title") || "Instant Automated Clearings"}</h3>
+              <p className="t-small text-[#A6B0BE] leading-relaxed">
+                {t("sec_card2_desc") ||
+                  "Withdrawals are audited and dispatched automatically across our dedicated nodes with zero manual delays."}
+              </p>
+            </div>
+
+            <div className="panel p-6 sm:p-7">
+              <div className="icon-tile mb-5 text-[#4388F5]">
+                <Headphones className="w-5 h-5" />
               </div>
+              <h3 className="t-card mb-2">{t("sec_card3_title") || "24/7 Concierge Support"}</h3>
+              <p className="t-small text-[#A6B0BE] leading-relaxed">
+                {t("sec_card3_desc") ||
+                  "Personalized portfolio assistance and round-the-clock priority ticketing available 24/7/365."}
+              </p>
             </div>
           </div>
 
-          <div className="md:col-span-6 grid grid-cols-2 gap-5">
-            <div className="card p-8 flex flex-col gap-1.5 text-left">
-              <span className="text-3xl font-black text-[#C9A227] tracking-tight">100%</span>
-              <span className="text-[10px] font-bold uppercase tracking-wider text-[#94A3B8]">Audit Transparency</span>
+          <div className="panel p-6 sm:p-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 bg-[#0E141B]">
+            <div>
+              <h4 className="t-title mb-1 text-white">Full Custodial Segregation Standards</h4>
+              <p className="t-small text-[#A6B0BE]">
+                Client capital is never co-mingled with platform operational reserves.
+              </p>
             </div>
-            <div className="card p-8 flex flex-col gap-1.5 text-left">
-              <span className="text-3xl font-black text-[#C9A227] tracking-tight">24/7</span>
-              <span className="text-[10px] font-bold uppercase tracking-wider text-[#94A3B8]">Support Response</span>
-            </div>
-            <div className="card p-8 flex flex-col gap-1.5 text-left">
-              <span className="text-3xl font-black text-[#C9A227] tracking-tight">5 Categories</span>
-              <span className="text-[10px] font-bold uppercase tracking-wider text-[#94A3B8]">Diversified Range</span>
-            </div>
-            <div className="card p-8 flex flex-col gap-1.5 text-left">
-              <span className="text-3xl font-black text-[#C9A227] tracking-tight">5 Tiers</span>
-              <span className="text-[10px] font-bold uppercase tracking-wider text-[#94A3B8]">Structured Plans</span>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ═══════ FINAL CTA SECTION ═══════ */}
-      <section className="py-28 md:py-36 section-alt">
-        <div className="max-w-4xl mx-auto px-6 text-center flex flex-col items-center gap-8">
-          <h2 className="text-3xl sm:text-4xl font-black tracking-tight text-white">
-            Your Next Opportunity May Be Beyond Your Usual Market.
-          </h2>
-          <p className="text-sm text-[#94A3B8] max-w-xl leading-relaxed">
-            Explore investment opportunities across multiple markets through Horizon Equity. Start mapping your capital path today.
-          </p>
-          <div className="flex items-center gap-4">
-            <a href="#plans" className="btn-primary py-3.5 px-8 text-sm font-bold">
-              Explore Investments
-            </a>
-            <Link href="/register" className="btn-secondary py-3.5 px-8 text-sm font-bold">
-              Get Started
+            <Link
+              href="/security"
+              className="btn btn-secondary btn-sm shrink-0 font-semibold"
+            >
+              <span>Review Custody Documentation</span>
+              <ChevronRight className="w-4 h-4 ml-0.5" />
             </Link>
           </div>
         </div>
       </section>
 
-      {/* ═══════ FOOTER ═══════ */}
-      <footer className="mt-auto border-t border-[#1E3552] bg-[#050d18] py-16 text-sm text-[#94A3B8]">
-        <div className="max-w-7xl mx-auto px-6 grid md:grid-cols-4 gap-12">
-          <div className="flex flex-col gap-5">
-            <div className="flex items-center gap-2.5">
-              <div className="h-12 w-12 rounded-xl bg-white p-1 flex items-center justify-center shadow-md relative overflow-hidden flex-shrink-0">
-                <Image src="/logo.jpg" alt="Horizon Equity Logo" width={40} height={40} className="object-contain" />
-              </div>
-              <span className="font-extrabold text-white text-sm">Horizon Equity</span>
-            </div>
-            <p className="text-xs leading-relaxed max-w-xs text-[#94A3B8]/80">
-              Horizon Equity is a premium multi-asset investment platform. Access diversified capital opportunities seamlessly.
+      {/* ──────────────────────────────────────────
+          INSTITUTIONAL FAQ ACCORDION
+          ────────────────────────────────────────── */}
+      <section className="section bg-[#0E141B] border-t border-white/5" id="faq">
+        <div className="container-page max-w-4xl">
+          <div className="max-w-2xl mb-12">
+            <span className="t-eyebrow mb-2 block">Knowledge Base</span>
+            <h2 className="t-section mb-3">Frequently Asked Questions</h2>
+            <p className="t-body">
+              Clear answers regarding institutional execution, account tiers, and capital preservation.
             </p>
           </div>
-          <div>
-            <h5 className="font-extrabold text-white mb-5 text-xs uppercase tracking-wider">Investments</h5>
-            <div className="flex flex-col gap-3 text-xs font-semibold">
-              <a href="#plans" className="hover:text-white transition-colors">Horizon Starter</a>
-              <a href="#plans" className="hover:text-white transition-colors">Horizon Rise</a>
-              <a href="#plans" className="hover:text-white transition-colors">Horizon Peak</a>
-              <a href="#plans" className="hover:text-white transition-colors">Horizon Apex</a>
-              <a href="#plans" className="hover:text-white transition-colors">Horizon Legacy</a>
-            </div>
-          </div>
-          <div>
-            <h5 className="font-extrabold text-white mb-5 text-xs uppercase tracking-wider">Navigation</h5>
-            <div className="flex flex-col gap-3 text-xs font-semibold">
-              <a href="#market" className="hover:text-white transition-colors">Markets Overview</a>
-              <a href="#team" className="hover:text-white transition-colors">Leadership Team</a>
-              <Link href="/login" className="hover:text-white transition-colors">Sign In Portal</Link>
-            </div>
-          </div>
-          <div>
-            <h5 className="font-extrabold text-white mb-5 text-xs uppercase tracking-wider">Legal & Compliance</h5>
-            <div className="flex flex-col gap-3 text-xs font-semibold">
-              <span onClick={() => setActiveLegalKey("terms")} className="hover:text-white cursor-pointer transition-colors">Terms & Conditions</span>
-              <span onClick={() => setActiveLegalKey("privacy")} className="hover:text-white cursor-pointer transition-colors">Privacy Policy</span>
-              <span onClick={() => setActiveLegalKey("risk")} className="hover:text-white cursor-pointer transition-colors">Risk Disclosure</span>
-              <span onClick={() => setActiveLegalKey("investment")} className="hover:text-white cursor-pointer transition-colors">Investment Terms</span>
-              <span onClick={() => setActiveLegalKey("contact")} className="hover:text-white cursor-pointer transition-colors">Contact Relations</span>
-            </div>
-          </div>
-        </div>
 
-        <div className="max-w-7xl mx-auto px-6 mt-16 pt-8 border-t border-[#1E3552]/30 flex flex-col gap-6 text-xs">
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 text-[#94A3B8]/50 font-bold">
-            <span>&copy; {new Date().getFullYear()} Horizon Equity. All rights reserved.</span>
-            <span>Secure multi-ledger clearing</span>
+          <div className="accordion">
+            {FAQ_ITEMS.map((item, idx) => {
+              const isOpen = openFaq === idx;
+              return (
+                <div key={idx} className="accordion-item">
+                  <button
+                    type="button"
+                    onClick={() => setOpenFaq(isOpen ? null : idx)}
+                    aria-expanded={isOpen}
+                    className="accordion-trigger"
+                  >
+                    <span>{item.q}</span>
+                    <Plus className="w-4 h-4 shrink-0 transition-transform duration-200" />
+                  </button>
+                  {isOpen && (
+                    <div className="accordion-panel animate-rise">
+                      <p>{item.a}</p>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </div>
-      </footer>
+      </section>
 
-      {/* ═══════ DYNAMIC LEGAL MODAL DIALOG ═══════ */}
-      {activeLegalKey && legalContents[activeLegalKey] && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-black/80 backdrop-blur-md animate-fade-in">
-          <div className="w-full max-w-2xl bg-[#0A2540] border border-[#1E3552] rounded-2xl shadow-2xl overflow-hidden flex flex-col animate-slide-up">
-            <div className="p-6 border-b border-[#1E3552] flex justify-between items-center bg-[#07111F]/50">
-              <h3 className="text-lg font-black text-white uppercase tracking-wider">
-                {legalContents[activeLegalKey].title}
-              </h3>
-              <button 
-                onClick={() => setActiveLegalKey(null)}
-                className="text-[#94A3B8] hover:text-white p-1 rounded-lg border border-[#1E3552] hover:bg-[#07111F] transition-colors"
+      {/* ──────────────────────────────────────────
+          FINAL CALL TO ACTION
+          ────────────────────────────────────────── */}
+      <section className="section bg-[#0B0F14] border-t border-white/5">
+        <div className="container-page text-center">
+          <div className="panel max-w-3xl mx-auto p-8 sm:p-12 lg:p-14 bg-gradient-to-b from-[#111821] to-[#0D131A] border-white/10">
+            <h2 className="t-section mb-4 font-semibold text-white">
+              Ready to Allocate Capital With Institutional Rigor?
+            </h2>
+            <p className="t-body max-w-xl mx-auto mb-8 text-[#A6B0BE]">
+              Open your multi-currency account in under two minutes. Access automated compounding yields and deep market liquidity.
+            </p>
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+              <Link
+                href="/register"
+                className="btn btn-primary btn-lg w-full sm:w-auto font-semibold shadow-md"
               >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-            <div className="p-8 max-h-[400px] overflow-y-auto text-sm text-[#94A3B8] leading-relaxed space-y-4">
-              <p className="font-semibold">{legalContents[activeLegalKey].content}</p>
-            </div>
-            <div className="p-6 border-t border-[#1E3552] bg-[#07111F]/30 flex justify-end">
-              <button 
-                onClick={() => setActiveLegalKey(null)}
-                className="btn-primary py-2.5 px-6 text-xs font-bold"
+                <span>Open Protected Account</span>
+                <ArrowRight className="w-4 h-4 ml-1.5" />
+              </Link>
+              <Link
+                href="/plans"
+                className="btn btn-secondary btn-lg w-full sm:w-auto font-semibold"
               >
-                Acknowledge and Accept
-              </button>
+                <span>Review Terms &amp; Comparison</span>
+              </Link>
             </div>
           </div>
         </div>
-      )}
+      </section>
+
+      {/* ──────────────────────────────────────────
+          GLOBAL FOOTER
+          ────────────────────────────────────────── */}
+      <PublicFooter />
     </div>
   );
 }

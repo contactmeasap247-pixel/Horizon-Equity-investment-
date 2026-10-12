@@ -1,11 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import {
   Shield,
   Users,
   Wallet,
-  CheckCircle,
+  CheckCircle2,
   XCircle,
   Loader2,
   AlertCircle,
@@ -16,6 +17,8 @@ import {
   TrendingUp,
   UserX,
   UserCheck,
+  X,
+  ExternalLink,
 } from "lucide-react";
 import { api } from "@/lib/api";
 import { useAuthStore } from "@/lib/auth-store";
@@ -71,7 +74,7 @@ export default function AdminDashboardPage() {
   const [users, setUsers] = useState<UserItem[]>([]);
   const [deposits, setDeposits] = useState<DepositItem[]>([]);
   const [withdrawals, setWithdrawals] = useState<WithdrawalItem[]>([]);
-  
+
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<"kyc" | "deposits" | "withdrawals" | "adjust" | "suspensions">("kyc");
   const [actionLoading, setActionLoading] = useState(false);
@@ -79,7 +82,7 @@ export default function AdminDashboardPage() {
   // Rejection/TX Hash Modal states
   const [rejectingItem, setRejectingItem] = useState<{ type: "deposit" | "withdrawal" | "kyc"; id: string } | null>(null);
   const [rejectionReason, setRejectionReason] = useState("");
-  
+
   const [completingWithdrawal, setCompletingWithdrawal] = useState<string | null>(null);
   const [txHash, setTxHash] = useState("");
 
@@ -106,9 +109,9 @@ export default function AdminDashboardPage() {
       ]);
 
       setStats(statsRes.data);
-      setUsers(usersRes.data);
-      setDeposits(depositsRes.data);
-      setWithdrawals(withdrawalsRes.data);
+      setUsers(usersRes.data || []);
+      setDeposits(depositsRes.data || []);
+      setWithdrawals(withdrawalsRes.data || []);
     } catch (e) {
       console.error("Error loading admin stats:", e);
     } finally {
@@ -232,7 +235,7 @@ export default function AdminDashboardPage() {
   const handleManualAdjustmentSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!adjUserId || !adjAmount) {
-      setFeedbackError("Please populate both Target User and Amount fields.");
+      setFeedbackError("Please select both target user and adjustment amount.");
       return;
     }
 
@@ -261,8 +264,9 @@ export default function AdminDashboardPage() {
 
   if (isLoading) {
     return (
-      <div className="h-[60vh] flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-gold-300" />
+      <div className="min-h-[50vh] flex flex-col items-center justify-center gap-3">
+        <Loader2 className="w-8 h-8 text-accent animate-spin" />
+        <p className="text-xs text-text-muted">Loading administrative terminal...</p>
       </div>
     );
   }
@@ -270,326 +274,444 @@ export default function AdminDashboardPage() {
   const kycPendingUsers = users.filter((u) => u.kyc_status === "pending");
 
   return (
-    <div className="flex flex-col gap-8 stagger-1 animate-slide-up">
-      {/* Platform Analytics metrics */}
+    <div className="space-y-8">
+      {/* Page Header */}
+      <div className="border-b border-border pb-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <span className="badge badge-accent">Admin Console</span>
+              <span className="text-xs text-text-faint font-mono">SUPERUSER CLEARING</span>
+            </div>
+            <h1 className="t-page">Administrative Clearing Terminal</h1>
+            <p className="text-sm text-text-muted mt-1 max-w-2xl">
+              Execute multi-signature settlement approvals, review compliance KYC submissions, configure vault addresses, and manage account risk states.
+            </p>
+          </div>
+          <div className="flex items-center gap-3">
+            <Link
+              href="/dashboard/admin/wallets"
+              className="btn btn-secondary px-3.5 py-2 text-xs flex items-center gap-2"
+            >
+              <Wallet className="w-4 h-4 text-accent" />
+              <span>Custodial Vault Addresses</span>
+              <ExternalLink className="w-3.5 h-3.5 text-text-faint" />
+            </Link>
+          </div>
+        </div>
+      </div>
+
+      {/* Platform Analytics Metrics */}
       {stats && (
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
-          <div className="stat-card flex flex-col gap-2">
-            <span className="text-xs text-text-secondary flex items-center gap-1">
-              <Users className="h-4 w-4" /> Total Users
-            </span>
-            <span className="text-2xl font-extrabold mt-1 text-white">{stats.total_users}</span>
-            <span className="text-[10px] text-text-muted mt-1 uppercase tracking-wide">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="panel p-5 flex flex-col justify-between">
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-text-muted uppercase tracking-wider font-semibold">
+                Total Users
+              </span>
+              <Users className="w-4 h-4 text-text-faint" />
+            </div>
+            <div className="text-3xl font-extrabold text-text num font-mono mt-3">
+              {stats.total_users}
+            </div>
+            <div className="mt-3 pt-2 border-t border-border-subtle text-[11px] text-text-faint">
               {stats.suspended_users} Suspended Account{stats.suspended_users !== 1 ? "s" : ""}
-            </span>
+            </div>
           </div>
 
-          <div className="stat-card flex flex-col gap-2">
-            <span className="text-xs text-text-secondary flex items-center gap-1">
-              <FileText className="h-4 w-4 text-gold-300" /> KYC Approvals
-            </span>
-            <span className={`text-2xl font-extrabold mt-1 ${stats.kyc_pending > 0 ? "text-gold-300 animate-pulse" : "text-white"}`}>
+          <div className="panel p-5 flex flex-col justify-between">
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-text-muted uppercase tracking-wider font-semibold">
+                KYC Verifications
+              </span>
+              <FileText className="w-4 h-4 text-accent" />
+            </div>
+            <div
+              className={`text-3xl font-extrabold num font-mono mt-3 ${
+                stats.kyc_pending > 0 ? "text-accent" : "text-text"
+              }`}
+            >
               {stats.kyc_pending} Pending
-            </span>
-            <span className="text-[10px] text-text-muted mt-1 uppercase tracking-wide">
-              Identity queues awaiting
-            </span>
+            </div>
+            <div className="mt-3 pt-2 border-t border-border-subtle text-[11px] text-text-faint">
+              Identity queues awaiting review
+            </div>
           </div>
 
-          <div className="stat-card flex flex-col gap-2">
-            <span className="text-xs text-text-secondary flex items-center gap-1">
-              <TrendingUp className="h-4 w-4" /> Yield Contracts
-            </span>
-            <span className="text-2xl font-extrabold mt-1 text-white">{stats.active_investments_count}</span>
-            <span className="text-[10px] text-text-muted mt-1 uppercase tracking-wide">
+          <div className="panel p-5 flex flex-col justify-between">
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-text-muted uppercase tracking-wider font-semibold">
+                Yield Deployments
+              </span>
+              <TrendingUp className="w-4 h-4 text-text-faint" />
+            </div>
+            <div className="text-3xl font-extrabold text-text num font-mono mt-3">
+              {stats.active_investments_count}
+            </div>
+            <div className="mt-3 pt-2 border-t border-border-subtle text-[11px] text-text-faint">
               Active plan purchases
-            </span>
+            </div>
           </div>
 
-          <div className="stat-card flex flex-col gap-2">
-            <span className="text-xs text-text-secondary flex items-center gap-1">
-              <AlertCircle className="h-4 w-4" /> Pending Approvals
-            </span>
-            <span className="text-2xl font-extrabold mt-1 text-white">
+          <div className="panel p-5 flex flex-col justify-between">
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-text-muted uppercase tracking-wider font-semibold">
+                Settlement Queue
+              </span>
+              <AlertCircle className="w-4 h-4 text-warning" />
+            </div>
+            <div className="text-3xl font-extrabold text-text num font-mono mt-3">
               {stats.pending_deposits_count + stats.pending_withdrawals_count}
-            </span>
-            <span className="text-[10px] text-text-muted mt-1 uppercase tracking-wide">
-              {stats.pending_deposits_count} Dep / {stats.pending_withdrawals_count} Wdr
-            </span>
+            </div>
+            <div className="mt-3 pt-2 border-t border-border-subtle text-[11px] text-text-faint">
+              {stats.pending_deposits_count} Deposits / {stats.pending_withdrawals_count} Withdrawals
+            </div>
           </div>
         </div>
       )}
 
-      {/* Action Tabs Controls */}
-      <div className="card bg-[#0D2D4A]/80 border-white/10 p-6 flex flex-col gap-6">
-        <div className="flex border-b border-white/5 pb-1 overflow-x-auto gap-2">
-          <button
-            onClick={() => { setActiveTab("kyc"); setFeedbackError(null); setFeedbackSuccess(null); }}
-            className={`pb-3 px-4 font-bold text-sm border-b-2 transition-all whitespace-nowrap ${
-              activeTab === "kyc" ? "border-gold-300 text-gold-300" : "border-transparent text-text-secondary hover:text-white"
-            }`}
-          >
-            KYC Verifications ({kycPendingUsers.length})
-          </button>
-          <button
-            onClick={() => { setActiveTab("deposits"); setFeedbackError(null); setFeedbackSuccess(null); }}
-            className={`pb-3 px-4 font-bold text-sm border-b-2 transition-all whitespace-nowrap ${
-              activeTab === "deposits" ? "border-gold-300 text-gold-300" : "border-transparent text-text-secondary hover:text-white"
-            }`}
-          >
-            Verify Deposits ({deposits.length})
-          </button>
-          <button
-            onClick={() => { setActiveTab("withdrawals"); setFeedbackError(null); setFeedbackSuccess(null); }}
-            className={`pb-3 px-4 font-bold text-sm border-b-2 transition-all whitespace-nowrap ${
-              activeTab === "withdrawals" ? "border-gold-300 text-gold-300" : "border-transparent text-text-secondary hover:text-white"
-            }`}
-          >
-            Verify Withdrawals ({withdrawals.length})
-          </button>
-          <button
-            onClick={() => { setActiveTab("adjust"); setFeedbackError(null); setFeedbackSuccess(null); }}
-            className={`pb-3 px-4 font-bold text-sm border-b-2 transition-all whitespace-nowrap ${
-              activeTab === "adjust" ? "border-gold-300 text-gold-300" : "border-transparent text-text-secondary hover:text-white"
-            }`}
-          >
-            Manual Adjustments
-          </button>
-          <button
-            onClick={() => { setActiveTab("suspensions"); setFeedbackError(null); setFeedbackSuccess(null); }}
-            className={`pb-3 px-4 font-bold text-sm border-b-2 transition-all whitespace-nowrap ${
-              activeTab === "suspensions" ? "border-gold-300 text-gold-300" : "border-transparent text-text-secondary hover:text-white"
-            }`}
-          >
-            Account Suspensions
-          </button>
+      {/* Main Clearing Terminal Panel */}
+      <div className="panel p-6 space-y-6">
+        {/* Tabs Control */}
+        <div className="border-b border-border pb-1 overflow-x-auto">
+          <div className="tabs">
+            <button
+              type="button"
+              onClick={() => {
+                setActiveTab("kyc");
+                setFeedbackError(null);
+                setFeedbackSuccess(null);
+              }}
+              className={`tab flex items-center gap-2 whitespace-nowrap ${
+                activeTab === "kyc" ? "tab-active" : ""
+              }`}
+            >
+              <FileText className="w-4 h-4" />
+              KYC Verifications ({kycPendingUsers.length})
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setActiveTab("deposits");
+                setFeedbackError(null);
+                setFeedbackSuccess(null);
+              }}
+              className={`tab flex items-center gap-2 whitespace-nowrap ${
+                activeTab === "deposits" ? "tab-active" : ""
+              }`}
+            >
+              <Coins className="w-4 h-4" />
+              Verify Deposits ({deposits.length})
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setActiveTab("withdrawals");
+                setFeedbackError(null);
+                setFeedbackSuccess(null);
+              }}
+              className={`tab flex items-center gap-2 whitespace-nowrap ${
+                activeTab === "withdrawals" ? "tab-active" : ""
+              }`}
+            >
+              <ArrowUpRight className="w-4 h-4" />
+              Verify Withdrawals ({withdrawals.length})
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setActiveTab("adjust");
+                setFeedbackError(null);
+                setFeedbackSuccess(null);
+              }}
+              className={`tab flex items-center gap-2 whitespace-nowrap ${
+                activeTab === "adjust" ? "tab-active" : ""
+              }`}
+            >
+              <Wallet className="w-4 h-4" />
+              Manual Adjustments
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setActiveTab("suspensions");
+                setFeedbackError(null);
+                setFeedbackSuccess(null);
+              }}
+              className={`tab flex items-center gap-2 whitespace-nowrap ${
+                activeTab === "suspensions" ? "tab-active" : ""
+              }`}
+            >
+              <Shield className="w-4 h-4" />
+              Account Risk &amp; Suspensions
+            </button>
+          </div>
         </div>
 
-        {/* Global Feedback banners */}
+        {/* Global Feedback Banners */}
         {feedbackError && (
-          <div className="flex gap-2.5 items-start p-3 bg-danger/10 border border-danger/20 rounded-lg text-xs text-[#ff6b6b]">
-            <AlertTriangle className="h-4 w-4 flex-shrink-0 mt-0.5" />
-            <span>{feedbackError}</span>
+          <div className="alert alert-danger text-xs">
+            <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5 text-danger" />
+            <div className="leading-relaxed">{feedbackError}</div>
           </div>
         )}
         {feedbackSuccess && (
-          <div className="flex gap-2.5 items-start p-3 bg-success/10 border border-success/20 rounded-lg text-xs text-[#00d4aa]">
-            <CheckCircle className="h-4 w-4 flex-shrink-0 mt-0.5" />
-            <span>{feedbackSuccess}</span>
+          <div className="alert alert-success text-xs">
+            <CheckCircle2 className="w-4 h-4 flex-shrink-0 mt-0.5 text-success" />
+            <div className="leading-relaxed">{feedbackSuccess}</div>
           </div>
         )}
 
-        {/* --- KYC List tab --- */}
+        {/* --- KYC List Tab --- */}
         {activeTab === "kyc" && (
-          <div className="table-wrapper">
-            <table className="table">
-              <thead>
-                <tr>
-                  <th>User Details</th>
-                  <th>Signup Date</th>
-                  <th>Doc Submission Status</th>
-                  <th className="text-right">Decisions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {kycPendingUsers.length === 0 ? (
+          <div className="space-y-4">
+            <div className="table-wrap">
+              <table className="table">
+                <thead>
                   <tr>
-                    <td colSpan={4} className="text-center py-8 text-text-muted">
-                      No pending KYC verification requests.
-                    </td>
+                    <th>User Profile</th>
+                    <th>Signup Date</th>
+                    <th>Document Status</th>
+                    <th className="text-right">Decisions</th>
                   </tr>
-                ) : (
-                  kycPendingUsers.map((u) => (
-                    <tr key={u.id}>
-                      <td className="flex flex-col">
-                        <span className="font-bold text-xs text-white">{u.full_name}</span>
-                        <span className="text-[10px] text-text-muted mt-0.5">{u.email}</span>
-                      </td>
-                      <td className="text-text-secondary text-xs">
-                        {new Date(u.created_at).toLocaleDateString()}
-                      </td>
-                      <td>
-                        <span className="badge badge-warning uppercase text-[8px] py-0.5 px-2">
-                          Pending Approval
-                        </span>
-                      </td>
-                      <td className="text-right">
-                        <div className="inline-flex gap-2">
-                          <button
-                            onClick={() => handleKycDecision(u.id, "verified")}
-                            disabled={actionLoading}
-                            className="p-1.5 bg-green-500/10 hover:bg-green-500/20 text-[#00d4aa] rounded border border-green-500/20"
-                          >
-                            <CheckCircle className="h-4 w-4" />
-                          </button>
-                          <button
-                            onClick={() => setRejectingItem({ type: "kyc", id: u.id })}
-                            disabled={actionLoading}
-                            className="p-1.5 bg-red-500/10 hover:bg-red-500/20 text-[#ff6b6b] rounded border border-red-500/20"
-                          >
-                            <XCircle className="h-4 w-4" />
-                          </button>
-                        </div>
+                </thead>
+                <tbody>
+                  {kycPendingUsers.length === 0 ? (
+                    <tr>
+                      <td colSpan={4} className="text-center py-10 text-text-muted text-xs">
+                        No pending KYC verification requests in the queue.
                       </td>
                     </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
+                  ) : (
+                    kycPendingUsers.map((u) => (
+                      <tr key={u.id}>
+                        <td>
+                          <div className="font-semibold text-text text-xs">{u.full_name}</div>
+                          <div className="text-[10px] text-text-faint font-mono">{u.email}</div>
+                        </td>
+                        <td className="text-text-muted text-xs font-mono">
+                          {new Date(u.created_at).toLocaleDateString()}
+                        </td>
+                        <td>
+                          <span className="badge badge-warning text-[10px] uppercase font-mono">
+                            Pending Review
+                          </span>
+                        </td>
+                        <td className="text-right">
+                          <div className="inline-flex gap-2">
+                            <button
+                              type="button"
+                              onClick={() => handleKycDecision(u.id, "verified")}
+                              disabled={actionLoading}
+                              className="btn btn-secondary btn-sm text-success hover:bg-success/15 px-2.5 py-1"
+                              title="Approve KYC"
+                            >
+                              <CheckCircle2 className="w-4 h-4" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setRejectingItem({ type: "kyc", id: u.id })}
+                              disabled={actionLoading}
+                              className="btn btn-secondary btn-sm text-danger hover:bg-danger/15 px-2.5 py-1"
+                              title="Reject KYC"
+                            >
+                              <XCircle className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
         )}
 
-        {/* --- Deposits Approval list --- */}
+        {/* --- Deposits Approval List Tab --- */}
         {activeTab === "deposits" && (
-          <div className="table-wrapper">
-            <table className="table">
-              <thead>
-                <tr>
-                  <th>User Details</th>
-                  <th>Amount</th>
-                  <th>Block Tx Hash</th>
-                  <th>Receiver Address</th>
-                  <th>Status</th>
-                  <th className="text-right">Action</th>
-                </tr>
-              </thead>
-              <tbody>
-                {deposits.length === 0 ? (
+          <div className="space-y-4">
+            <div className="table-wrap">
+              <table className="table">
+                <thead>
                   <tr>
-                    <td colSpan={6} className="text-center py-8 text-text-muted">
-                      No pending deposit verification queues.
-                    </td>
+                    <th>User Account</th>
+                    <th>Amount</th>
+                    <th>TX Hash</th>
+                    <th>Custodial Address</th>
+                    <th>Status</th>
+                    <th className="text-right">Action</th>
                   </tr>
-                ) : (
-                  deposits.map((dep) => {
-                    const userObj = users.find((u) => u.id === dep.user_id);
-                    return (
-                      <tr key={dep.id}>
-                        <td className="flex flex-col">
-                          <span className="font-bold text-xs text-white">{userObj?.full_name || "Unknown User"}</span>
-                          <span className="text-[10px] text-text-muted mt-0.5 truncate max-w-[140px]">{userObj?.email}</span>
-                        </td>
-                        <td className="font-bold text-white whitespace-nowrap">
-                          {dep.amount} <span className="text-gold-300 font-semibold">{dep.currency}</span>
-                        </td>
-                        <td className="font-mono text-xs text-text-muted max-w-[120px] truncate" title={dep.transaction_hash}>
-                          {dep.transaction_hash}
-                        </td>
-                        <td className="font-mono text-xs text-text-muted max-w-[120px] truncate" title={dep.wallet_address}>
-                          {dep.wallet_address}
-                        </td>
-                        <td>
-                          <span className="badge badge-warning uppercase text-[8px] py-0.5 px-2">
-                            {dep.status}
-                          </span>
-                        </td>
-                        <td className="text-right">
-                          <div className="inline-flex gap-2">
-                            <button
-                              onClick={() => handleVerifyDeposit(dep.id, "verified")}
-                              disabled={actionLoading}
-                              className="p-1.5 bg-green-500/10 hover:bg-green-500/20 text-[#00d4aa] rounded border border-green-500/20"
-                            >
-                              <CheckCircle className="h-4 w-4" />
-                            </button>
-                            <button
-                              onClick={() => setRejectingItem({ type: "deposit", id: dep.id })}
-                              disabled={actionLoading}
-                              className="p-1.5 bg-red-500/10 hover:bg-red-500/20 text-[#ff6b6b] rounded border border-red-500/20"
-                            >
-                              <XCircle className="h-4 w-4" />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })
-                )}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {deposits.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} className="text-center py-10 text-text-muted text-xs">
+                        No pending deposit verification queues awaiting review.
+                      </td>
+                    </tr>
+                  ) : (
+                    deposits.map((dep) => {
+                      const userObj = users.find((u) => u.id === dep.user_id);
+                      return (
+                        <tr key={dep.id}>
+                          <td>
+                            <div className="font-semibold text-text text-xs">
+                              {userObj?.full_name || "Unknown User"}
+                            </div>
+                            <div className="text-[10px] text-text-faint font-mono truncate max-w-[140px]">
+                              {userObj?.email}
+                            </div>
+                          </td>
+                          <td>
+                            <span className="font-mono text-xs font-bold text-text num">
+                              {dep.amount}
+                            </span>{" "}
+                            <span className="text-accent font-semibold text-xs">
+                              {dep.currency}
+                            </span>
+                          </td>
+                          <td className="font-mono text-xs text-text-faint max-w-[120px] truncate" title={dep.transaction_hash}>
+                            {dep.transaction_hash || "—"}
+                          </td>
+                          <td className="font-mono text-xs text-text-faint max-w-[120px] truncate" title={dep.wallet_address}>
+                            {dep.wallet_address || "—"}
+                          </td>
+                          <td>
+                            <span className="badge badge-warning text-[10px] uppercase font-mono">
+                              {dep.status}
+                            </span>
+                          </td>
+                          <td className="text-right">
+                            <div className="inline-flex gap-2">
+                              <button
+                                type="button"
+                                onClick={() => handleVerifyDeposit(dep.id, "verified")}
+                                disabled={actionLoading}
+                                className="btn btn-secondary btn-sm text-success hover:bg-success/15 px-2.5 py-1"
+                                title="Approve & Credit Balance"
+                              >
+                                <CheckCircle2 className="w-4 h-4" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setRejectingItem({ type: "deposit", id: dep.id })}
+                                disabled={actionLoading}
+                                className="btn btn-secondary btn-sm text-danger hover:bg-danger/15 px-2.5 py-1"
+                                title="Reject Deposit"
+                              >
+                                <XCircle className="w-4 h-4" />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
         )}
 
-        {/* --- Withdrawals Approval list --- */}
+        {/* --- Withdrawals Approval List Tab --- */}
         {activeTab === "withdrawals" && (
-          <div className="table-wrapper">
-            <table className="table">
-              <thead>
-                <tr>
-                  <th>User Details</th>
-                  <th>Amount</th>
-                  <th>Destination Address</th>
-                  <th>Status</th>
-                  <th className="text-right">Action</th>
-                </tr>
-              </thead>
-              <tbody>
-                {withdrawals.length === 0 ? (
+          <div className="space-y-4">
+            <div className="table-wrap">
+              <table className="table">
+                <thead>
                   <tr>
-                    <td colSpan={5} className="text-center py-8 text-text-muted">
-                      No pending withdrawal processing queues.
-                    </td>
+                    <th>User Account</th>
+                    <th>Amount</th>
+                    <th>Destination Wallet</th>
+                    <th>Status</th>
+                    <th className="text-right">Action</th>
                   </tr>
-                ) : (
-                  withdrawals.map((w) => {
-                    const userObj = users.find((u) => u.id === w.user_id);
-                    return (
-                      <tr key={w.id}>
-                        <td className="flex flex-col">
-                          <span className="font-bold text-xs text-white">{userObj?.full_name || "Unknown User"}</span>
-                          <span className="text-[10px] text-text-muted mt-0.5 truncate max-w-[140px]">{userObj?.email}</span>
-                        </td>
-                        <td className="font-bold text-white whitespace-nowrap">
-                          {w.amount} <span className="text-gold-300 font-semibold">{w.currency}</span>
-                        </td>
-                        <td className="font-mono text-xs text-text-muted max-w-[150px] truncate" title={w.wallet_address}>
-                          {w.wallet_address}
-                        </td>
-                        <td>
-                          <span className="badge badge-warning uppercase text-[8px] py-0.5 px-2">
-                            {w.status}
-                          </span>
-                        </td>
-                        <td className="text-right">
-                          <div className="inline-flex gap-2">
-                            <button
-                              onClick={() => setCompletingWithdrawal(w.id)}
-                              disabled={actionLoading}
-                              className="p-1.5 bg-green-500/10 hover:bg-green-500/20 text-[#00d4aa] rounded border border-green-500/20"
-                              title="Process & Provide TXID"
-                            >
-                              <CheckCircle className="h-4 w-4" />
-                            </button>
-                            <button
-                              onClick={() => setRejectingItem({ type: "withdrawal", id: w.id })}
-                              disabled={actionLoading}
-                              className="p-1.5 bg-red-500/10 hover:bg-red-500/20 text-[#ff6b6b] rounded border border-red-500/20"
-                            >
-                              <XCircle className="h-4 w-4" />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })
-                )}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {withdrawals.length === 0 ? (
+                    <tr>
+                      <td colSpan={5} className="text-center py-10 text-text-muted text-xs">
+                        No pending withdrawal requests in the clearing queue.
+                      </td>
+                    </tr>
+                  ) : (
+                    withdrawals.map((w) => {
+                      const userObj = users.find((u) => u.id === w.user_id);
+                      return (
+                        <tr key={w.id}>
+                          <td>
+                            <div className="font-semibold text-text text-xs">
+                              {userObj?.full_name || "Unknown User"}
+                            </div>
+                            <div className="text-[10px] text-text-faint font-mono truncate max-w-[140px]">
+                              {userObj?.email}
+                            </div>
+                          </td>
+                          <td>
+                            <span className="font-mono text-xs font-bold text-text num">
+                              {w.amount}
+                            </span>{" "}
+                            <span className="text-accent font-semibold text-xs">
+                              {w.currency}
+                            </span>
+                          </td>
+                          <td className="font-mono text-xs text-text-faint max-w-[150px] truncate" title={w.wallet_address}>
+                            {w.wallet_address || "—"}
+                          </td>
+                          <td>
+                            <span className="badge badge-warning text-[10px] uppercase font-mono">
+                              {w.status}
+                            </span>
+                          </td>
+                          <td className="text-right">
+                            <div className="inline-flex gap-2">
+                              <button
+                                type="button"
+                                onClick={() => setCompletingWithdrawal(w.id)}
+                                disabled={actionLoading}
+                                className="btn btn-secondary btn-sm text-success hover:bg-success/15 px-2.5 py-1"
+                                title="Process Settlement & Input TXID"
+                              >
+                                <CheckCircle2 className="w-4 h-4" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setRejectingItem({ type: "withdrawal", id: w.id })}
+                                disabled={actionLoading}
+                                className="btn btn-secondary btn-sm text-danger hover:bg-danger/15 px-2.5 py-1"
+                                title="Reject Withdrawal"
+                              >
+                                <XCircle className="w-4 h-4" />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
         )}
 
         {/* --- Balance Adjustment Form --- */}
         {activeTab === "adjust" && (
-          <form onSubmit={handleManualAdjustmentSubmit} className="flex flex-col gap-4 max-w-xl mx-auto w-full pt-4">
-            <h4 className="font-extrabold text-sm text-white border-b border-white/5 pb-2">Manual Ledger adjustment</h4>
+          <form onSubmit={handleManualAdjustmentSubmit} className="max-w-xl mx-auto space-y-4 pt-2">
+            <div className="border-b border-border pb-3">
+              <h2 className="text-sm font-bold text-text">Direct Manual Balance Ledger Adjustment</h2>
+              <p className="text-xs text-text-muted mt-0.5">
+                Apply audited manual credits or debits directly to an account custodial wallet balance.
+              </p>
+            </div>
 
-            {/* Target User */}
-            <div className="flex flex-col gap-1.5">
-              <label className="input-label">Select User Account</label>
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-text-muted">Target User Account *</label>
               <select
                 value={adjUserId}
                 onChange={(e) => setAdjUserId(e.target.value)}
-                className="input bg-[#0D2D4A] border-white/5"
+                className="select"
                 required
                 disabled={actionLoading}
               >
@@ -602,14 +724,13 @@ export default function AdminDashboardPage() {
               </select>
             </div>
 
-            {/* Currency selector */}
             <div className="grid grid-cols-2 gap-4">
-              <div className="flex flex-col gap-1.5">
-                <label className="input-label">Asset Currency</label>
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-text-muted">Asset Currency</label>
                 <select
                   value={adjCurrency}
                   onChange={(e) => setAdjCurrency(e.target.value)}
-                  className="input bg-[#0D2D4A] border-white/5"
+                  className="select"
                   disabled={actionLoading}
                 >
                   <option value="BTC">Bitcoin (BTC)</option>
@@ -619,12 +740,12 @@ export default function AdminDashboardPage() {
                 </select>
               </div>
 
-              <div className="flex flex-col gap-1.5">
-                <label className="input-label">Adjustment Direction</label>
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-text-muted">Adjustment Type</label>
                 <select
                   value={adjType}
                   onChange={(e) => setAdjType(e.target.value)}
-                  className="input bg-[#0D2D4A] border-white/5"
+                  className="select"
                   disabled={actionLoading}
                 >
                   <option value="credit">Credit Balance (+)</option>
@@ -633,144 +754,175 @@ export default function AdminDashboardPage() {
               </div>
             </div>
 
-            {/* Amount input */}
-            <div className="flex flex-col gap-1.5">
-              <label className="input-label">Adjustment Amount</label>
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-text-muted">Adjustment Amount *</label>
               <input
                 type="number"
                 step="any"
                 value={adjAmount}
                 onChange={(e) => setAdjAmount(e.target.value)}
                 placeholder="0.05"
-                className="input font-semibold"
+                className="input font-mono font-semibold"
                 required
                 disabled={actionLoading}
               />
             </div>
 
-            {/* Description reason */}
-            <div className="flex flex-col gap-1.5">
-              <label className="input-label">Reason / Memo</label>
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-text-muted">Audit Memo / Description</label>
               <textarea
                 value={adjDescription}
                 onChange={(e) => setAdjDescription(e.target.value)}
-                placeholder="Details of this ledger adjustment..."
-                className="input min-h-[80px]"
+                placeholder="Document reason for ledger adjustment (e.g. manual wire clearance, bonus grant)..."
+                className="textarea min-h-[90px]"
                 disabled={actionLoading}
               />
             </div>
 
-            <button
-              type="submit"
-              className="btn-primary w-full justify-center mt-3 disabled:opacity-50"
-              disabled={actionLoading}
-            >
-              {actionLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Apply Adjustment"}
-            </button>
+            <div className="pt-2">
+              <button
+                type="submit"
+                disabled={actionLoading}
+                className="btn btn-primary w-full justify-center py-2.5 text-xs font-bold"
+              >
+                {actionLoading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                    Executing Ledger Transaction...
+                  </>
+                ) : (
+                  "Execute Balance Adjustment"
+                )}
+              </button>
+            </div>
           </form>
         )}
 
-        {/* --- Account Suspensions grid --- */}
+        {/* --- Account Suspensions Grid --- */}
         {activeTab === "suspensions" && (
-          <div className="table-wrapper">
-            <table className="table">
-              <thead>
-                <tr>
-                  <th>User Profile</th>
-                  <th>KYC status</th>
-                  <th>Account Status</th>
-                  <th className="text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {users.map((u) => (
-                  <tr key={u.id}>
-                    <td className="flex flex-col">
-                      <span className="font-bold text-xs text-white">{u.full_name}</span>
-                      <span className="text-[10px] text-text-muted mt-0.5">{u.email}</span>
-                    </td>
-                    <td>
-                      <span className={`badge uppercase text-[8px] py-0.5 px-1.5 ${
-                        u.kyc_status === "verified" ? "badge-success" : u.kyc_status === "pending" ? "badge-warning" : "badge-danger"
-                      }`}>
-                        {u.kyc_status || "unverified"}
-                      </span>
-                    </td>
-                    <td>
-                      {u.is_suspended ? (
-                        <span className="badge badge-danger uppercase text-[8px] py-0.5 px-2">
-                          Suspended
-                        </span>
-                      ) : (
-                        <span className="badge badge-success uppercase text-[8px] py-0.5 px-2">
-                          Active
-                        </span>
-                      )}
-                    </td>
-                    <td className="text-right">
-                      {u.is_suspended ? (
-                        <button
-                          onClick={() => handleUnunsuspend(u.id, u.full_name)}
-                          disabled={actionLoading}
-                          className="px-2.5 py-1.5 bg-green-500/10 hover:bg-green-500/20 text-[#00d4aa] rounded text-xs font-semibold border border-green-500/20 inline-flex items-center gap-1.5 cursor-pointer"
-                        >
-                          <UserCheck className="h-4 w-4" /> Activate
-                        </button>
-                      ) : (
-                        <button
-                          onClick={() => setSuspendingUser({ id: u.id, name: u.full_name })}
-                          disabled={actionLoading || u.id === (useAuthStore.getState().user?.id)} // Prevent self-lockout
-                          className="px-2.5 py-1.5 bg-red-500/10 hover:bg-red-500/20 text-[#ff6b6b] rounded text-xs font-semibold border border-red-500/20 inline-flex items-center gap-1.5 disabled:opacity-30 cursor-pointer"
-                        >
-                          <UserX className="h-4 w-4" /> Suspend
-                        </button>
-                      )}
-                    </td>
+          <div className="space-y-4">
+            <div className="table-wrap">
+              <table className="table">
+                <thead>
+                  <tr>
+                    <th>User Profile</th>
+                    <th>KYC Status</th>
+                    <th>Account Status</th>
+                    <th className="text-right">Risk Action</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {users.map((u) => (
+                    <tr key={u.id}>
+                      <td>
+                        <div className="font-semibold text-text text-xs">{u.full_name}</div>
+                        <div className="text-[10px] text-text-faint font-mono">{u.email}</div>
+                      </td>
+                      <td>
+                        <span
+                          className={`badge text-[10px] uppercase font-mono ${
+                            u.kyc_status === "verified"
+                              ? "badge-success"
+                              : u.kyc_status === "pending"
+                              ? "badge-warning"
+                              : "badge-danger"
+                          }`}
+                        >
+                          {u.kyc_status || "unverified"}
+                        </span>
+                      </td>
+                      <td>
+                        {u.is_suspended ? (
+                          <span className="badge badge-danger text-[10px] uppercase font-mono">
+                            Suspended
+                          </span>
+                        ) : (
+                          <span className="badge badge-success text-[10px] uppercase font-mono">
+                            Active
+                          </span>
+                        )}
+                      </td>
+                      <td className="text-right">
+                        {u.is_suspended ? (
+                          <button
+                            type="button"
+                            onClick={() => handleUnsuspend(u.id, u.full_name)}
+                            disabled={actionLoading}
+                            className="btn btn-secondary btn-sm text-success hover:bg-success/15 px-2.5 py-1 text-xs"
+                          >
+                            <UserCheck className="w-3.5 h-3.5 mr-1" />
+                            <span>Activate</span>
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => setSuspendingUser({ id: u.id, name: u.full_name })}
+                            disabled={actionLoading || u.id === useAuthStore.getState().user?.id}
+                            className="btn btn-secondary btn-sm text-danger hover:bg-danger/15 px-2.5 py-1 text-xs disabled:opacity-30"
+                          >
+                            <UserX className="w-3.5 h-3.5 mr-1" />
+                            <span>Suspend</span>
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         )}
       </div>
 
       {/* Rejection Modal Reason Form */}
       {rejectingItem && (
-        <div className="modal-overlay">
-          <div className="modal flex flex-col gap-6 border-white/10 max-w-[420px]">
-            <div className="flex justify-between items-start border-b border-white/5 pb-4">
-              <h3 className="text-lg font-bold text-white">Provide Rejection Reason</h3>
-              <button onClick={() => setRejectingItem(null)} className="text-text-muted hover:text-white">
-                ✕
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-canvas/80 backdrop-blur-sm animate-fade-in">
+          <div className="panel p-6 max-w-md w-full space-y-5 border border-border shadow-2xl animate-slide-up">
+            <div className="flex items-start justify-between border-b border-border pb-4">
+              <h3 className="text-base font-bold text-text">Provide Rejection Reason</h3>
+              <button
+                type="button"
+                onClick={() => setRejectingItem(null)}
+                className="btn btn-ghost p-1 text-text-muted hover:text-text"
+              >
+                <X className="w-5 h-5" />
               </button>
             </div>
-            
-            <div className="flex flex-col gap-4">
-              <textarea
-                value={rejectionReason}
-                onChange={(e) => setRejectionReason(e.target.value)}
-                placeholder="Reason for rejecting this request..."
-                className="input min-h-[90px]"
-                required
-              />
 
-              <div className="flex gap-3 justify-end text-xs">
+            <div className="space-y-4">
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-text-muted">
+                  Reason for rejection (sent to applicant)
+                </label>
+                <textarea
+                  value={rejectionReason}
+                  onChange={(e) => setRejectionReason(e.target.value)}
+                  placeholder="Specify clear compliance or technical reason for this rejection..."
+                  className="textarea min-h-[100px]"
+                  required
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-3 pt-2">
                 <button
                   type="button"
                   onClick={() => setRejectingItem(null)}
-                  className="px-4 py-2 hover:bg-white/5 rounded-lg font-semibold"
+                  className="btn btn-secondary text-xs px-4 py-2"
                 >
                   Cancel
                 </button>
                 <button
                   type="button"
                   onClick={() => {
-                    if (rejectingItem.type === "deposit") handleVerifyDeposit(rejectingItem.id, "rejected", rejectionReason);
-                    else if (rejectingItem.type === "withdrawal") handleProcessWithdrawal(rejectingItem.id, "rejected", undefined, rejectionReason);
-                    else if (rejectingItem.type === "kyc") handleKycDecision(rejectingItem.id, "rejected", rejectionReason);
+                    if (rejectingItem.type === "deposit")
+                      handleVerifyDeposit(rejectingItem.id, "rejected", rejectionReason);
+                    else if (rejectingItem.type === "withdrawal")
+                      handleProcessWithdrawal(rejectingItem.id, "rejected", undefined, rejectionReason);
+                    else if (rejectingItem.type === "kyc")
+                      handleKycDecision(rejectingItem.id, "rejected", rejectionReason);
                   }}
-                  className="px-4 py-2 bg-red-500 text-white hover:bg-red-600 rounded-lg font-semibold"
                   disabled={!rejectionReason.trim() || actionLoading}
+                  className="btn btn-primary bg-danger hover:bg-danger/90 border-danger text-xs px-4 py-2"
                 >
                   Confirm Rejection
                 </button>
@@ -782,41 +934,49 @@ export default function AdminDashboardPage() {
 
       {/* Complete Withdrawal with TXID Modal */}
       {completingWithdrawal && (
-        <div className="modal-overlay">
-          <div className="modal flex flex-col gap-6 border-white/10 max-w-[420px]">
-            <div className="flex justify-between items-start border-b border-white/5 pb-4">
-              <h3 className="text-lg font-bold text-white">Enter Settlement TXID</h3>
-              <button onClick={() => setCompletingWithdrawal(null)} className="text-text-muted hover:text-white">
-                ✕
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-canvas/80 backdrop-blur-sm animate-fade-in">
+          <div className="panel p-6 max-w-md w-full space-y-5 border border-border shadow-2xl animate-slide-up">
+            <div className="flex items-start justify-between border-b border-border pb-4">
+              <h3 className="text-base font-bold text-text">Enter Settlement TXID</h3>
+              <button
+                type="button"
+                onClick={() => setCompletingWithdrawal(null)}
+                className="btn btn-ghost p-1 text-text-muted hover:text-text"
+              >
+                <X className="w-5 h-5" />
               </button>
             </div>
-            
-            <div className="flex flex-col gap-4">
-              <div className="flex flex-col gap-1.5 text-xs">
-                <label className="input-label">Blockchain transaction ID</label>
+
+            <div className="space-y-4">
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-text-muted">
+                  Blockchain Transaction ID (TXID)
+                </label>
                 <input
                   type="text"
                   value={txHash}
                   onChange={(e) => setTxHash(e.target.value)}
-                  placeholder="Paste transaction TXID hash"
-                  className="input"
+                  placeholder="Paste on-chain transaction hash"
+                  className="input font-mono text-xs"
                   required
                 />
               </div>
 
-              <div className="flex gap-3 justify-end text-xs">
+              <div className="flex items-center justify-end gap-3 pt-2">
                 <button
                   type="button"
                   onClick={() => setCompletingWithdrawal(null)}
-                  className="px-4 py-2 hover:bg-white/5 rounded-lg font-semibold"
+                  className="btn btn-secondary text-xs px-4 py-2"
                 >
                   Cancel
                 </button>
                 <button
                   type="button"
-                  onClick={() => handleProcessWithdrawal(completingWithdrawal, "completed", txHash)}
-                  className="px-4 py-2 bg-green-500 text-black hover:bg-green-600 rounded-lg font-semibold"
+                  onClick={() =>
+                    handleProcessWithdrawal(completingWithdrawal, "completed", txHash)
+                  }
                   disabled={!txHash.trim() || actionLoading}
+                  className="btn btn-primary text-xs px-4 py-2"
                 >
                   Confirm Settlement
                 </button>
@@ -826,46 +986,55 @@ export default function AdminDashboardPage() {
         </div>
       )}
 
-      {/* Suspend user confirmation modal */}
+      {/* Suspend User Confirmation Modal */}
       {suspendingUser && (
-        <div className="modal-overlay">
-          <div className="modal flex flex-col gap-6 border-white/10 max-w-[420px]">
-            <div className="flex justify-between items-start border-b border-white/5 pb-4">
-              <h3 className="text-lg font-bold text-white">Suspend Account</h3>
-              <button onClick={() => setSuspendingUser(null)} className="text-text-muted hover:text-white">
-                ✕
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-canvas/80 backdrop-blur-sm animate-fade-in">
+          <div className="panel p-6 max-w-md w-full space-y-5 border border-border shadow-2xl animate-slide-up">
+            <div className="flex items-start justify-between border-b border-border pb-4">
+              <h3 className="text-base font-bold text-text">Suspend Account</h3>
+              <button
+                type="button"
+                onClick={() => setSuspendingUser(null)}
+                className="btn btn-ghost p-1 text-text-muted hover:text-text"
+              >
+                <X className="w-5 h-5" />
               </button>
             </div>
-            
-            <form onSubmit={handleToggleSuspension} className="flex flex-col gap-4">
-              <div className="p-3 bg-danger/10 border border-danger/20 text-[#ff6b6b] rounded-lg text-xs leading-relaxed">
-                Warning: Suspending <strong>{suspendingUser.name}</strong> will lock them out of their profile and terminate all active JWT login sessions immediately.
+
+            <form onSubmit={handleToggleSuspension} className="space-y-4">
+              <div className="alert alert-danger text-xs leading-relaxed">
+                <AlertTriangle className="w-4 h-4 flex-shrink-0 text-danger" />
+                <div>
+                  Warning: Suspending <strong>{suspendingUser.name}</strong> will terminate all active JWT login sessions and freeze contract execution immediately.
+                </div>
               </div>
 
-              <div className="flex flex-col gap-1.5">
-                <label className="input-label">Reason for Suspension</label>
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-text-muted">
+                  Reason for Suspension *
+                </label>
                 <input
                   type="text"
                   value={suspensionReason}
                   onChange={(e) => setSuspensionReason(e.target.value)}
-                  placeholder="e.g. Fraudulent activities detected"
+                  placeholder="e.g. Compliance audit flag, risk threshold breached"
                   className="input"
                   required
                 />
               </div>
 
-              <div className="flex gap-3 justify-end text-xs">
+              <div className="flex items-center justify-end gap-3 pt-2">
                 <button
                   type="button"
                   onClick={() => setSuspendingUser(null)}
-                  className="px-4 py-2 hover:bg-white/5 rounded-lg font-semibold"
+                  className="btn btn-secondary text-xs px-4 py-2"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-red-500 text-white hover:bg-red-600 rounded-lg font-semibold"
                   disabled={actionLoading || !suspensionReason.trim()}
+                  className="btn btn-primary bg-danger hover:bg-danger/90 border-danger text-xs px-4 py-2"
                 >
                   Confirm Suspension
                 </button>
@@ -876,9 +1045,4 @@ export default function AdminDashboardPage() {
       )}
     </div>
   );
-
-  // Helper method for unsuspend action in mapping
-  function handleUnunsuspend(userId: string, name: string) {
-    handleUnsuspend(userId, name);
-  }
 }

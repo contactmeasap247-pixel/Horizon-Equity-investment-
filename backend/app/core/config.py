@@ -20,8 +20,15 @@ class Settings(BaseSettings):
     DATABASE_POOL_SIZE: int = 10
     DATABASE_MAX_OVERFLOW: int = 20
 
+    # Supabase (values come from .env only)
+    SUPABASE_URL: str = ""
+    SUPABASE_ANON_KEY: str = ""
+    SUPABASE_SERVICE_ROLE_KEY: str = ""
+
     # Redis
     REDIS_URL: str = "redis://localhost:6379/0"
+    UPSTASH_REDIS_REST_URL: str = ""
+    UPSTASH_REDIS_REST_TOKEN: str = ""
 
     # JWT
     JWT_SECRET_KEY: str = "horizon-equity-dev-secret-key-change-in-production-2024"
