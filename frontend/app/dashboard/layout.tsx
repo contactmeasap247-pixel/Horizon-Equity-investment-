@@ -17,6 +17,15 @@ import {
   X,
   Loader2,
   AlertTriangle,
+  Users,
+  ArrowDownLeft,
+  ArrowUpRight,
+  Repeat,
+  Layers,
+  Mail,
+  FileText,
+  Lock,
+  Settings,
 } from "lucide-react";
 import { useAuthStore } from "@/lib/auth-store";
 import { api } from "@/lib/api";
@@ -107,7 +116,19 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   ];
 
   const adminItems = [
-    { name: "Admin Dashboard", href: "/dashboard/admin", icon: Shield },
+    { name: "Overview", href: "/dashboard/admin", icon: LayoutDashboard },
+    { name: "Users", href: "/dashboard/admin/users", icon: Users },
+    { name: "Deposits", href: "/dashboard/admin/deposits", icon: ArrowDownLeft },
+    { name: "Withdrawal Requests", href: "/dashboard/admin/withdrawals", icon: ArrowUpRight },
+    { name: "Transactions", href: "/dashboard/admin/transactions", icon: History },
+    { name: "Active Deposits", href: "/dashboard/admin/active-deposits", icon: Layers },
+    { name: "Referral Earnings", href: "/dashboard/admin/referrals", icon: Share2 },
+    { name: "Exchange Management", href: "/dashboard/admin/exchange", icon: Repeat },
+    { name: "Email Templates", href: "/dashboard/admin/email-templates", icon: Mail },
+    { name: "Notifications", href: "/dashboard/admin/notifications", icon: Bell },
+    { name: "Audit Logs", href: "/dashboard/admin/audit-logs", icon: FileText },
+    { name: "Security & Controls", href: "/dashboard/admin/security", icon: Lock },
+    { name: "Platform Settings", href: "/dashboard/admin/settings", icon: Settings },
     { name: "System Wallets", href: "/dashboard/admin/wallets", icon: Wallet },
   ];
 

@@ -10,7 +10,7 @@ import uvicorn
 from app.core.config import settings
 from app.core.database import engine, Base
 from app.api.v1.router import api_router
-from app.middleware import LoggingMiddleware, RateLimitMiddleware
+from app.middleware import LoggingMiddleware, RateLimitMiddleware, MaintenanceMiddleware
 
 # Import all models so they are registered with SQLAlchemy
 import app.models  # noqa: F401
@@ -65,9 +65,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Custom Middlewares (Logging & Rate Limiting)
+# Custom Middlewares (Logging, Rate Limiting & Maintenance)
 app.add_middleware(LoggingMiddleware)
 app.add_middleware(RateLimitMiddleware)
+app.add_middleware(MaintenanceMiddleware)
 
 # Include API Router
 app.include_router(api_router, prefix="/api/v1")
