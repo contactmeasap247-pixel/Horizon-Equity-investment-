@@ -204,7 +204,7 @@ export default function InvestmentsPage() {
           <span className="text-xs text-text-muted">Fixed-Term Compounding</span>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           {plans.map((p) => {
             const isFeatured =
               p.name.toLowerCase().includes("gold") ||

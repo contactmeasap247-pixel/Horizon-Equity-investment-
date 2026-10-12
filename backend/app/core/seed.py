@@ -19,44 +19,56 @@ async def seed_data():
 
     print("Seeding initial database data...")
     async with async_session() as db:
-        # 1. Seed Investment Plans
+        # 1. Seed Investment Plans (Exactly 4 tiers)
         plans_data = [
             {
                 "name": "Silver Plan",
-                "description": "Yield tier for beginner investors, offering steady compounding returns over 30 days.",
+                "description": "Foundational yield tier for beginner allocations across diversified liquid digital assets and gold bullion.",
                 "min_amount": Decimal("100.0"),
-                "max_amount": Decimal("999.0"),
-                "return_percentage": Decimal("10.0"),
-                "duration_days": 30,
+                "max_amount": Decimal("499.0"),
+                "return_percentage": Decimal("8.0"),
+                "duration_days": 14,
                 "referral_bonus_percentage": Decimal("5.0"),
                 "is_active": True,
-                "is_featured": True,
+                "is_featured": False,
                 "sort_order": 1,
             },
             {
                 "name": "Gold Plan",
-                "description": "Mid-tier yield plan offering elevated returns over a 60-day investment term.",
-                "min_amount": Decimal("1000.0"),
-                "max_amount": Decimal("9999.0"),
-                "return_percentage": Decimal("25.0"),
-                "duration_days": 60,
-                "referral_bonus_percentage": Decimal("8.0"),
+                "description": "Growth yield portfolio with active algorithmic rebalancing across global forex and energy commodities.",
+                "min_amount": Decimal("500.0"),
+                "max_amount": Decimal("999.0"),
+                "return_percentage": Decimal("16.0"),
+                "duration_days": 30,
+                "referral_bonus_percentage": Decimal("7.0"),
                 "is_active": True,
                 "is_featured": True,
                 "sort_order": 2,
             },
             {
                 "name": "Platinum Plan",
-                "description": "High-tier institutional grade package with maximized yield and full manager assistance.",
-                "min_amount": Decimal("10000.0"),
-                "max_amount": Decimal("100000.0"),
-                "return_percentage": Decimal("50.0"),
-                "duration_days": 90,
+                "description": "Institutional grade multi-asset diversification with quantitative risk hedging and priority clearing.",
+                "min_amount": Decimal("1000.0"),
+                "max_amount": Decimal("4999.0"),
+                "return_percentage": Decimal("28.0"),
+                "duration_days": 60,
                 "referral_bonus_percentage": Decimal("10.0"),
                 "is_active": True,
                 "is_featured": True,
                 "sort_order": 3,
-            }
+            },
+            {
+                "name": "Diamond Plan",
+                "description": "Executive syndicate tier with institutional custody, private manager assistance, and uncapped capital limits.",
+                "min_amount": Decimal("5000.0"),
+                "max_amount": None,
+                "return_percentage": Decimal("45.0"),
+                "duration_days": 90,
+                "referral_bonus_percentage": Decimal("12.0"),
+                "is_active": True,
+                "is_featured": True,
+                "sort_order": 4,
+            },
         ]
 
         for p_data in plans_data:

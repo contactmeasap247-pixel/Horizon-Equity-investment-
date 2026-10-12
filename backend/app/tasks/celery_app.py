@@ -19,6 +19,8 @@ celery_app.conf.update(
     result_serializer="json",
     timezone="UTC",
     enable_utc=True,
+    broker_connection_timeout=2.0,
+    broker_connection_retry=False,
 )
 
 # TLS settings for managed Redis (e.g. Upstash) that uses rediss:// URLs

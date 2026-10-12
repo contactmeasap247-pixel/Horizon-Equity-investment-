@@ -29,18 +29,18 @@ export default function PublicFooter() {
 
           {/* Investment Products */}
           <div className="flex flex-col gap-3">
-            <h4 className="text-[11px] font-semibold uppercase tracking-wider text-[#F5F7FA]">
+            <h4 className="text-[11px] font-semibold uppercase tracking-wider text-[#F5F7FA] font-mono">
               {t("footer_ecosystem") || "Products"}
             </h4>
-            <ul className="flex flex-col gap-2.5 text-xs">
+            <ul className="flex flex-col gap-2.5 text-xs font-mono">
               <li>
                 <Link href="/plans" className="hover:text-white transition-colors">
-                  {t("nav_plans") || "Investment Plans"}
+                  {t("nav_plans") || "Structured Plans"}
                 </Link>
               </li>
               <li>
                 <Link href="/markets" className="hover:text-white transition-colors">
-                  {t("nav_markets") || "Markets & Liquidity"}
+                  {t("nav_markets") || "Markets & Orderbooks"}
                 </Link>
               </li>
               <li>
@@ -58,52 +58,72 @@ export default function PublicFooter() {
 
           {/* Asset Classes */}
           <div className="flex flex-col gap-3">
-            <h4 className="text-[11px] font-semibold uppercase tracking-wider text-[#F5F7FA]">
+            <h4 className="text-[11px] font-semibold uppercase tracking-wider text-[#F5F7FA] font-mono">
               {t("footer_markets") || "Asset Classes"}
             </h4>
             <ul className="flex flex-col gap-2.5 text-xs">
               <li>
                 <Link href="/markets" className="hover:text-white transition-colors">
-                  Digital Assets (BTC / ETH / SOL)
+                  Precious Metals &amp; Gold
                 </Link>
               </li>
               <li>
                 <Link href="/markets" className="hover:text-white transition-colors">
-                  Global Indices (S&amp;P 500)
+                  Crypto (BTC / ETH / SOL)
                 </Link>
               </li>
               <li>
                 <Link href="/markets" className="hover:text-white transition-colors">
-                  Precious Metals &amp; Spot Gold
+                  Forex Hub (G10 Pairs)
                 </Link>
               </li>
               <li>
                 <Link href="/markets" className="hover:text-white transition-colors">
-                  G10 Forex Liquidity
+                  Oil, Gas &amp; Energy Futures
+                </Link>
+              </li>
+              <li>
+                <Link href="/markets" className="hover:text-white transition-colors">
+                  Real Estate Syndicates
                 </Link>
               </li>
             </ul>
           </div>
 
-          {/* Institutional Governance */}
+          {/* Institutional Desks & Legal */}
           <div className="flex flex-col gap-3">
-            <h4 className="text-[11px] font-semibold uppercase tracking-wider text-[#F5F7FA]">
-              {t("footer_governance") || "Governance"}
+            <h4 className="text-[11px] font-semibold uppercase tracking-wider text-[#F5F7FA] font-mono">
+              Desks &amp; Legal
             </h4>
             <ul className="flex flex-col gap-2.5 text-xs">
               <li>
+                <Link href="/contact" className="hover:text-white transition-colors">
+                  Global Trading Desks
+                </Link>
+              </li>
+              <li>
+                <Link href="/faq" className="hover:text-white transition-colors">
+                  Frequently Asked Questions
+                </Link>
+              </li>
+              <li>
                 <Link href="/security" className="hover:text-white transition-colors">
-                  Cold Vault Architecture
+                  Cold Vault Security
                 </Link>
               </li>
               <li>
-                <Link href="/login" className="hover:text-white transition-colors">
-                  {t("nav_signin") || "Client Sign In"}
+                <Link href="/terms" className="hover:text-white transition-colors">
+                  Terms and Conditions
                 </Link>
               </li>
               <li>
-                <Link href="/register" className="hover:text-white transition-colors">
-                  {t("nav_open_account") || "Open Account"}
+                <Link href="/privacy" className="hover:text-white transition-colors">
+                  Privacy &amp; Data Security
+                </Link>
+              </li>
+              <li>
+                <Link href="/risk" className="hover:text-[#F16B75] transition-colors">
+                  Risk Disclosure
                 </Link>
               </li>
             </ul>
@@ -111,11 +131,22 @@ export default function PublicFooter() {
         </div>
 
         {/* Legal Disclaimer & Bottom Bar */}
-        <div className="pt-8 border-t border-white/10 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 text-xs text-[#7D8998]">
-          <p>© {currentYear} Horizon Equity Inc. {t("footer_rights") || "All rights reserved."}</p>
+        <div className="pt-8 border-t border-white/10 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 text-xs text-[#718096]">
+          <div className="flex flex-wrap items-center gap-4">
+            <p>© {currentYear} Horizon Equity Inc. {t("footer_rights") || "All rights reserved."}</p>
+            <div className="flex items-center gap-3 font-mono text-[11px]">
+              <Link href="/terms" className="hover:text-white transition-colors">Terms</Link>
+              <span>•</span>
+              <Link href="/privacy" className="hover:text-white transition-colors">Privacy</Link>
+              <span>•</span>
+              <Link href="/risk" className="hover:text-white transition-colors">Risk</Link>
+              <span>•</span>
+              <Link href="/contact" className="hover:text-white transition-colors">Contact</Link>
+            </div>
+          </div>
           <p className="text-[11px] leading-relaxed max-w-xl text-left md:text-right">
             {t("footer_disclaimer") ||
-              "Risk Disclosure: Multi-asset digital investments carry volatility and risk of capital loss. Past algorithmic performance does not guarantee future results. Capital accounts are segregated in multi-signature cold storage custody."}
+              "Risk Disclosure: Multi-asset trading across precious metals, cryptocurrency, forex, energy, and real estate carries market risk of loss. Past algorithmic performance does not guarantee future results. Client reserves are held in air-gapped institutional custody."}
           </p>
         </div>
       </div>

@@ -125,7 +125,10 @@ class AuthService:
             settings.JWT_SECRET_KEY,
             algorithm=settings.JWT_ALGORITHM,
         )
-        send_verification_email_task.delay(new_user.email, verification_token)
+        try:
+            send_verification_email_task.delay(new_user.email, verification_token)
+        except Exception as e:
+            logger.warning(f"Failed to queue verification email task: {e}")
 
         await db.commit()
         await db.refresh(new_user)
@@ -365,7 +368,10 @@ class AuthService:
             algorithm=settings.JWT_ALGORITHM,
         )
 
-        send_password_reset_email_task.delay(user.email, reset_token)
+        try:
+            send_password_reset_email_task.delay(user.email, reset_token)
+        except Exception as e:
+            logger.warning(f"Failed to queue password reset email task: {e}")
         return True
 
     async def reset_password_with_token(self, db: AsyncSession, token: str, new_password: str) -> bool:

@@ -5,12 +5,9 @@ import Link from "next/link";
 import {
   ArrowRight,
   ChevronRight,
-  Percent,
   Coins,
   Globe,
-  BarChart3,
   Users,
-  ShieldCheck,
   CheckCircle2,
   Lock,
   Zap,
@@ -18,6 +15,8 @@ import {
   ArrowUpRight,
   ArrowDownRight,
   Plus,
+  Flame,
+  Building2,
 } from "lucide-react";
 import PublicNav from "@/app/components/PublicNav";
 import PublicFooter from "@/app/components/PublicFooter";
@@ -31,44 +30,46 @@ const TICKER_ITEMS = [
   { symbol: "BTC/USD", name: "Bitcoin", price: "$97,243.50", change: "+2.41%", up: true },
   { symbol: "ETH/USD", name: "Ethereum", price: "$3,412.18", change: "-0.45%", up: false },
   { symbol: "SOL/USD", name: "Solana", price: "$184.62", change: "+5.12%", up: true },
-  { symbol: "SPX", name: "S&P 500", price: "5,432.10", change: "+0.85%", up: true },
-  { symbol: "GOLD", name: "Gold Spot", price: "$2,510.40", change: "+1.20%", up: true },
+  { symbol: "GOLD", name: "Gold Spot", price: "$2,648.80", change: "+1.42%", up: true },
+  { symbol: "SILVER", name: "Silver Spot", price: "$31.85", change: "+2.15%", up: true },
+  { symbol: "BRENT", name: "Brent Crude", price: "$78.40", change: "+0.95%", up: true },
   { symbol: "EUR/USD", name: "Euro / USD", price: "1.0924", change: "+0.15%", up: true },
-  { symbol: "NVDA", name: "Nvidia Corp", price: "$128.40", change: "+3.85%", up: true },
-  { symbol: "AAPL", name: "Apple Inc.", price: "$198.50", change: "+0.92%", up: true },
-  { symbol: "USDT", name: "Tether USD", price: "$1.0001", change: "+0.01%", up: true },
+  { symbol: "SPX", name: "S&P 500", price: "5,820.10", change: "+0.65%", up: true },
+  { symbol: "REIT-INDEX", name: "Real Estate Syndicate", price: "$1,412.30", change: "+1.10%", up: true },
 ];
 
 const INVESTMENT_PLANS = [
   {
-    id: "starter",
-    name: "Starter Allocation",
+    id: "silver",
+    name: "Silver Tier",
     badge: "Entry Tier",
-    dailyRate: 1.8,
-    durationDays: 7,
-    minDeposit: 250,
-    maxDeposit: 2500,
+    rate: 8.0,
+    dailyRate: 8.0 / 14,
+    durationDays: 14,
+    minDeposit: 100,
+    maxDeposit: 499,
     popular: false,
     features: [
-      "1.8% daily automated return",
-      "7-day maturity period",
+      "8.0% fixed contract return",
+      "14-day maturity period",
       "Automatic principal return on maturity",
-      "Automated portfolio rebalancing",
-      "Multi-currency support (BTC, ETH, USDT, SOL)",
+      "Supported: BTC, ETH, USDT, SOL",
+      "Standard email & ticketing liaison",
     ],
   },
   {
-    id: "growth",
-    name: "Growth Momentum",
+    id: "gold",
+    name: "Gold Tier",
     badge: "Most Popular",
-    dailyRate: 2.5,
-    durationDays: 14,
-    minDeposit: 2500,
-    maxDeposit: 10000,
+    rate: 16.0,
+    dailyRate: 16.0 / 30,
+    durationDays: 30,
+    minDeposit: 500,
+    maxDeposit: 999,
     popular: true,
     features: [
-      "2.5% daily automated return",
-      "14-day maturity period",
+      "16.0% fixed contract return",
+      "30-day maturity period",
       "Daily automated yield compounding",
       "Priority automated withdrawal channel",
       "Dedicated account portfolio strategist",
@@ -76,38 +77,41 @@ const INVESTMENT_PLANS = [
     ],
   },
   {
-    id: "institutional",
-    name: "Institutional Yield",
-    badge: "High Yield",
-    dailyRate: 3.2,
-    durationDays: 30,
-    minDeposit: 10000,
-    maxDeposit: 50000,
+    id: "platinum",
+    name: "Platinum Tier",
+    badge: "Institutional",
+    rate: 28.0,
+    dailyRate: 28.0 / 60,
+    durationDays: 60,
+    minDeposit: 1000,
+    maxDeposit: 4999,
     popular: false,
     features: [
-      "3.2% daily automated return",
-      "30-day maturity period",
-      "Institutional orderbook matching",
+      "28.0% fixed contract return",
+      "60-day maturity period",
+      "Institutional orderbook routing",
       "Direct VIP communication desk",
       "Multi-asset algorithmic hedging protocol",
       "Principal insurance protection guarantee",
     ],
   },
   {
-    id: "executive",
-    name: "Executive Syndicate",
-    badge: "VIP Allocation",
-    dailyRate: 4.0,
-    durationDays: 60,
-    minDeposit: 50000,
-    maxDeposit: 250000,
+    id: "diamond",
+    name: "Diamond Tier",
+    badge: "VIP Unlimited",
+    rate: 45.0,
+    dailyRate: 45.0 / 90,
+    durationDays: 90,
+    minDeposit: 5000,
+    maxDeposit: 100000, // Slider ceiling
+    isUnlimited: true,
     popular: false,
     features: [
-      "4.0% daily automated return",
-      "60-day maximum compounding cycle",
+      "45.0% fixed contract return",
+      "90-day maximum compounding cycle",
+      "Unlimited capital allocation ceiling",
       "Bespoke private wealth management",
       "Priority on-chain & wire settlements",
-      "Direct algorithmic hedging protocol",
       "Quarterly institutional audit certificates",
     ],
   },
@@ -172,100 +176,105 @@ const FAQ_ITEMS = [
 export default function HomePage() {
   const { t, dir } = useLanguage();
   const [calcPlan, setCalcPlan] = useState(INVESTMENT_PLANS[1]);
-  const [calcAmount, setCalcAmount] = useState(5000);
+  const [calcAmount, setCalcAmount] = useState(750);
   const [openFaq, setOpenFaq] = useState<number | null>(0);
   const calcAmountId = useId();
 
   // Dynamic yields
-  const dailyProfit = calcAmount * (calcPlan.dailyRate / 100);
-  const totalProfit = dailyProfit * calcPlan.durationDays;
+  const totalProfit = calcAmount * (calcPlan.rate / 100);
+  const dailyProfit = totalProfit / calcPlan.durationDays;
   const totalReturn = calcAmount + totalProfit;
-  const netPercentage = ((totalProfit / calcAmount) * 100).toFixed(1);
+  const netPercentage = calcPlan.rate.toFixed(1);
 
   return (
-    <div dir={dir} className="min-h-screen bg-[#0B0F14] text-[#F5F7FA] selection:bg-[#4388F5]/30">
+    <div dir={dir} className="min-h-screen bg-[#080C12] text-[#F1F5F9] selection:bg-[#4C8DFF]/30">
       {/* ──────────────────────────────────────────
           GLOBAL NAVIGATION
           ────────────────────────────────────────── */}
       <PublicNav />
 
       {/* ──────────────────────────────────────────
-          HERO SECTION
+          HERO SECTION (MULTI-ASSET TRADING)
           ────────────────────────────────────────── */}
-      <section className="relative pt-16 pb-20 md:pt-24 md:pb-28 overflow-hidden border-b border-white/5">
-        <div className="hero-backdrop" />
-        <div className="hero-grid" />
+      <section className="relative min-h-[640px] lg:min-h-[720px] flex items-center overflow-hidden border-b border-[#263345]">
+        {/* Background image & deep directional navy gradient overlay */}
+        <div
+          className="absolute inset-0 bg-cover bg-center lg:bg-right pointer-events-none"
+          style={{ backgroundImage: "url('/hero-multi-asset.jpg')" }}
+        />
+        {/* Left 55-60% clean contrast gradient: 080C12 -> 080C12/95 via 60% -> 080C12/35 */}
+        <div
+          className="absolute inset-0 pointer-events-none bg-gradient-to-r from-[#080C12] via-[#080C12]/95 via-[55%] md:via-[60%] to-[#080C12]/40"
+        />
+        <div
+          className="absolute inset-0 pointer-events-none bg-gradient-to-t from-[#080C12] via-transparent to-[#080C12]/70"
+        />
 
-        <div className="container-page relative z-10 flex flex-col items-center text-center">
-          {/* Eyebrow */}
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#151F2B] border border-white/10 text-xs font-semibold text-[#A6B0BE] mb-6 animate-fade">
-            <span className="w-1.5 h-1.5 rounded-full bg-[#4388F5]" />
-            <span>{t("hero_badge") || "Institutional Multi-Asset Financial Ecosystem"}</span>
-          </div>
-
-          {/* Heading */}
-          <h1 className="t-display max-w-4xl font-semibold mb-6 animate-rise">
-            {t("hero_title_1") || "One Platform."}{" "}
-            <span className="text-[#4388F5]">{t("hero_title_2") || "Every Market."}</span>
-          </h1>
-
-          {/* Subtitle */}
-          <p className="t-lead text-center mb-10 text-[#A6B0BE] animate-rise delay-1">
-            {t("hero_subtitle") ||
-              "Institutional execution across crypto perpetuals, automated fixed-yield allocations, forex liquidity, and sovereign securities. Transparent compounding returns backed by air-gapped custody."}
-          </p>
-
-          {/* Call to Actions */}
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 w-full sm:w-auto mb-16 animate-rise delay-2">
-            <Link
-              href="/register"
-              className="btn btn-primary btn-lg w-full sm:w-auto shadow-md"
-            >
-              <span>{t("hero_cta_invest") || "Start Investing"}</span>
-              <ArrowRight className="w-4 h-4 ml-1" />
-            </Link>
-
-            <Link
-              href="/plans"
-              className="btn btn-secondary btn-lg w-full sm:w-auto"
-            >
-              <span>{t("hero_cta_explore") || "Explore Allocation Plans"}</span>
-              <ChevronRight className="w-4 h-4 ml-0.5 text-[#7D8998]" />
-            </Link>
-          </div>
-
-          {/* Key Metrics Strip (One unified container, crisp dividers) */}
-          <div className="w-full max-w-5xl metric-strip text-left animate-rise delay-3">
-            <div className="metric">
-              <span className="metric-label">{t("hero_stat_vol") || "Aggregated Volume"}</span>
-              <span className="metric-value">$2.48B+</span>
-              <span className="metric-sub text-[#27C58B]">
-                {t("hero_stat_vol_sub") || "+24% Year-over-Year"}
+        <div className="container-page relative z-10 py-16 md:py-24">
+          <div className="max-w-2xl lg:max-w-3xl text-left">
+            {/* Supporting kicker */}
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded bg-[#111A26] border border-[#263345] text-xs font-mono text-[#A0AEC0] mb-6 animate-fade">
+              <span className="w-1.5 h-1.5 rounded-full bg-[#4C8DFF] animate-pulse" />
+              <span className="tracking-wider uppercase font-semibold text-[11px]">
+                METALS · CRYPTO · FOREX · ENERGY · REAL ESTATE
               </span>
             </div>
 
-            <div className="metric">
-              <span className="metric-label">{t("hero_stat_investors") || "Active Accounts"}</span>
-              <span className="metric-value">142,500+</span>
-              <span className="metric-sub">
-                {t("hero_stat_investors_sub") || "140+ Global Jurisdictions"}
-              </span>
+            {/* Heading */}
+            <h1 className="t-display text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight mb-6 leading-[1.08] animate-rise">
+              Trade Beyond<br />
+              <span className="text-[#4C8DFF]">a Single Market.</span>
+            </h1>
+
+            {/* Subtitle */}
+            <p className="text-base sm:text-lg text-[#A0AEC0] max-w-xl leading-relaxed mb-8 animate-rise delay-1 font-sans">
+              Explore opportunities across precious metals, crypto, forex, energy, and real estate through one connected investment platform.
+            </p>
+
+            {/* Call to Actions */}
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3.5 mb-14 animate-rise delay-2">
+              <Link
+                href="/register"
+                className="btn btn-primary btn-lg justify-center shadow-lg font-mono text-sm tracking-wide"
+              >
+                <span>Get Started</span>
+                <ArrowRight className="w-4 h-4 ml-1.5" />
+              </Link>
+
+              <Link
+                href="/markets"
+                className="btn btn-secondary btn-lg justify-center font-mono text-sm tracking-wide text-[#F1F5F9]"
+              >
+                <span>Explore Markets</span>
+                <ChevronRight className="w-4 h-4 ml-0.5 text-[#718096]" />
+              </Link>
             </div>
 
-            <div className="metric">
-              <span className="metric-label">{t("hero_stat_roi") || "Daily Yield Cap"}</span>
-              <span className="metric-value">Up to 4.0%</span>
-              <span className="metric-sub text-[#27C58B]">
-                {t("hero_stat_roi_sub") || "Daily Automated Payouts"}
-              </span>
-            </div>
+            {/* Key Metrics Strip */}
+            <div className="w-full max-w-2xl metric-strip text-left animate-rise delay-3">
+              <div className="metric">
+                <span className="metric-label">Aggregated Volume</span>
+                <span className="metric-value font-mono">$2.48B+</span>
+                <span className="metric-sub text-[#31C48D] font-mono">+24% YoY</span>
+              </div>
 
-            <div className="metric">
-              <span className="metric-label">{t("hero_stat_speed") || "Execution Latency"}</span>
-              <span className="metric-value">&lt; 12ms</span>
-              <span className="metric-sub">
-                {t("hero_stat_speed_sub") || "Tier-1 Frankfurt / London"}
-              </span>
+              <div className="metric">
+                <span className="metric-label">Active Desks</span>
+                <span className="metric-value font-mono">142,500+</span>
+                <span className="metric-sub font-mono">140+ Jurisdictions</span>
+              </div>
+
+              <div className="metric">
+                <span className="metric-label">Yield Ceiling</span>
+                <span className="metric-value font-mono">Up to 45%</span>
+                <span className="metric-sub text-[#31C48D] font-mono">Fixed Maturity</span>
+              </div>
+
+              <div className="metric">
+                <span className="metric-label">Execution Latency</span>
+                <span className="metric-value font-mono">&lt; 12ms</span>
+                <span className="metric-sub font-mono">London / Tokyo</span>
+              </div>
             </div>
           </div>
         </div>
@@ -328,128 +337,122 @@ export default function HomePage() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {/* 1. Fixed Return */}
-            <div className="panel p-6 sm:p-7 flex flex-col justify-between hover:border-white/20 transition-colors">
+            {/* 1. Precious Metals & Bullion */}
+            <div className="panel p-6 sm:p-7 flex flex-col justify-between hover:border-[#4C8DFF]/30 transition-colors bg-[#111A26] border border-[#263345]">
               <div>
-                <div className="icon-tile mb-5 text-[#4388F5]">
-                  <Percent className="w-5 h-5" />
+                <div className="icon-tile mb-5 text-[#4C8DFF] bg-[#172333]">
+                  <Coins className="w-5 h-5" />
                 </div>
-                <h3 className="t-card mb-2">{t("feat_fixed_title") || "Fixed Return Investment"}</h3>
-                <p className="t-small text-[#A6B0BE] leading-relaxed mb-6">
-                  {t("feat_fixed_desc") ||
-                    "Automated capital allocation into non-correlated yield strategies with guaranteed daily compounding."}
+                <h3 className="t-card mb-2 font-mono text-white">Precious Metals &amp; Bullion</h3>
+                <p className="t-small text-[#A0AEC0] leading-relaxed mb-6">
+                  Physical gold and silver allocations vaulted in Zurich and London with spot liquidity, instant settlement, and audit guarantees.
                 </p>
               </div>
               <Link
-                href="/plans"
-                className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#4388F5] hover:text-[#5A9AFF]"
+                href="/markets"
+                className="inline-flex items-center gap-1.5 text-xs font-mono font-semibold text-[#4C8DFF] hover:text-[#6AA3FF]"
               >
-                <span>View Allocation Tiers</span>
+                <span>Spot Metals Orderbook</span>
                 <ArrowRight className="w-3.5 h-3.5" />
               </Link>
             </div>
 
             {/* 2. Crypto Perpetuals */}
-            <div className="panel p-6 sm:p-7 flex flex-col justify-between hover:border-white/20 transition-colors">
+            <div className="panel p-6 sm:p-7 flex flex-col justify-between hover:border-[#4C8DFF]/30 transition-colors bg-[#111A26] border border-[#263345]">
               <div>
-                <div className="icon-tile mb-5 text-[#4388F5]">
-                  <Coins className="w-5 h-5" />
+                <div className="icon-tile mb-5 text-[#4C8DFF] bg-[#172333]">
+                  <Zap className="w-5 h-5" />
                 </div>
-                <h3 className="t-card mb-2">{t("feat_crypto_title") || "Crypto Perpetuals"}</h3>
-                <p className="t-small text-[#A6B0BE] leading-relaxed mb-6">
-                  {t("feat_crypto_desc") ||
-                    "Deep liquidity books for BTC, ETH, SOL, and 120+ pairs with zero slippage and sub-millisecond settlement."}
+                <h3 className="t-card mb-2 font-mono text-white">Cryptocurrency Perpetuals</h3>
+                <p className="t-small text-[#A0AEC0] leading-relaxed mb-6">
+                  Sub-millisecond execution across BTC, ETH, SOL, and 120+ digital asset pairs backed by cold multi-sig custody.
                 </p>
               </div>
               <Link
                 href="/markets"
-                className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#4388F5] hover:text-[#5A9AFF]"
+                className="inline-flex items-center gap-1.5 text-xs font-mono font-semibold text-[#4C8DFF] hover:text-[#6AA3FF]"
               >
-                <span>Explore Orderbooks</span>
+                <span>Digital Asset Orderbooks</span>
                 <ArrowRight className="w-3.5 h-3.5" />
               </Link>
             </div>
 
             {/* 3. Global Forex Hub */}
-            <div className="panel p-6 sm:p-7 flex flex-col justify-between hover:border-white/20 transition-colors">
+            <div className="panel p-6 sm:p-7 flex flex-col justify-between hover:border-[#4C8DFF]/30 transition-colors bg-[#111A26] border border-[#263345]">
               <div>
-                <div className="icon-tile mb-5 text-[#4388F5]">
+                <div className="icon-tile mb-5 text-[#4C8DFF] bg-[#172333]">
                   <Globe className="w-5 h-5" />
                 </div>
-                <h3 className="t-card mb-2">{t("feat_forex_title") || "Global Forex Hub"}</h3>
-                <p className="t-small text-[#A6B0BE] leading-relaxed mb-6">
-                  {t("feat_forex_desc") ||
-                    "Institutional pricing on G10 currency pairs with micro-pip spreads and automated liquidity aggregation."}
+                <h3 className="t-card mb-2 font-mono text-white">Global Forex Desks</h3>
+                <p className="t-small text-[#A0AEC0] leading-relaxed mb-6">
+                  Institutional pricing across G10 and emerging currency pairs with micro-pip spreads and aggregated Tier-1 liquidity.
                 </p>
               </div>
               <Link
                 href="/markets"
-                className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#4388F5] hover:text-[#5A9AFF]"
+                className="inline-flex items-center gap-1.5 text-xs font-mono font-semibold text-[#4C8DFF] hover:text-[#6AA3FF]"
               >
-                <span>Forex Liquidity</span>
+                <span>G10 Currency Hub</span>
                 <ArrowRight className="w-3.5 h-3.5" />
               </Link>
             </div>
 
-            {/* 4. Global Equities */}
-            <div className="panel p-6 sm:p-7 flex flex-col justify-between hover:border-white/20 transition-colors">
+            {/* 4. Oil, Gas & Energy */}
+            <div className="panel p-6 sm:p-7 flex flex-col justify-between hover:border-[#4C8DFF]/30 transition-colors bg-[#111A26] border border-[#263345]">
               <div>
-                <div className="icon-tile mb-5 text-[#4388F5]">
-                  <BarChart3 className="w-5 h-5" />
+                <div className="icon-tile mb-5 text-[#4C8DFF] bg-[#172333]">
+                  <Flame className="w-5 h-5" />
                 </div>
-                <h3 className="t-card mb-2">{t("feat_stocks_title") || "Global Equities"}</h3>
-                <p className="t-small text-[#A6B0BE] leading-relaxed mb-6">
-                  {t("feat_stocks_desc") ||
-                    "Direct exposure to top global tech conglomerates, blue chips, and dividend-yielding industrial leaders."}
+                <h3 className="t-card mb-2 font-mono text-white">Oil, Gas &amp; Energy</h3>
+                <p className="t-small text-[#A0AEC0] leading-relaxed mb-6">
+                  Exposure to global benchmark Brent crude, West Texas Intermediate, natural gas, and sustainable energy infrastructure yield.
                 </p>
               </div>
               <Link
                 href="/markets"
-                className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#4388F5] hover:text-[#5A9AFF]"
+                className="inline-flex items-center gap-1.5 text-xs font-mono font-semibold text-[#4C8DFF] hover:text-[#6AA3FF]"
               >
-                <span>Index Allocations</span>
+                <span>Energy Contracts</span>
                 <ArrowRight className="w-3.5 h-3.5" />
               </Link>
             </div>
 
-            {/* 5. Mirror Trading Protocol */}
-            <div className="panel p-6 sm:p-7 flex flex-col justify-between hover:border-white/20 transition-colors">
+            {/* 5. Real Estate & Property */}
+            <div className="panel p-6 sm:p-7 flex flex-col justify-between hover:border-[#4C8DFF]/30 transition-colors bg-[#111A26] border border-[#263345]">
               <div>
-                <div className="icon-tile mb-5 text-[#4388F5]">
+                <div className="icon-tile mb-5 text-[#4C8DFF] bg-[#172333]">
+                  <Building2 className="w-5 h-5" />
+                </div>
+                <h3 className="t-card mb-2 font-mono text-white">Real Estate Syndicates</h3>
+                <p className="t-small text-[#A0AEC0] leading-relaxed mb-6">
+                  Commercial property debt and fractional ownership of premium metropolitan developments with quarterly rent yield distributions.
+                </p>
+              </div>
+              <Link
+                href="/markets"
+                className="inline-flex items-center gap-1.5 text-xs font-mono font-semibold text-[#4C8DFF] hover:text-[#6AA3FF]"
+              >
+                <span>Property Portfolios</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </Link>
+            </div>
+
+            {/* 6. Mirror Trading Protocol */}
+            <div className="panel p-6 sm:p-7 flex flex-col justify-between hover:border-[#4C8DFF]/30 transition-colors bg-[#111A26] border border-[#263345]">
+              <div>
+                <div className="icon-tile mb-5 text-[#4C8DFF] bg-[#172333]">
                   <Users className="w-5 h-5" />
                 </div>
-                <h3 className="t-card mb-2">{t("feat_copy_title") || "Mirror Trading Protocol"}</h3>
-                <p className="t-small text-[#A6B0BE] leading-relaxed mb-6">
-                  {t("feat_copy_desc") ||
-                    "Follow verified master algorithmic traders and automatically mirror profitable execution signals in real-time."}
+                <h3 className="t-card mb-2 font-mono text-white">Mirror Trading Protocol</h3>
+                <p className="t-small text-[#A0AEC0] leading-relaxed mb-6">
+                  Replicate verified master quantitative traders automatically in real-time with customizable stop-loss rules and transparent win-rates.
                 </p>
               </div>
               <Link
                 href="/copy-trading"
-                className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#4388F5] hover:text-[#5A9AFF]"
+                className="inline-flex items-center gap-1.5 text-xs font-mono font-semibold text-[#4C8DFF] hover:text-[#6AA3FF]"
               >
                 <span>View Trader Leaderboard</span>
-                <ArrowRight className="w-3.5 h-3.5" />
-              </Link>
-            </div>
-
-            {/* 6. Sovereign Bonds */}
-            <div className="panel p-6 sm:p-7 flex flex-col justify-between hover:border-white/20 transition-colors">
-              <div>
-                <div className="icon-tile mb-5 text-[#4388F5]">
-                  <ShieldCheck className="w-5 h-5" />
-                </div>
-                <h3 className="t-card mb-2">{t("feat_bonds_title") || "Sovereign Bonds"}</h3>
-                <p className="t-small text-[#A6B0BE] leading-relaxed mb-6">
-                  {t("feat_bonds_desc") ||
-                    "Treasury-backed sovereign debt vehicles safeguarding your portfolio capital against market drawdowns."}
-                </p>
-              </div>
-              <Link
-                href="/security"
-                className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#4388F5] hover:text-[#5A9AFF]"
-              >
-                <span>Compliance & Safeguards</span>
                 <ArrowRight className="w-3.5 h-3.5" />
               </Link>
             </div>
@@ -460,23 +463,24 @@ export default function HomePage() {
       {/* ──────────────────────────────────────────
           STRUCTURED INVESTMENT PLANS
           ────────────────────────────────────────── */}
-      <section className="section bg-[#0E141B] border-y border-white/5" id="plans">
+      <section className="section bg-[#0D131C] border-y border-[#263345]" id="plans">
         <div className="container-page">
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-14">
             <div className="max-w-2xl">
-              <span className="t-eyebrow mb-2 block">{t("plans_badge") || "Capital Strategies"}</span>
-              <h2 className="t-section mb-3">
-                {t("plans_title") || "Managed Intelligence."}
+              <span className="t-eyebrow mb-2 block font-mono text-[#4C8DFF]">
+                STRUCTURED CAPITAL STRATEGIES
+              </span>
+              <h2 className="t-section mb-3 font-mono text-white">
+                Fixed-Yield Investment Tiers
               </h2>
-              <p className="t-body">
-                {t("plans_subtitle") ||
-                  "Structured investment tiers engineered for sustainable growth, daily liquidity, and full principal protection."}
+              <p className="t-body text-[#A0AEC0]">
+                Four distinct allocation tiers engineered for capital preservation, institutional arbitrage, and guaranteed maturity payouts.
               </p>
             </div>
 
             <Link
               href="/plans"
-              className="inline-flex items-center gap-1.5 text-sm font-semibold text-[#4388F5] hover:text-[#5A9AFF] shrink-0"
+              className="inline-flex items-center gap-1.5 text-sm font-mono font-semibold text-[#4C8DFF] hover:text-[#6AA3FF] shrink-0"
             >
               <span>Compare All Plan Specifications</span>
               <ChevronRight className="w-4 h-4" />
@@ -487,21 +491,23 @@ export default function HomePage() {
             {INVESTMENT_PLANS.map((plan) => (
               <div
                 key={plan.id}
-                className={`panel p-6 sm:p-7 flex flex-col justify-between relative ${
+                className={`panel p-6 sm:p-7 flex flex-col justify-between relative border ${
                   plan.popular
-                    ? "border-[#4388F5]/40 bg-[#131B26] shadow-lg"
-                    : "bg-[#111821]"
+                    ? "border-[#4C8DFF] bg-[#131B26] shadow-xl"
+                    : "border-[#263345] bg-[#111A26] hover:border-[#4C8DFF]/40"
                 }`}
               >
                 <div>
                   {/* Top Bar */}
                   <div className="flex items-center justify-between gap-2 mb-4">
-                    <span className="text-xs font-semibold uppercase tracking-wider text-[#A6B0BE]">
+                    <span className="text-xs font-mono font-semibold uppercase tracking-wider text-[#A0AEC0]">
                       {plan.name}
                     </span>
                     <span
-                      className={`badge ${
-                        plan.popular ? "badge-accent font-semibold" : ""
+                      className={`badge text-[10px] font-mono ${
+                        plan.popular
+                          ? "badge-accent font-semibold"
+                          : "bg-[#172333] text-[#A0AEC0] border border-[#263345]"
                       }`}
                     >
                       {plan.badge}
@@ -510,39 +516,39 @@ export default function HomePage() {
 
                   {/* Rate */}
                   <div className="mb-6 flex items-baseline gap-2">
-                    <span className="num text-3xl sm:text-4xl font-bold text-[#F5F7FA]">
-                      {plan.dailyRate}%
+                    <span className="num font-mono text-3xl sm:text-4xl font-bold text-white">
+                      {plan.rate.toFixed(1)}%
                     </span>
-                    <span className="text-xs text-[#7D8998] font-medium">/ daily</span>
+                    <span className="text-xs text-[#718096] font-mono">Net Fixed ROI</span>
                   </div>
 
                   {/* Conditions List */}
-                  <div className="inset p-3.5 mb-6 text-xs flex flex-col gap-2">
+                  <div className="inset p-3.5 mb-6 text-xs flex flex-col gap-2 bg-[#0D131C] border border-[#263345] rounded">
                     <div className="flex justify-between">
-                      <span className="text-[#7D8998]">Min Entry:</span>
-                      <span className="num font-semibold text-white">
+                      <span className="text-[#718096]">Min Entry:</span>
+                      <span className="num font-mono font-semibold text-white">
                         ${plan.minDeposit.toLocaleString()}
                       </span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-[#7D8998]">Max Entry:</span>
-                      <span className="num font-semibold text-white">
-                        ${plan.maxDeposit.toLocaleString()}
+                      <span className="text-[#718096]">Max Entry:</span>
+                      <span className="num font-mono font-semibold text-white">
+                        {plan.isUnlimited ? "Unlimited" : `$${plan.maxDeposit.toLocaleString()}`}
                       </span>
                     </div>
-                    <div className="flex justify-between border-t border-white/5 pt-2">
-                      <span className="text-[#7D8998]">Cycle Duration:</span>
-                      <span className="num font-semibold text-[#4388F5]">
+                    <div className="flex justify-between border-t border-[#263345] pt-2">
+                      <span className="text-[#718096]">Cycle Duration:</span>
+                      <span className="num font-mono font-semibold text-[#4C8DFF]">
                         {plan.durationDays} Days
                       </span>
                     </div>
                   </div>
 
                   {/* Features */}
-                  <ul className="flex flex-col gap-2.5 mb-8 text-xs text-[#A6B0BE]">
+                  <ul className="flex flex-col gap-2.5 mb-8 text-xs text-[#A0AEC0]">
                     {plan.features.map((feat, idx) => (
                       <li key={idx} className="flex items-start gap-2">
-                        <CheckCircle2 className="w-3.5 h-3.5 text-[#27C58B] shrink-0 mt-0.5" />
+                        <CheckCircle2 className="w-3.5 h-3.5 text-[#31C48D] shrink-0 mt-0.5" />
                         <span>{feat}</span>
                       </li>
                     ))}
@@ -551,7 +557,7 @@ export default function HomePage() {
 
                 <Link
                   href="/register"
-                  className={`btn btn-block text-xs font-semibold ${
+                  className={`btn btn-block text-xs font-mono font-semibold ${
                     plan.popular ? "btn-primary" : "btn-secondary"
                   }`}
                 >
@@ -567,17 +573,16 @@ export default function HomePage() {
       {/* ──────────────────────────────────────────
           INTERACTIVE GROWTH CALCULATOR
           ────────────────────────────────────────── */}
-      <section className="section" id="calculator">
+      <section className="section bg-[#080C12]" id="calculator">
         <div className="container-page">
-          <div className="panel max-w-4xl mx-auto p-7 sm:p-10 lg:p-12">
+          <div className="panel max-w-4xl mx-auto p-7 sm:p-10 lg:p-12 bg-[#111A26] border border-[#263345]">
             <div className="max-w-xl mx-auto text-center mb-10">
-              <span className="t-eyebrow mb-2 block">{t("calc_badge") || "Simulator"}</span>
-              <h2 className="t-section mb-3">
-                {t("calc_title") || "Project Your Financial Growth"}
+              <span className="t-eyebrow mb-2 block font-mono text-[#4C8DFF]">SIMULATOR</span>
+              <h2 className="t-section mb-3 font-mono text-white">
+                Project Your Investment Yield
               </h2>
-              <p className="t-small text-[#A6B0BE]">
-                {t("calc_subtitle") ||
-                  "Select your preferred allocation tier and capital to simulate anticipated daily compounding returns."}
+              <p className="t-small text-[#A0AEC0]">
+                Select your preferred structured tier and principal amount to simulate anticipated maturity settlement and returns.
               </p>
             </div>
 
@@ -594,17 +599,17 @@ export default function HomePage() {
                       if (calcAmount < p.minDeposit) setCalcAmount(p.minDeposit);
                       if (calcAmount > p.maxDeposit) setCalcAmount(p.maxDeposit);
                     }}
-                    className={`p-3 rounded-md border text-left transition-colors cursor-pointer ${
+                    className={`p-3.5 rounded-md border text-left transition-colors cursor-pointer ${
                       isSelected
-                        ? "bg-[#151F2B] border-[#4388F5] text-white"
-                        : "bg-[#111821] border-white/10 text-[#A6B0BE] hover:border-white/20 hover:text-white"
+                        ? "bg-[#172333] border-[#4C8DFF] text-white shadow-md"
+                        : "bg-[#0D131C] border-[#263345] text-[#A0AEC0] hover:border-[#4C8DFF]/40 hover:text-white"
                     }`}
                   >
-                    <span className="block text-xs font-semibold text-white">
+                    <span className="block text-xs font-mono font-semibold text-white">
                       {p.name.split(" ")[0]}
                     </span>
-                    <span className="num text-[11px] text-[#27C58B] mt-0.5 block font-medium">
-                      {p.dailyRate}% Daily
+                    <span className="num font-mono text-[11px] text-[#31C48D] mt-0.5 block font-medium">
+                      +{p.rate}% Net ROI
                     </span>
                   </button>
                 );
@@ -616,11 +621,11 @@ export default function HomePage() {
               <div className="flex justify-between items-baseline mb-3">
                 <label
                   htmlFor={calcAmountId}
-                  className="text-xs font-semibold uppercase tracking-wider text-[#A6B0BE]"
+                  className="text-xs font-mono uppercase tracking-wider text-[#A0AEC0]"
                 >
-                  {t("calc_capital") || "Investment Capital (USD)"}
+                  Investment Capital (USD)
                 </label>
-                <span className="num text-xl sm:text-2xl font-bold text-white bg-[#151F2B] px-3 py-1 rounded border border-white/10">
+                <span className="num font-mono text-xl sm:text-2xl font-bold text-white bg-[#0D131C] px-3 py-1 rounded border border-[#263345]">
                   ${calcAmount.toLocaleString()}
                 </span>
               </div>
@@ -630,7 +635,7 @@ export default function HomePage() {
                 type="range"
                 min={calcPlan.minDeposit}
                 max={calcPlan.maxDeposit}
-                step={50}
+                step={calcPlan.minDeposit >= 1000 ? 250 : 25}
                 value={calcAmount}
                 onChange={(e) => setCalcAmount(Number(e.target.value))}
                 className="range"
@@ -643,38 +648,40 @@ export default function HomePage() {
                 }}
               />
 
-              <div className="flex justify-between text-xs text-[#7D8998] mt-2 num">
+              <div className="flex justify-between text-xs text-[#718096] mt-2 num font-mono">
                 <span>Min: ${calcPlan.minDeposit.toLocaleString()}</span>
-                <span>Max: ${calcPlan.maxDeposit.toLocaleString()}</span>
+                <span>
+                  {calcPlan.isUnlimited ? "Unlimited ($5,000+ Permitted)" : `Max: $${calcPlan.maxDeposit.toLocaleString()}`}
+                </span>
               </div>
             </div>
 
             {/* Results Grid */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-5 sm:p-6 rounded-lg bg-[#0B0F14] border border-white/10 mb-8">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-5 sm:p-6 rounded-lg bg-[#0D131C] border border-[#263345] mb-8">
               <div className="metric">
                 <span className="metric-label">{t("calc_daily_profit") || "Daily Return"}</span>
-                <span className="num text-xl sm:text-2xl font-bold text-[#27C58B]">
+                <span className="num font-mono text-xl sm:text-2xl font-bold text-[#31C48D]">
                   +${dailyProfit.toFixed(2)}
                 </span>
               </div>
 
               <div className="metric">
                 <span className="metric-label">{t("calc_duration") || "Duration"}</span>
-                <span className="num text-xl sm:text-2xl font-bold text-white">
+                <span className="num font-mono text-xl sm:text-2xl font-bold text-white">
                   {calcPlan.durationDays} Days
                 </span>
               </div>
 
               <div className="metric">
                 <span className="metric-label">{t("calc_net_profit") || "Net Yield"}</span>
-                <span className="num text-xl sm:text-2xl font-bold text-[#4388F5]">
+                <span className="num font-mono text-xl sm:text-2xl font-bold text-[#4C8DFF]">
                   +{netPercentage}%
                 </span>
               </div>
 
               <div className="metric">
                 <span className="metric-label">{t("calc_total_payout") || "Total Settlement"}</span>
-                <span className="num text-xl sm:text-2xl font-bold text-white">
+                <span className="num font-mono text-xl sm:text-2xl font-bold text-white">
                   ${totalReturn.toFixed(2)}
                 </span>
               </div>
