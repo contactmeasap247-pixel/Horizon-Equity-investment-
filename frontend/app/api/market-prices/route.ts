@@ -30,10 +30,10 @@ export async function GET() {
   // 1. Fetch Crypto & Gold from Coinbase Spot Endpoints in parallel
   try {
     const [btcRes, ethRes, solRes, paxgRes] = await Promise.allSettled([
-      fetch("https://api.coinbase.com/v2/prices/BTC-USD/spot", { next: { revalidate: 10 } }).then((r) => r.json()),
-      fetch("https://api.coinbase.com/v2/prices/ETH-USD/spot", { next: { revalidate: 10 } }).then((r) => r.json()),
-      fetch("https://api.coinbase.com/v2/prices/SOL-USD/spot", { next: { revalidate: 10 } }).then((r) => r.json()),
-      fetch("https://api.coinbase.com/v2/prices/PAXG-USD/spot", { next: { revalidate: 10 } }).then((r) => r.json()),
+      fetch("https://api.coinbase.com/v2/prices/BTC-USD/spot", { next: { revalidate: 10 }, signal: AbortSignal.timeout(2500) }).then((r) => r.json()),
+      fetch("https://api.coinbase.com/v2/prices/ETH-USD/spot", { next: { revalidate: 10 }, signal: AbortSignal.timeout(2500) }).then((r) => r.json()),
+      fetch("https://api.coinbase.com/v2/prices/SOL-USD/spot", { next: { revalidate: 10 }, signal: AbortSignal.timeout(2500) }).then((r) => r.json()),
+      fetch("https://api.coinbase.com/v2/prices/PAXG-USD/spot", { next: { revalidate: 10 }, signal: AbortSignal.timeout(2500) }).then((r) => r.json()),
     ]);
 
     if (btcRes.status === "fulfilled" && btcRes.value?.data?.amount) {
@@ -54,7 +54,7 @@ export async function GET() {
 
   // 2. Fetch Forex rates from open.er-api.com
   try {
-    const fxRes = await fetch("https://open.er-api.com/v6/latest/USD", { next: { revalidate: 60 } });
+    const fxRes = await fetch("https://open.er-api.com/v6/latest/USD", { next: { revalidate: 60 }, signal: AbortSignal.timeout(2000) });
     if (fxRes.ok) {
       const fxData = await fxRes.json();
       if (fxData.rates) {
