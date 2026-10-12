@@ -303,68 +303,68 @@ export default function AdminDashboardPage() {
 
       {/* Platform Analytics Metrics */}
       {stats && (
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="panel p-5 flex flex-col justify-between">
-            <div className="flex items-center justify-between">
-              <span className="text-xs text-text-muted uppercase tracking-wider font-semibold">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+          <div className="panel p-3.5 sm:p-5 flex flex-col justify-between min-h-[110px] sm:min-h-0">
+            <div className="flex items-center justify-between gap-1">
+              <span className="text-[10px] sm:text-xs text-text-muted uppercase tracking-wider font-semibold truncate">
                 Total Users
               </span>
-              <Users className="w-4 h-4 text-text-faint" />
+              <Users className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-text-faint shrink-0" />
             </div>
-            <div className="text-3xl font-extrabold text-text num font-mono mt-3">
+            <div className="text-xl sm:text-3xl font-extrabold text-text num font-mono my-1 sm:mt-3 truncate">
               {stats.total_users}
             </div>
-            <div className="mt-3 pt-2 border-t border-border-subtle text-[11px] text-text-faint">
+            <div className="mt-2 sm:mt-3 pt-2 border-t border-border-subtle text-[10px] sm:text-[11px] text-text-faint truncate">
               {stats.suspended_users} Suspended Account{stats.suspended_users !== 1 ? "s" : ""}
             </div>
           </div>
 
-          <div className="panel p-5 flex flex-col justify-between">
-            <div className="flex items-center justify-between">
-              <span className="text-xs text-text-muted uppercase tracking-wider font-semibold">
-                KYC Verifications
+          <div className="panel p-3.5 sm:p-5 flex flex-col justify-between min-h-[110px] sm:min-h-0">
+            <div className="flex items-center justify-between gap-1">
+              <span className="text-[10px] sm:text-xs text-text-muted uppercase tracking-wider font-semibold truncate">
+                KYC Review
               </span>
-              <FileText className="w-4 h-4 text-accent" />
+              <FileText className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-accent shrink-0" />
             </div>
             <div
-              className={`text-3xl font-extrabold num font-mono mt-3 ${
+              className={`text-xl sm:text-3xl font-extrabold num font-mono my-1 sm:mt-3 truncate ${
                 stats.kyc_pending > 0 ? "text-accent" : "text-text"
               }`}
             >
               {stats.kyc_pending} Pending
             </div>
-            <div className="mt-3 pt-2 border-t border-border-subtle text-[11px] text-text-faint">
-              Identity queues awaiting review
+            <div className="mt-2 sm:mt-3 pt-2 border-t border-border-subtle text-[10px] sm:text-[11px] text-text-faint truncate">
+              Identity review queues
             </div>
           </div>
 
-          <div className="panel p-5 flex flex-col justify-between">
-            <div className="flex items-center justify-between">
-              <span className="text-xs text-text-muted uppercase tracking-wider font-semibold">
-                Yield Deployments
+          <div className="panel p-3.5 sm:p-5 flex flex-col justify-between min-h-[110px] sm:min-h-0">
+            <div className="flex items-center justify-between gap-1">
+              <span className="text-[10px] sm:text-xs text-text-muted uppercase tracking-wider font-semibold truncate">
+                Deployments
               </span>
-              <TrendingUp className="w-4 h-4 text-text-faint" />
+              <TrendingUp className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-text-faint shrink-0" />
             </div>
-            <div className="text-3xl font-extrabold text-text num font-mono mt-3">
+            <div className="text-xl sm:text-3xl font-extrabold text-text num font-mono my-1 sm:mt-3 truncate">
               {stats.active_investments_count}
             </div>
-            <div className="mt-3 pt-2 border-t border-border-subtle text-[11px] text-text-faint">
+            <div className="mt-2 sm:mt-3 pt-2 border-t border-border-subtle text-[10px] sm:text-[11px] text-text-faint truncate">
               Active plan purchases
             </div>
           </div>
 
-          <div className="panel p-5 flex flex-col justify-between">
-            <div className="flex items-center justify-between">
-              <span className="text-xs text-text-muted uppercase tracking-wider font-semibold">
-                Settlement Queue
+          <div className="panel p-3.5 sm:p-5 flex flex-col justify-between min-h-[110px] sm:min-h-0">
+            <div className="flex items-center justify-between gap-1">
+              <span className="text-[10px] sm:text-xs text-text-muted uppercase tracking-wider font-semibold truncate">
+                Clearing Queue
               </span>
-              <AlertCircle className="w-4 h-4 text-warning" />
+              <AlertCircle className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-warning shrink-0" />
             </div>
-            <div className="text-3xl font-extrabold text-text num font-mono mt-3">
+            <div className="text-xl sm:text-3xl font-extrabold text-text num font-mono my-1 sm:mt-3 truncate">
               {stats.pending_deposits_count + stats.pending_withdrawals_count}
             </div>
-            <div className="mt-3 pt-2 border-t border-border-subtle text-[11px] text-text-faint">
-              {stats.pending_deposits_count} Deposits / {stats.pending_withdrawals_count} Withdrawals
+            <div className="mt-2 sm:mt-3 pt-2 border-t border-border-subtle text-[10px] sm:text-[11px] text-text-faint truncate">
+              {stats.pending_deposits_count} In / {stats.pending_withdrawals_count} Out
             </div>
           </div>
         </div>

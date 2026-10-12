@@ -160,41 +160,41 @@ export default function ReferralsPage() {
       </div>
 
       {/* Analytics Summary Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         {/* Affiliates Count */}
-        <div className="panel p-5 flex flex-col justify-between">
+        <div className="panel p-3.5 sm:p-5 flex flex-col justify-between min-h-[110px] sm:min-h-0">
           <div>
-            <div className="text-xs font-semibold text-text-muted uppercase tracking-wider">
+            <div className="text-[10px] sm:text-xs font-semibold text-text-muted uppercase tracking-wider truncate">
               Affiliates Enrolled
             </div>
-            <div className="text-3xl font-extrabold text-text num font-mono mt-2">
+            <div className="text-xl sm:text-3xl font-extrabold text-text num font-mono mt-1 sm:mt-2 truncate">
               {stats?.referral_count || 0}
             </div>
           </div>
-          <div className="mt-4 pt-3 border-t border-border-subtle text-xs text-text-faint">
-            Direct first-tier referrals
+          <div className="mt-2 sm:mt-4 pt-2 sm:pt-3 border-t border-border-subtle text-[10px] sm:text-xs text-text-faint truncate">
+            Direct 1st-tier referrals
           </div>
         </div>
 
         {/* Total Rewards USD */}
-        <div className="panel p-5 flex flex-col justify-between">
+        <div className="panel p-3.5 sm:p-5 flex flex-col justify-between min-h-[110px] sm:min-h-0">
           <div>
-            <div className="text-xs font-semibold text-text-muted uppercase tracking-wider">
-              Total Rewards Valuation
+            <div className="text-[10px] sm:text-xs font-semibold text-text-muted uppercase tracking-wider truncate">
+              Total Rewards
             </div>
-            <div className="text-3xl font-extrabold text-success num font-mono mt-2">
+            <div className="text-xl sm:text-3xl font-extrabold text-success num font-mono mt-1 sm:mt-2 truncate">
               ${(stats?.referral_earnings || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </div>
           </div>
-          <div className="mt-4 pt-3 border-t border-border-subtle text-xs text-text-faint">
-            Settled cumulative payouts
+          <div className="mt-2 sm:mt-4 pt-2 sm:pt-3 border-t border-border-subtle text-[10px] sm:text-xs text-text-faint truncate">
+            Settled payouts
           </div>
         </div>
 
         {/* Multi-Currency Reserves */}
-        <div className="panel p-5 sm:col-span-2 flex flex-col justify-between">
+        <div className="panel p-3.5 sm:p-5 col-span-2 sm:col-span-2 flex flex-col justify-between">
           <div>
-            <div className="text-xs font-semibold text-text-muted uppercase tracking-wider mb-2">
+            <div className="text-[10px] sm:text-xs font-semibold text-text-muted uppercase tracking-wider mb-2">
               Multi-Asset Commission Reserves
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
@@ -202,12 +202,12 @@ export default function ReferralsPage() {
                 const pending = stats?.pending_commissions?.[curr] ?? 0;
                 const paid = stats?.paid_commissions?.[curr] ?? 0;
                 return (
-                  <div key={curr} className="inset p-2.5 rounded-md border border-border-subtle">
+                  <div key={curr} className="inset p-2 rounded-md border border-border-subtle">
                     <div className="text-xs font-bold text-text">{curr}</div>
-                    <div className="text-[11px] text-accent font-mono num mt-1">
+                    <div className="text-[10px] sm:text-[11px] text-accent font-mono num mt-0.5 truncate">
                       Pending: {formatCrypto(pending, 4)}
                     </div>
-                    <div className="text-[10px] text-text-faint font-mono num">
+                    <div className="text-[9px] sm:text-[10px] text-text-faint font-mono num truncate">
                       Settled: {formatCrypto(paid, 4)}
                     </div>
                   </div>
@@ -215,7 +215,7 @@ export default function ReferralsPage() {
               })}
             </div>
           </div>
-          <div className="mt-3 pt-2 border-t border-border-subtle text-xs text-text-faint">
+          <div className="mt-2.5 sm:mt-3 pt-2 border-t border-border-subtle text-[10px] sm:text-xs text-text-faint truncate">
             Credited automatically to custodial balances
           </div>
         </div>

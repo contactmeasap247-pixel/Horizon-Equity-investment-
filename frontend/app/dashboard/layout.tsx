@@ -313,7 +313,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </header>
 
         {/* Main Content Area */}
-        <main className="flex-1 p-6 md:p-8 bg-[#0B0F14] overflow-y-auto">
+        <main className="flex-1 p-3.5 sm:p-6 md:p-8 bg-[#0B0F14] overflow-y-auto">
           {/* KYC Status Alert */}
           {user?.kyc_status === "rejected" && (
             <div className="alert alert-danger mb-6">

@@ -158,11 +158,11 @@ export default function DashboardOverview() {
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
-          <Link href="/dashboard/wallets" className="btn btn-secondary btn-sm font-semibold">
+        <div className="grid grid-cols-2 sm:flex items-center gap-2.5 sm:gap-3 w-full sm:w-auto">
+          <Link href="/dashboard/wallets" className="btn btn-secondary btn-sm font-semibold justify-center text-center">
             <span>Deposit Funds</span>
           </Link>
-          <Link href="/dashboard/investments" className="btn btn-primary btn-sm font-semibold shadow-sm">
+          <Link href="/dashboard/investments" className="btn btn-primary btn-sm font-semibold shadow-sm justify-center text-center">
             <span>Invest Now</span>
             <ArrowUpRight className="h-3.5 w-3.5 ml-1" />
           </Link>
@@ -170,64 +170,65 @@ export default function DashboardOverview() {
       </div>
 
       {/* Top 4 Key Metrics */}
-      <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         {/* Total Assets */}
-        <div className="panel p-5 flex flex-col justify-between">
-          <div className="flex items-center justify-between text-[#7D8998] text-xs font-medium">
-            <span>Estimated Total Assets</span>
-            <Wallet className="h-4 w-4 text-[#4388F5]" />
+        <div className="panel p-3.5 sm:p-5 flex flex-col justify-between min-h-[110px] sm:min-h-0">
+          <div className="flex items-center justify-between text-[#7D8998] text-[11px] sm:text-xs font-medium gap-1">
+            <span className="truncate">Total Assets</span>
+            <Wallet className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-[#4388F5] shrink-0" />
           </div>
-          <div className="my-2.5">
-            <span className="num text-2xl sm:text-3xl font-bold text-white tracking-tight">
+          <div className="my-1.5 sm:my-2.5">
+            <span className="num text-lg sm:text-2xl lg:text-3xl font-bold text-white tracking-tight block truncate">
               ${formatUsd(totalBalanceUsd)}
             </span>
           </div>
-          <span className="text-[11px] text-[#A6B0BE]">
-            Aggregated Live Balances (USD)
+          <span className="text-[10px] sm:text-[11px] text-[#A6B0BE] block truncate">
+            <span className="sm:hidden">Live USD Balances</span>
+            <span className="hidden sm:inline">Aggregated Live Balances (USD)</span>
           </span>
         </div>
 
         {/* Active Yield Contracts */}
-        <div className="panel p-5 flex flex-col justify-between">
-          <div className="flex items-center justify-between text-[#7D8998] text-xs font-medium">
-            <span>Active Contracts</span>
-            <TrendingUp className="h-4 w-4 text-[#4388F5]" />
+        <div className="panel p-3.5 sm:p-5 flex flex-col justify-between min-h-[110px] sm:min-h-0">
+          <div className="flex items-center justify-between text-[#7D8998] text-[11px] sm:text-xs font-medium gap-1">
+            <span className="truncate">Active Contracts</span>
+            <TrendingUp className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-[#4388F5] shrink-0" />
           </div>
-          <div className="my-2.5">
-            <span className="num text-2xl sm:text-3xl font-bold text-white tracking-tight">
+          <div className="my-1.5 sm:my-2.5">
+            <span className="num text-lg sm:text-2xl lg:text-3xl font-bold text-white tracking-tight block truncate">
               {investments.length}
             </span>
           </div>
-          <span className="text-[11px] text-[#27C58B]">
+          <span className="text-[10px] sm:text-[11px] text-[#27C58B] block truncate">
             Accruing yield daily
           </span>
         </div>
 
         {/* Referral Earnings */}
-        <div className="panel p-5 flex flex-col justify-between">
-          <div className="flex items-center justify-between text-[#7D8998] text-xs font-medium">
-            <span>Referral Earnings</span>
-            <Users className="h-4 w-4 text-[#27C58B]" />
+        <div className="panel p-3.5 sm:p-5 flex flex-col justify-between min-h-[110px] sm:min-h-0">
+          <div className="flex items-center justify-between text-[#7D8998] text-[11px] sm:text-xs font-medium gap-1">
+            <span className="truncate">Referral Earnings</span>
+            <Users className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-[#27C58B] shrink-0" />
           </div>
-          <div className="my-2.5">
-            <span className="num text-2xl sm:text-3xl font-bold text-[#27C58B] tracking-tight">
+          <div className="my-1.5 sm:my-2.5">
+            <span className="num text-lg sm:text-2xl lg:text-3xl font-bold text-[#27C58B] tracking-tight block truncate">
               ${formatUsd(referralEarnings)}
             </span>
           </div>
-          <span className="text-[11px] text-[#A6B0BE]">
+          <span className="text-[10px] sm:text-[11px] text-[#A6B0BE] block truncate">
             {referralCount} affiliated members
           </span>
         </div>
 
         {/* Compliance Standing */}
-        <div className="panel p-5 flex flex-col justify-between">
-          <div className="flex items-center justify-between text-[#7D8998] text-xs font-medium">
-            <span>KYC Compliance</span>
-            <Clock className="h-4 w-4 text-[#7D8998]" />
+        <div className="panel p-3.5 sm:p-5 flex flex-col justify-between min-h-[110px] sm:min-h-0">
+          <div className="flex items-center justify-between text-[#7D8998] text-[11px] sm:text-xs font-medium gap-1">
+            <span className="truncate">KYC Compliance</span>
+            <Clock className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-[#7D8998] shrink-0" />
           </div>
-          <div className="my-2.5">
+          <div className="my-1.5 sm:my-2.5">
             <span
-              className={`text-lg font-bold uppercase tracking-wider ${
+              className={`text-sm sm:text-lg font-bold uppercase tracking-wider block truncate ${
                 user?.kyc_status === "verified"
                   ? "text-[#27C58B]"
                   : user?.kyc_status === "pending"
@@ -238,7 +239,7 @@ export default function DashboardOverview() {
               {user?.kyc_status || "Verified"}
             </span>
           </div>
-          <span className="text-[11px] text-[#7D8998]">
+          <span className="text-[10px] sm:text-[11px] text-[#7D8998] block truncate">
             Tier-1 Regulatory Standing
           </span>
         </div>
@@ -249,34 +250,38 @@ export default function DashboardOverview() {
         <h3 className="text-xs font-semibold uppercase tracking-wider text-[#7D8998] mb-3">
           Liquid Asset Reserves
         </h3>
-        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           {["BTC", "ETH", "USDT", "SOL"].map((curr) => {
             const w = wallets.find((item) => item.currency?.toUpperCase() === curr);
             const balance = w ? toNum(w.balance) : 0;
             const frozen = w ? toNum(w.frozen_balance) : 0;
 
             return (
-              <div key={curr} className="panel p-4 flex flex-col justify-between">
-                <div className="flex justify-between items-center">
-                  <span className="font-bold text-xs text-white">{curr} Wallet</span>
-                  <span className="badge badge-accent text-[10px] font-bold">{curr}</span>
+              <div key={curr} className="panel p-3.5 sm:p-4 flex flex-col justify-between min-h-[122px] sm:min-h-0">
+                <div className="flex justify-between items-center gap-1">
+                  <span className="font-bold text-xs text-white truncate">{curr} Wallet</span>
+                  <span className="badge badge-accent text-[9px] sm:text-[10px] font-bold px-1.5 py-0.5 shrink-0">{curr}</span>
                 </div>
-                <div className="my-3 flex flex-col">
-                  <span className="num font-mono text-xl font-bold text-white">
-                    {formatCrypto(balance, 6)}
+                <div className="my-2 sm:my-3 flex flex-col min-w-0">
+                  <span className="num font-mono text-base sm:text-xl font-bold text-white truncate block">
+                    {formatCrypto(balance, 4)}
                   </span>
-                  {frozen > 0 && (
-                    <span className="num text-[11px] text-[#7D8998] mt-0.5">
-                      Locked: {formatCrypto(frozen, 6)} {curr}
+                  {frozen > 0 ? (
+                    <span className="num text-[10px] sm:text-[11px] text-[#7D8998] mt-0.5 truncate block">
+                      Locked: {formatCrypto(frozen, 4)} {curr}
+                    </span>
+                  ) : (
+                    <span className="text-[10px] sm:text-[11px] text-[#7D8998] mt-0.5 truncate block opacity-60">
+                      0.0000 Locked
                     </span>
                   )}
                 </div>
                 <Link
                   href="/dashboard/wallets"
-                  className="inline-flex items-center gap-1 text-[11px] font-semibold text-[#4388F5] hover:text-[#5A9AFF] pt-2 border-t border-white/5"
+                  className="inline-flex items-center justify-between text-[10px] sm:text-[11px] font-semibold text-[#4388F5] hover:text-[#5A9AFF] pt-2 border-t border-white/5 w-full group"
                 >
-                  <span>Deposit / Withdraw</span>
-                  <ChevronRight className="w-3 h-3" />
+                  <span className="truncate">Deposit / Withdraw</span>
+                  <ChevronRight className="w-3 h-3 shrink-0 transition-transform group-hover:translate-x-0.5" />
                 </Link>
               </div>
             );

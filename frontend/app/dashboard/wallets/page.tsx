@@ -217,7 +217,7 @@ export default function WalletsPage() {
           <span className="text-xs text-text-muted">Multi-Asset Ledger</span>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           {SUPPORTED_CURRENCIES.map((curr) => {
             const w = wallets.find((item) => item.currency.toUpperCase() === curr.code);
             const balance = w ? w.balance : 0;
@@ -228,36 +228,36 @@ export default function WalletsPage() {
               <div
                 key={curr.code}
                 onClick={() => setSelectedCurrency(curr.code)}
-                className={`panel p-5 cursor-pointer transition-all border ${
+                className={`panel p-3.5 sm:p-5 cursor-pointer transition-all border flex flex-col justify-between min-h-[128px] sm:min-h-0 ${
                   isSelected
                     ? "border-accent shadow-sm"
                     : "border-border hover:border-border-hover"
                 }`}
               >
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center gap-2">
-                    <span className="w-8 h-8 rounded-md bg-surface-raised border border-border flex items-center justify-center font-bold text-xs text-text">
+                <div className="flex items-center justify-between mb-2 sm:mb-3 gap-1">
+                  <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
+                    <span className="w-6 h-6 sm:w-8 sm:h-8 rounded-md bg-surface-raised border border-border flex items-center justify-center font-bold text-[10px] sm:text-xs text-text shrink-0">
                       {curr.code.slice(0, 3)}
                     </span>
-                    <div>
-                      <div className="text-sm font-semibold text-text leading-tight">{curr.code}</div>
-                      <div className="text-[11px] text-text-faint">{curr.name}</div>
+                    <div className="min-w-0">
+                      <div className="text-xs sm:text-sm font-semibold text-text leading-tight truncate">{curr.code}</div>
+                      <div className="text-[10px] sm:text-[11px] text-text-faint truncate hidden sm:block">{curr.name}</div>
                     </div>
                   </div>
-                  <span className="badge font-mono text-[10px]">{curr.network}</span>
+                  <span className="badge font-mono text-[9px] sm:text-[10px] px-1 sm:px-1.5 py-0.5 shrink-0">{curr.network}</span>
                 </div>
 
-                <div className="mt-2">
-                  <div className="text-xs text-text-muted mb-0.5">Available Balance</div>
-                  <div className="text-2xl font-bold text-text num font-mono">
-                    {formatCrypto(balance, 6)}
+                <div className="my-1 sm:my-2">
+                  <div className="text-[10px] sm:text-xs text-text-muted mb-0.5 truncate">Available Balance</div>
+                  <div className="text-base sm:text-2xl font-bold text-text num font-mono truncate">
+                    {formatCrypto(balance, 4)}
                   </div>
                 </div>
 
-                <div className="mt-4 pt-3 border-t border-border-subtle flex items-center justify-between text-xs text-text-muted">
-                  <span>Locked in Yield:</span>
-                  <span className="font-mono text-text num font-medium">
-                    {formatCrypto(frozen, 6)} {curr.code}
+                <div className="mt-2.5 sm:mt-4 pt-2 sm:pt-3 border-t border-border-subtle flex items-center justify-between text-[10px] sm:text-xs text-text-muted">
+                  <span className="truncate">Locked:</span>
+                  <span className="font-mono text-text num font-medium truncate ml-1">
+                    {formatCrypto(frozen, 4)} {curr.code}
                   </span>
                 </div>
               </div>
