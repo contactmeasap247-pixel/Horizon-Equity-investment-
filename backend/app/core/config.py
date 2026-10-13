@@ -36,12 +36,19 @@ class Settings(BaseSettings):
     JWT_EXPIRE_MINUTES: int = 1440  # 24 hours
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
 
-    # CORS
+    # CORS & Deployment
     ALLOWED_ORIGINS: str = "http://localhost:3000,http://localhost:8000,http://localhost:80"
+    VERCEL_FRONTEND_URL: Optional[str] = None
+    RENDER_API_KEY: Optional[str] = None
 
     @property
     def cors_origins(self) -> List[str]:
-        return [origin.strip() for origin in self.ALLOWED_ORIGINS.split(",")]
+        origins = [origin.strip() for origin in self.ALLOWED_ORIGINS.split(",") if origin.strip()]
+        if self.VERCEL_FRONTEND_URL and self.VERCEL_FRONTEND_URL.strip():
+            vercel_clean = self.VERCEL_FRONTEND_URL.strip().rstrip("/")
+            if vercel_clean not in origins:
+                origins.append(vercel_clean)
+        return origins
 
     # Admin
     ADMIN_EMAIL: str = "admin@horizonequity.com"
