@@ -9,6 +9,7 @@ from typing import Optional
 from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
+from sqlalchemy import func
 from jose import jwt, JWTError
 
 from app.core.config import settings
@@ -48,8 +49,10 @@ class AuthService:
         self, db: AsyncSession, user_in: UserCreate, ip_address: Optional[str] = None, user_agent: Optional[str] = None
     ) -> User:
         """Register a new user, auto-creating their crypto wallets and logging audit trails."""
-        # 1. Check if user already exists
-        existing_user_result = await db.execute(select(User).filter(User.email == user_in.email))
+        # 1. Normalize and check if user already exists
+        email_clean = user_in.email.strip().lower()
+        user_in.email = email_clean
+        existing_user_result = await db.execute(select(User).filter(func.lower(User.email) == email_clean))
         if existing_user_result.scalars().first() is not None:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -179,8 +182,9 @@ class AuthService:
         self, db: AsyncSession, email: str, password: str, ip_address: Optional[str] = None, user_agent: Optional[str] = None
     ) -> User:
         """Authenticate user credentials, managing failed attempts and account locks."""
-        # 1. Fetch user
-        result = await db.execute(select(User).filter(User.email == email))
+        # 1. Fetch user (case-insensitive & stripped)
+        email_clean = email.strip().lower()
+        result = await db.execute(select(User).filter(func.lower(User.email) == email_clean))
         user = result.scalars().first()
 
         if user is None:

@@ -1,0 +1,23 @@
+name: Render 24/7 Keepalive Ping
+
+on:
+  schedule:
+    # Ping every 10 minutes (Render free tier sleeps after 15 minutes of inactivity)
+    - cron: '*/10 * * * *'
+  workflow_dispatch:
+
+jobs:
+  ping:
+    name: Keep Render Backend Awake
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Render Backend Health Check
+        run: |
+          echo "Pinging Horizon Equity Backend on Render..."
+          RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" -m 30 "https://horizon-equity-backend.onrender.com/health")
+          echo "HTTP Response Code: $RESPONSE"
+          if [ "$RESPONSE" = "200" ]; then
+            echo "Backend is alive and healthy!"
+          else
+            echo "Backend is waking up (status: $RESPONSE)"
+          fi
