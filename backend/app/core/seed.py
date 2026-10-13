@@ -11,6 +11,7 @@ from app.models.user import User
 from app.models.wallet import Wallet
 from app.models.investment_plan import InvestmentPlan
 from app.core.security import hash_password
+from app.core.config import settings
 
 async def seed_data():
     # Create all tables first if they don't exist
@@ -80,9 +81,10 @@ async def seed_data():
                 db.add(new_plan)
                 print(f"Created plan: {p_data['name']}")
 
-        # 2. Seed Admin User
-        admin_email = "admin@horizonequity.com"
-        admin_q = select(User).filter(User.email == admin_email)
+        # 2. Seed / Update Admin User
+        admin_email = settings.ADMIN_EMAIL
+        admin_password = settings.ADMIN_PASSWORD
+        admin_q = select(User).filter((User.email == admin_email) | (User.is_admin == True))
         admin_res = await db.execute(admin_q)
         admin_user = admin_res.scalars().first()
 
@@ -90,7 +92,7 @@ async def seed_data():
             admin_user = User(
                 email=admin_email,
                 full_name="Platform Admin",
-                password_hash=hash_password("Admin@123"),
+                password_hash=hash_password(admin_password),
                 is_admin=True,
                 kyc_status="verified",
                 is_active=True,
@@ -111,7 +113,13 @@ async def seed_data():
                     total_withdrawn=Decimal("0.0"),
                 )
                 db.add(admin_wallet)
-            print("Created default admin user and wallets.")
+            print(f"Created default admin user ({admin_email}) and wallets.")
+        else:
+            admin_user.email = admin_email
+            admin_user.password_hash = hash_password(admin_password)
+            admin_user.is_admin = True
+            admin_user.is_active = True
+            print(f"Updated existing admin user credentials to {admin_email}.")
 
         # 3. Seed Demo Users
         user1_email = "user1@horizonequity.com"

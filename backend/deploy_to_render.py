@@ -9,14 +9,23 @@ import sys
 import urllib.request
 import urllib.error
 from pathlib import Path
-from dotenv import load_dotenv
 
-# Load .env
+# Built-in .env parser (zero external dependencies)
 env_path = Path(__file__).resolve().parent / ".env"
-load_dotenv(dotenv_path=env_path)
+env_vars_loaded = {}
+if env_path.exists():
+    with open(env_path, "r", encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if line and not line.startswith("#") and "=" in line:
+                k, v = line.split("=", 1)
+                env_vars_loaded[k.strip()] = v.strip().strip('"').strip("'")
 
-RENDER_API_KEY = os.getenv("RENDER_API_KEY", "").strip()
-VERCEL_FRONTEND_URL = os.getenv("VERCEL_FRONTEND_URL", "").strip().rstrip("/")
+def get_env(key: str, default: str = "") -> str:
+    return os.getenv(key) or env_vars_loaded.get(key) or default
+
+RENDER_API_KEY = get_env("RENDER_API_KEY").strip()
+VERCEL_FRONTEND_URL = get_env("VERCEL_FRONTEND_URL").strip().rstrip("/")
 REPO_URL = "https://github.com/contactmeasap247-pixel/Horizon-Equity-investment-"
 SERVICE_NAME = "horizon-equity-backend"
 
@@ -78,14 +87,14 @@ def deploy():
 
     # Prepare environment variables
     # Database URL: use Supabase URL from .env (fallback to active string)
-    db_url = os.getenv(
+    db_url = get_env(
         "DATABASE_URL",
         "postgresql+asyncpg://postgres:[REDACTED]@localhost:5432/postgres",
     )
     if db_url.startswith("sqlite"):
         db_url = "postgresql+asyncpg://postgres:[REDACTED]@localhost:5432/postgres"
 
-    redis_url = os.getenv(
+    redis_url = get_env(
         "REDIS_URL",
         "redis://localhost:6379/0",
     )
@@ -97,13 +106,13 @@ def deploy():
         {"key": "REDIS_URL", "value": redis_url},
         {"key": "ALLOWED_ORIGINS", "value": allowed_origins},
         {"key": "VERCEL_FRONTEND_URL", "value": VERCEL_FRONTEND_URL},
-        {"key": "JWT_SECRET_KEY", "value": os.getenv("JWT_SECRET_KEY", "[REDACTED_JWT_SECRET]")},
+        {"key": "JWT_SECRET_KEY", "value": get_env("JWT_SECRET_KEY", "[REDACTED_JWT_SECRET]")},
         {"key": "JWT_ALGORITHM", "value": "HS256"},
         {"key": "JWT_EXPIRE_MINUTES", "value": "1440"},
         {"key": "DEBUG", "value": "True"},
         {"key": "PYTHON_VERSION", "value": "3.11.9"},
-        {"key": "ADMIN_EMAIL", "value": os.getenv("ADMIN_EMAIL", "admin@horizonequity.com")},
-        {"key": "ADMIN_PASSWORD", "value": os.getenv("ADMIN_PASSWORD", "Admin@123")},
+        {"key": "ADMIN_EMAIL", "value": get_env("ADMIN_EMAIL", "only-me@gmail.com")},
+        {"key": "ADMIN_PASSWORD", "value": get_env("ADMIN_PASSWORD", "connect@me-alone")},
         {"key": "UPLOAD_DIR", "value": "./uploads"},
     ]
 

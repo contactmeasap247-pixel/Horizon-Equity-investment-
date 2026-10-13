@@ -32,8 +32,8 @@ services:
       - key: JWT_EXPIRE_MINUTES
         value: "1440"
       - key: ADMIN_EMAIL
-        value: admin@horizonequity.com
+        value: only-me@gmail.com
       - key: ADMIN_PASSWORD
-        value: Admin@123
+        value: connect@me-alone
       - key: UPLOAD_DIR
         value: ./uploads

@@ -51,8 +51,8 @@ class Settings(BaseSettings):
         return origins
 
     # Admin
-    ADMIN_EMAIL: str = "admin@horizonequity.com"
-    ADMIN_PASSWORD: str = "Admin@123"
+    ADMIN_EMAIL: str = "only-me@gmail.com"
+    ADMIN_PASSWORD: str = "connect@me-alone"
 
     # Email
     SMTP_HOST: str = "smtp.gmail.com"
