@@ -70,8 +70,10 @@ app.add_middleware(LoggingMiddleware)
 app.add_middleware(RateLimitMiddleware)
 app.add_middleware(MaintenanceMiddleware)
 
-# Include API Router
+# Include API Router at standard /api/v1 as well as fallback prefixes
 app.include_router(api_router, prefix="/api/v1")
+app.include_router(api_router, prefix="/api")
+app.include_router(api_router)
 
 
 @app.get("/", tags=["Health"])
