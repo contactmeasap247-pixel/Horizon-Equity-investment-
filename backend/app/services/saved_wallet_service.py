@@ -29,8 +29,8 @@ def validate_crypto_address(asset: str, network: str, address: str) -> None:
         )
 
     if asset_upper == "BTC":
-        # Legacy (1), Script/SegWit (3), Native Segwit (bc1)
-        if not re.match(r"^(1|3|bc1[a-zA-HJ-NP-Z0-9]{25,62})[a-km-zA-HJ-NP-Z1-9]{25,62}$", addr_clean):
+        # Legacy (1), Script/P2SH (3), Native Segwit (bc1)
+        if not re.match(r"^(1[a-km-zA-HJ-NP-Z1-9]{25,34}|3[a-km-zA-HJ-NP-Z1-9]{25,34}|bc1[a-zA-HJ-NP-Z0-9]{25,90})$", addr_clean, re.IGNORECASE):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Invalid Bitcoin address. Must start with '1', '3', or 'bc1' and match standard Bitcoin length.",

@@ -47,20 +47,49 @@ async def get_deposit_addresses(
     return await wallet_service.get_admin_wallets(db, only_active=True)
 
 
-@router.get("/{currency}", response_model=WalletResponse)
-async def get_wallet_by_currency(
-    currency: str,
+# ============================================
+# USER SAVED DESTINATION WALLETS
+# ============================================
+
+@router.get("/saved", response_model=List[UserSavedWalletResponse])
+async def get_saved_wallets(
     current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
-    """Retrieve the balance of a specific cryptocurrency wallet."""
-    wallet = await wallet_service.get_user_wallet_by_currency(db, current_user.id, currency)
-    if wallet is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"You do not possess a wallet for {currency.upper()}."
-        )
-    return wallet
+    """Retrieve all destination wallets saved by the user."""
+    return await saved_wallet_service.get_user_saved_wallets(db, current_user.id)
+
+
+@router.post("/saved", response_model=UserSavedWalletResponse, status_code=status.HTTP_201_CREATED)
+async def add_saved_wallet(
+    body: UserSavedWalletCreate,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Save a new validated destination wallet."""
+    return await saved_wallet_service.add_saved_wallet(db, current_user.id, body)
+
+
+@router.put("/saved/{wallet_id}", response_model=UserSavedWalletResponse)
+async def update_saved_wallet(
+    wallet_id: uuid.UUID,
+    body: UserSavedWalletUpdate,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Update label, address, or default status of a saved destination wallet."""
+    return await saved_wallet_service.update_saved_wallet(db, current_user.id, wallet_id, body)
+
+
+@router.delete("/saved/{wallet_id}")
+async def delete_saved_wallet(
+    wallet_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Delete a saved destination wallet."""
+    success = await saved_wallet_service.delete_saved_wallet(db, current_user.id, wallet_id)
+    return {"status": "success", "deleted": success}
 
 
 @router.post("/deposit", response_model=DepositRequestResponse, status_code=status.HTTP_201_CREATED)
@@ -110,47 +139,18 @@ async def get_withdrawals_history(
     return await wallet_service.get_user_withdrawal_requests(db, current_user.id, status)
 
 
-# ============================================
-# USER SAVED DESTINATION WALLETS
-# ============================================
-
-@router.get("/saved", response_model=List[UserSavedWalletResponse])
-async def get_saved_wallets(
+@router.get("/{currency}", response_model=WalletResponse)
+async def get_wallet_by_currency(
+    currency: str,
     current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db)
 ):
-    """Retrieve all destination wallets saved by the user."""
-    return await saved_wallet_service.get_user_saved_wallets(db, current_user.id)
-
-
-@router.post("/saved", response_model=UserSavedWalletResponse, status_code=status.HTTP_201_CREATED)
-async def add_saved_wallet(
-    body: UserSavedWalletCreate,
-    current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
-):
-    """Save a new validated destination wallet."""
-    return await saved_wallet_service.add_saved_wallet(db, current_user.id, body)
-
-
-@router.put("/saved/{wallet_id}", response_model=UserSavedWalletResponse)
-async def update_saved_wallet(
-    wallet_id: uuid.UUID,
-    body: UserSavedWalletUpdate,
-    current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
-):
-    """Update label, address, or default status of a saved destination wallet."""
-    return await saved_wallet_service.update_saved_wallet(db, current_user.id, wallet_id, body)
-
-
-@router.delete("/saved/{wallet_id}")
-async def delete_saved_wallet(
-    wallet_id: uuid.UUID,
-    current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
-):
-    """Delete a saved destination wallet."""
-    success = await saved_wallet_service.delete_saved_wallet(db, current_user.id, wallet_id)
-    return {"status": "success", "deleted": success}
+    """Retrieve the balance of a specific cryptocurrency wallet."""
+    wallet = await wallet_service.get_user_wallet_by_currency(db, current_user.id, currency)
+    if wallet is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"You do not possess a wallet for {currency.upper()}."
+        )
+    return wallet
 
