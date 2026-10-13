@@ -121,85 +121,8 @@ async def seed_data():
             admin_user.is_active = True
             print(f"Updated existing admin user credentials to {admin_email}.")
 
-        # 3. Seed Demo Users
-        user1_email = "user1@horizonequity.com"
-        user1_q = select(User).filter(User.email == user1_email)
-        user1_res = await db.execute(user1_q)
-        user1 = user1_res.scalars().first()
-
-        if not user1:
-            user1 = User(
-                email=user1_email,
-                full_name="John Doe",
-                password_hash=hash_password("User@1234"),
-                is_admin=False,
-                kyc_status="verified",
-                is_active=True,
-                referral_code="HE-USER1",
-            )
-            db.add(user1)
-            await db.flush()
-            
-            # Create wallets with demo balances
-            balances = {
-                "BTC": Decimal("1.5"),
-                "ETH": Decimal("25.0"),
-                "USDT": Decimal("50000.0"),
-                "SOL": Decimal("300.0")
-            }
-            for curr, bal in balances.items():
-                wallet = Wallet(
-                    user_id=user1.id,
-                    currency=curr,
-                    balance=bal,
-                    frozen_balance=Decimal("0.0"),
-                    total_deposited=bal,
-                    total_withdrawn=Decimal("0.0"),
-                )
-                db.add(wallet)
-            print("Created demo user: user1@horizonequity.com with funds.")
-
-        # 4. Seed User 2 (Referred by User 1)
-        user2_email = "user2@horizonequity.com"
-        user2_q = select(User).filter(User.email == user2_email)
-        user2_res = await db.execute(user2_q)
-        user2 = user2_res.scalars().first()
-
-        if not user2 and user1:
-            user2 = User(
-                email=user2_email,
-                full_name="Jane Smith",
-                password_hash=hash_password("User@1234"),
-                is_admin=False,
-                kyc_status="pending",
-                is_active=True,
-                referred_by=user1.id,
-                referral_code="HE-USER2",
-            )
-            db.add(user2)
-            await db.flush()
-            
-            # Create wallets with smaller balances
-            balances2 = {
-                "BTC": Decimal("0.1"),
-                "ETH": Decimal("2.0"),
-                "USDT": Decimal("500.0"),
-                "SOL": Decimal("10.0")
-            }
-            for curr, bal in balances2.items():
-                wallet = Wallet(
-                    user_id=user2.id,
-                    currency=curr,
-                    balance=bal,
-                    frozen_balance=Decimal("0.0"),
-                    total_deposited=bal,
-                    total_withdrawn=Decimal("0.0"),
-                )
-                db.add(wallet)
-            print("Created demo user: user2@horizonequity.com (referred by user1).")
-
         await db.commit()
-        print("Seeding complete!")
+        print("Seeding complete! (Investment plans & Admin configured)")
 
 if __name__ == "__main__":
     asyncio.run(seed_data())
