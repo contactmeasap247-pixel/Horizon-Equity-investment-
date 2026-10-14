@@ -25,8 +25,8 @@ interface AuthState {
   isAuthenticated: boolean;
   isInitialized: boolean;
   setUser: (user: UserProfile | null) => void;
-  login: (email: string, password: string) => Promise<void>;
-  register: (fullName: string, email: string, password: string, referralCode?: string) => Promise<void>;
+  login: (email: string, password: string, onStatus?: (status: string) => void) => Promise<void>;
+  register: (fullName: string, email: string, password: string, referralCode?: string, onStatus?: (status: string) => void) => Promise<void>;
   logout: () => Promise<void>;
   fetchProfile: () => Promise<void>;
   initialize: () => Promise<void>;
@@ -45,21 +45,28 @@ function extractErrorMessage(error: unknown, defaultFallback: string): string {
     message?: string;
   };
 
-  // If server is cold starting, timed out, or sleeping
-  if (
-    err.code === "ECONNABORTED" ||
-    err.message?.includes("Network Error") ||
-    err.message?.includes("timeout") ||
-    !err.response
-  ) {
-    return "Server is currently waking up from sleep. Please wait 10 seconds and try again.";
+  const status = err.response?.status;
+
+  // Specific client & authentication errors (NEVER cold start)
+  if (status === 401) {
+    return "Incorrect email or password. Please verify your credentials.";
   }
 
+  if (status === 403) {
+    const detail = err.response?.data?.detail;
+    if (typeof detail === "string" && detail.trim()) return detail;
+    return "Account access restricted. Please contact institutional support.";
+  }
+
+  if (status === 429) {
+    return "Too many requests. Please wait a moment before trying again.";
+  }
+
+  // Handle FastAPI validation error arrays
   const detail = err.response?.data?.detail;
   if (typeof detail === "string" && detail.trim()) {
     return detail;
   }
-
   if (Array.isArray(detail) && detail.length > 0) {
     return detail.map((d: { msg?: string }) => d.msg || JSON.stringify(d)).join(". ");
   }
@@ -68,16 +75,23 @@ function extractErrorMessage(error: unknown, defaultFallback: string): string {
     return err.response.data.message;
   }
 
-  if (err.response?.status === 401) {
-    return "Incorrect email or password. Please verify your credentials.";
-  }
-
-  if (err.response?.status === 400) {
+  if (status === 400) {
     return "Invalid request. Please verify your submitted information.";
   }
 
-  if (err.response?.status === 502 || err.response?.status === 504) {
-    return "Server is starting up. Please retry in a few seconds.";
+  // Gateway errors when instance is spinning up
+  if (status === 502 || status === 503 || status === 504) {
+    return "Backend server is warming up. Please try again in a few moments.";
+  }
+
+  // Connection aborts or network timeouts
+  if (
+    err.code === "ECONNABORTED" ||
+    err.message?.includes("Network Error") ||
+    err.message?.includes("timeout") ||
+    !err.response
+  ) {
+    return "Connection timed out. The server may be waking up from idle sleep. Please try again.";
   }
 
   return defaultFallback;
@@ -89,35 +103,113 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   isInitialized: false,
   setUser: (user) => set({ user }),
 
-  login: async (email, password) => {
-    try {
-      const cleanEmail = email.trim().toLowerCase();
-      const response = await api.post("/auth/login", { email: cleanEmail, password });
-      const { access_token, refresh_token } = response.data;
+  login: async (email, password, onStatus) => {
+    const cleanEmail = email.trim().toLowerCase();
+    const maxAttempts = 3;
+    let lastError: unknown;
 
-      if (typeof window !== "undefined") {
-        localStorage.setItem("he_access_token", access_token);
-        localStorage.setItem("he_refresh_token", refresh_token);
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      try {
+        if (attempt > 1) {
+          onStatus?.(`Connecting to secure server... Attempt ${attempt}/${maxAttempts}`);
+        }
+        const response = await api.post("/auth/login", { email: cleanEmail, password });
+        const { access_token, refresh_token } = response.data;
+
+        if (typeof window !== "undefined") {
+          localStorage.setItem("he_access_token", access_token);
+          localStorage.setItem("he_refresh_token", refresh_token);
+        }
+
+        await get().fetchProfile();
+        return; // Login succeeded
+      } catch (error: unknown) {
+        lastError = error;
+        const err = error as {
+          response?: { status?: number };
+          code?: string;
+          message?: string;
+        };
+
+        const status = err.response?.status;
+
+        // Immediate rejection for invalid credentials or client errors — DO NOT retry
+        if (status === 401 || status === 400 || status === 403 || status === 422) {
+          throw new Error(extractErrorMessage(error, "Authentication failed. Please verify credentials."));
+        }
+
+        // Check if error is caused by Render cold start / timeout
+        const isWakeUpError =
+          err.code === "ECONNABORTED" ||
+          !err.response ||
+          status === 502 ||
+          status === 503 ||
+          status === 504 ||
+          Boolean(err.message?.includes("Network Error"));
+
+        if (!isWakeUpError || attempt === maxAttempts) {
+          throw new Error(extractErrorMessage(error, "Authentication failed. Please verify credentials."));
+        }
+
+        // Give the Render container time to boot (3.5s delay before next attempt)
+        onStatus?.(`Server waking up from sleep... Reconnecting (attempt ${attempt + 1}/${maxAttempts})...`);
+        await new Promise((resolve) => setTimeout(resolve, 3500));
       }
-
-      await get().fetchProfile();
-    } catch (error: unknown) {
-      throw new Error(extractErrorMessage(error, "Authentication failed. Please verify credentials."));
     }
+
+    throw new Error(extractErrorMessage(lastError, "Authentication failed. Please verify credentials."));
   },
 
-  register: async (fullName, email, password, referralCode) => {
-    try {
-      const cleanEmail = email.trim().toLowerCase();
-      await api.post("/auth/register", {
-        email: cleanEmail,
-        password,
-        full_name: fullName.trim(),
-        referred_by_code: referralCode?.trim() || undefined,
-      });
-    } catch (error: unknown) {
-      throw new Error(extractErrorMessage(error, "Registration failed. Please check input parameters."));
+  register: async (fullName, email, password, referralCode, onStatus) => {
+    const cleanEmail = email.trim().toLowerCase();
+    const maxAttempts = 2;
+    let lastError: unknown;
+
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      try {
+        if (attempt > 1) {
+          onStatus?.(`Connecting to server... Attempt ${attempt}/${maxAttempts}`);
+        }
+        await api.post("/auth/register", {
+          email: cleanEmail,
+          password,
+          full_name: fullName.trim(),
+          referred_by_code: referralCode?.trim() || undefined,
+        });
+        return;
+      } catch (error: unknown) {
+        lastError = error;
+        const err = error as {
+          response?: { status?: number };
+          code?: string;
+          message?: string;
+        };
+
+        const status = err.response?.status;
+
+        // Do not retry validation errors or duplicate account errors
+        if (status === 400 || status === 422 || status === 409) {
+          throw new Error(extractErrorMessage(error, "Registration failed. Please check input parameters."));
+        }
+
+        const isWakeUpError =
+          err.code === "ECONNABORTED" ||
+          !err.response ||
+          status === 502 ||
+          status === 503 ||
+          status === 504 ||
+          Boolean(err.message?.includes("Network Error"));
+
+        if (!isWakeUpError || attempt === maxAttempts) {
+          throw new Error(extractErrorMessage(error, "Registration failed. Please check input parameters."));
+        }
+
+        onStatus?.(`Server waking up from sleep... Retrying registration...`);
+        await new Promise((resolve) => setTimeout(resolve, 3500));
+      }
     }
+
+    throw new Error(extractErrorMessage(lastError, "Registration failed. Please check input parameters."));
   },
 
   logout: async () => {

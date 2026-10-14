@@ -24,11 +24,31 @@ export const API_URL = getApiUrl();
 
 export const api = axios.create({
   baseURL: API_URL,
-  timeout: 45000,
+  timeout: 60000,
   headers: {
     "Content-Type": "application/json",
   },
 });
+
+/**
+ * Asynchronous background pre-warming for the Render backend.
+ * Non-blocking, fails silently without interfering with user operations.
+ * Starts waking up the sleeping free-tier instance as soon as users view the site.
+ */
+export const warmUpBackend = async (): Promise<boolean> => {
+  if (typeof window === "undefined") return false;
+  try {
+    const rootUrl = API_URL.replace(/\/api\/v1\/?$/, "");
+    const res = await fetch(`${rootUrl}/health`, {
+      method: "GET",
+      mode: "cors",
+      cache: "no-store",
+    });
+    return res.ok;
+  } catch {
+    return false;
+  }
+};
 
 // Interceptor to inject JWT access tokens
 api.interceptors.request.use(

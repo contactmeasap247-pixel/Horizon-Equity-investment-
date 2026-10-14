@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { User, Mail, Lock, Eye, EyeOff, Loader2, ArrowLeft, AlertCircle, CheckCircle2 } from "lucide-react";
 import BrandLogo from "@/app/components/BrandLogo";
 import { useAuthStore } from "@/lib/auth-store";
+import { warmUpBackend } from "@/lib/api";
 
 function RegisterForm() {
   const router = useRouter();
@@ -20,6 +21,7 @@ function RegisterForm() {
   const [agreeTerms, setAgreeTerms] = useState(false);
 
   const [isLoading, setIsLoading] = useState(false);
+  const [statusMsg, setStatusMsg] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
@@ -32,6 +34,8 @@ function RegisterForm() {
 
   useEffect(() => {
     initialize();
+    // Warm up backend so container is alive when new user completes registration
+    warmUpBackend();
   }, [initialize]);
 
   useEffect(() => {
@@ -42,6 +46,8 @@ function RegisterForm() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isLoading) return;
+
     if (!fullName || !email || !password) {
       setErrorMsg("Please populate all required fields.");
       return;
@@ -53,10 +59,13 @@ function RegisterForm() {
 
     setIsLoading(true);
     setErrorMsg(null);
+    setStatusMsg(null);
     setSuccessMsg(null);
 
     try {
-      await register(fullName.trim(), email.trim(), password, referralCode.trim() || undefined);
+      await register(fullName.trim(), email.trim(), password, referralCode.trim() || undefined, (status) => {
+        setStatusMsg(status);
+      });
       setSuccessMsg("Account initialized successfully! Redirecting you to sign in...");
 
       setTimeout(() => {
@@ -68,6 +77,7 @@ function RegisterForm() {
       setErrorMsg(message);
     } finally {
       setIsLoading(false);
+      setStatusMsg(null);
     }
   };
 
@@ -81,6 +91,14 @@ function RegisterForm() {
           Access automated compounding yields and multi-currency wallets
         </p>
       </div>
+
+      {/* Status / Waking-Up Alert */}
+      {statusMsg && !errorMsg && (
+        <div className="flex items-center gap-2 p-3 bg-[#4388F5]/10 border border-[#4388F5]/25 rounded-lg text-xs text-[#5A9AFF] animate-pulse">
+          <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0 text-[#4388F5]" />
+          <span>{statusMsg}</span>
+        </div>
+      )}
 
       {/* Error / Success Alerts */}
       {errorMsg && (
@@ -221,7 +239,7 @@ function RegisterForm() {
           {isLoading ? (
             <>
               <Loader2 className="w-4 h-4 animate-spin mr-1" />
-              <span>Creating Client Account...</span>
+              <span>{statusMsg || "Creating Client Account..."}</span>
             </>
           ) : (
             "Complete Account Registration"

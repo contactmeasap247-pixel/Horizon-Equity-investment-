@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { Mail, Lock, Eye, EyeOff, Loader2, ArrowLeft, AlertCircle } from "lucide-react";
 import BrandLogo from "@/app/components/BrandLogo";
 import { useAuthStore } from "@/lib/auth-store";
+import { warmUpBackend } from "@/lib/api";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -15,10 +16,13 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [statusMsg, setStatusMsg] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   useEffect(() => {
     initialize();
+    // Warm up the Render backend in the background while user fills in their credentials
+    warmUpBackend();
   }, [initialize]);
 
   useEffect(() => {
@@ -29,6 +33,9 @@ export default function LoginPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    // Prevent overlapping concurrent submissions
+    if (isLoading) return;
+
     if (!email || !password) {
       setErrorMsg("Please provide both email and password.");
       return;
@@ -36,9 +43,12 @@ export default function LoginPage() {
 
     setIsLoading(true);
     setErrorMsg(null);
+    setStatusMsg(null);
 
     try {
-      await login(email.trim(), password);
+      await login(email.trim(), password, (status) => {
+        setStatusMsg(status);
+      });
       router.push("/dashboard");
     } catch (err: unknown) {
       const message =
@@ -46,6 +56,7 @@ export default function LoginPage() {
       setErrorMsg(message);
     } finally {
       setIsLoading(false);
+      setStatusMsg(null);
     }
   };
 
@@ -72,6 +83,14 @@ export default function LoginPage() {
             Access your multi-asset portfolio and institutional accounts
           </p>
         </div>
+
+        {/* Status / Waking-Up Alert */}
+        {statusMsg && !errorMsg && (
+          <div className="flex items-center gap-2 p-3 bg-[#4388F5]/10 border border-[#4388F5]/25 rounded-lg text-xs text-[#5A9AFF] animate-pulse">
+            <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0 text-[#4388F5]" />
+            <span>{statusMsg}</span>
+          </div>
+        )}
 
         {/* Error Alert */}
         {errorMsg && (
@@ -147,7 +166,7 @@ export default function LoginPage() {
             {isLoading ? (
               <>
                 <Loader2 className="w-4 h-4 animate-spin mr-1" />
-                <span>Authenticating Session...</span>
+                <span>{statusMsg || "Authenticating Session..."}</span>
               </>
             ) : (
               "Sign In to Account"

@@ -30,13 +30,15 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
             # Fallback: if Redis is not available, proceed without rate limiting
             return await call_next(request)
 
-        # Skip rate limit checking for Swagger/OpenAPI docs
+        # Skip rate limit checking for health checks, docs, root, and HEAD requests
         path = request.url.path
         if (
-            path.startswith("/api/docs")
+            path in ["/health", "/api/v1/health", "/api/health", "/health/ready", "/api/v1/health/ready"]
+            or path.startswith("/api/docs")
             or path.startswith("/api/redoc")
             or path == "/openapi.json"
             or path == "/"
+            or request.method == "HEAD"
         ):
             return await call_next(request)
 

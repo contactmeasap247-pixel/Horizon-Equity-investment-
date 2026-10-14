@@ -22,11 +22,14 @@ async def lifespan(app: FastAPI):
     # Startup
     print(f"[START] Starting {settings.APP_NAME} v{settings.APP_VERSION}")
 
-    # Create tables (dev only — use Alembic in production)
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+    # Verify / initialize database schema (resilient against transient network lags)
+    try:
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+        print("[OK] Database tables verified/connected")
+    except Exception as e:
+        print(f"[WARN] Database schema verification deferred: {e}")
 
-    print("[OK] Database tables created/verified")
     print(f"[INFO] API Docs: http://localhost:8000/api/docs")
 
     yield
@@ -77,7 +80,7 @@ app.include_router(api_router, prefix="/api")
 app.include_router(api_router)
 
 
-@app.get("/", tags=["Health"])
+@app.api_route("/", methods=["GET", "HEAD"], tags=["Health"])
 async def root():
     """Root endpoint — API info."""
     return {
@@ -89,13 +92,46 @@ async def root():
     }
 
 
-@app.get("/health", tags=["Health"])
+@app.api_route("/health", methods=["GET", "HEAD"], tags=["Health"])
+@app.api_route("/api/v1/health", methods=["GET", "HEAD"], tags=["Health"])
+@app.api_route("/api/health", methods=["GET", "HEAD"], tags=["Health"])
 async def health():
-    """Health check endpoint."""
+    """Lightweight liveness health check endpoint.
+    Guaranteed zero DB queries and zero external Redis calls.
+    Used by Render keep-alive monitors, external pingers, and frontend pre-warming.
+    Supports both GET and HEAD requests.
+    """
     from datetime import datetime
 
     return {
         "status": "healthy",
+        "timestamp": datetime.utcnow().isoformat(),
+        "version": settings.APP_VERSION,
+    }
+
+
+@app.get("/health/ready", tags=["Health"])
+@app.get("/api/v1/health/ready", tags=["Health"])
+async def health_ready():
+    """Database readiness probe.
+    Separated from the lightweight keep-alive liveness check to prevent
+    connection pool exhaustion during automated keep-alive polling.
+    """
+    from datetime import datetime
+    from sqlalchemy import text
+    from app.core.database import async_session
+
+    db_status = "ok"
+    try:
+        async with async_session() as session:
+            await session.execute(text("SELECT 1"))
+    except Exception as e:
+        db_status = f"unhealthy: {str(e)}"
+
+    is_ready = db_status == "ok"
+    return {
+        "status": "ready" if is_ready else "degraded",
+        "database": db_status,
         "timestamp": datetime.utcnow().isoformat(),
         "version": settings.APP_VERSION,
     }

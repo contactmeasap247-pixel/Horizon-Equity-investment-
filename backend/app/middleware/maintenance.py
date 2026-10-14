@@ -71,8 +71,9 @@ class MaintenanceMiddleware(BaseHTTPMiddleware):
             "/openapi.json",
             "/health",
             "/api/v1/health",
+            "/api/health",
         ]
-        is_exempt = any(path.startswith(prefix) for prefix in exempt_prefixes)
+        is_exempt = path == "/" or request.method == "HEAD" or any(path.startswith(prefix) for prefix in exempt_prefixes)
 
         if not is_exempt:
             is_maintenance, message = await check_maintenance_status()

@@ -2,7 +2,9 @@ name: Render 24/7 Keepalive Ping
 
 on:
   schedule:
-    # Ping every 10 minutes (Render free tier sleeps after 15 minutes of inactivity)
+    # Ping every 10 minutes to stay safely below Render's 15-minute inactivity timeout.
+    # Note: On GitHub Actions private repositories, monthly runtime is bounded by account quotas.
+    # For zero-cost 24/7 coverage, complementary free webhook monitors (e.g., cron-job.org) can ping the same endpoint.
     - cron: '*/10 * * * *'
   workflow_dispatch:
 
@@ -13,11 +15,37 @@ jobs:
     steps:
       - name: Ping Render Backend Health Check
         run: |
+          echo "=================================================="
           echo "Pinging Horizon Equity Backend on Render..."
-          RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" -m 30 "https://horizon-equity-backend.onrender.com/health")
-          echo "HTTP Response Code: $RESPONSE"
-          if [ "$RESPONSE" = "200" ]; then
-            echo "Backend is alive and healthy!"
-          else
-            echo "Backend is waking up (status: $RESPONSE)"
+          echo "Endpoint: https://horizon-equity-backend.onrender.com/health"
+          echo "Started: $(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+          echo "=================================================="
+
+          MAX_ATTEMPTS=2
+          ATTEMPT=1
+          SUCCESS=0
+
+          while [ $ATTEMPT -le $MAX_ATTEMPTS ]; do
+            echo "[Attempt $ATTEMPT/$MAX_ATTEMPTS] Sending health request..."
+            # Use 45s timeout to allow Render container cold-start to complete if sleeping
+            STATUS_CODE=$(curl -s -S -o /dev/null -w "%{http_code}" --max-time 45 "https://horizon-equity-backend.onrender.com/health" || echo "000")
+            echo "Response Status Code: $STATUS_CODE"
+
+            if [ "$STATUS_CODE" = "200" ]; then
+              echo "SUCCESS: Backend is alive, healthy, and responsive!"
+              SUCCESS=1
+              break
+            else
+              echo "WARNING: Backend responded with status $STATUS_CODE (instance may be cold-starting)."
+              if [ $ATTEMPT -lt $MAX_ATTEMPTS ]; then
+                echo "Waiting 10 seconds before retry..."
+                sleep 10
+              fi
+            fi
+            ATTEMPT=$((ATTEMPT + 1))
+          done
+
+          if [ $SUCCESS -ne 1 ]; then
+            echo "ERROR: Backend health check failed after $MAX_ATTEMPTS attempts (final status: $STATUS_CODE)."
+            exit 1
           fi

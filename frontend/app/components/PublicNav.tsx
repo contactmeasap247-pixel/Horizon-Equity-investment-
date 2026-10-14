@@ -7,12 +7,18 @@ import { Menu, X, ArrowRight } from "lucide-react";
 import BrandLogo from "./BrandLogo";
 import LanguageSelector from "./LanguageSelector";
 import { useLanguage } from "@/lib/language-context";
+import { warmUpBackend } from "@/lib/api";
 
 export default function PublicNav() {
   const { t } = useLanguage();
   const pathname = usePathname();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
+
+  useEffect(() => {
+    // Warm up backend when visitor arrives on any public page
+    warmUpBackend();
+  }, []);
 
   useEffect(() => {
     const handleScroll = () => {
