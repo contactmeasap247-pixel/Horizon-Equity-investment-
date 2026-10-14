@@ -85,19 +85,27 @@ def deploy():
 
     owner_id = get_owner_id()
 
-    # Prepare environment variables
-    # Database URL: use Supabase URL from .env (fallback to active string)
-    db_url = get_env(
-        "DATABASE_URL",
-        "postgresql+asyncpg://postgres:[REDACTED]@localhost:5432/postgres",
-    )
-    if db_url.startswith("sqlite"):
-        db_url = "postgresql+asyncpg://postgres:[REDACTED]@localhost:5432/postgres"
+    # Prepare environment variables strictly from environment or backend/.env
+    db_url = get_env("DATABASE_URL")
+    if not db_url:
+        print("[ERROR] DATABASE_URL is missing in environment or backend/.env")
+        sys.exit(1)
 
-    redis_url = get_env(
-        "REDIS_URL",
-        "redis://localhost:6379/0",
-    )
+    redis_url = get_env("REDIS_URL")
+    if not redis_url:
+        print("[ERROR] REDIS_URL is missing in environment or backend/.env")
+        sys.exit(1)
+
+    jwt_secret = get_env("JWT_SECRET_KEY")
+    if not jwt_secret:
+        print("[ERROR] JWT_SECRET_KEY is missing in environment or backend/.env")
+        sys.exit(1)
+
+    admin_email = get_env("ADMIN_EMAIL", "admin@horizonequity.com")
+    admin_password = get_env("ADMIN_PASSWORD")
+    if not admin_password:
+        print("[ERROR] ADMIN_PASSWORD is missing in environment or backend/.env")
+        sys.exit(1)
 
     allowed_origins = f"{VERCEL_FRONTEND_URL},http://localhost:3000,http://localhost:8000"
 
@@ -106,13 +114,13 @@ def deploy():
         {"key": "REDIS_URL", "value": redis_url},
         {"key": "ALLOWED_ORIGINS", "value": allowed_origins},
         {"key": "VERCEL_FRONTEND_URL", "value": VERCEL_FRONTEND_URL},
-        {"key": "JWT_SECRET_KEY", "value": get_env("JWT_SECRET_KEY", "[REDACTED_JWT_SECRET]")},
+        {"key": "JWT_SECRET_KEY", "value": jwt_secret},
         {"key": "JWT_ALGORITHM", "value": "HS256"},
         {"key": "JWT_EXPIRE_MINUTES", "value": "1440"},
         {"key": "DEBUG", "value": "True"},
         {"key": "PYTHON_VERSION", "value": "3.11.9"},
-        {"key": "ADMIN_EMAIL", "value": get_env("ADMIN_EMAIL", "only-me@gmail.com")},
-        {"key": "ADMIN_PASSWORD", "value": get_env("ADMIN_PASSWORD", "connect@me-alone")},
+        {"key": "ADMIN_EMAIL", "value": admin_email},
+        {"key": "ADMIN_PASSWORD", "value": admin_password},
         {"key": "UPLOAD_DIR", "value": "./uploads"},
     ]
 
