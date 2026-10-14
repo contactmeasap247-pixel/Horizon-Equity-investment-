@@ -59,7 +59,15 @@ app = FastAPI(
     ],
 )
 
-# CORS Middleware
+# Custom Middlewares (Logging, Rate Limiting & Maintenance)
+# Note: In Starlette/FastAPI, middlewares execute in reverse order of addition.
+# Custom middlewares are added first so that CORSMiddleware (added last) becomes the outermost
+# layer, guaranteeing that all error responses, 429 rate-limits, and preflight requests always receive proper CORS headers.
+app.add_middleware(MaintenanceMiddleware)
+app.add_middleware(RateLimitMiddleware)
+app.add_middleware(LoggingMiddleware)
+
+# CORS Middleware (Outermost layer)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins,
@@ -68,11 +76,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-# Custom Middlewares (Logging, Rate Limiting & Maintenance)
-app.add_middleware(LoggingMiddleware)
-app.add_middleware(RateLimitMiddleware)
-app.add_middleware(MaintenanceMiddleware)
 
 # Include API Router at standard /api/v1 as well as fallback prefixes
 app.include_router(api_router, prefix="/api/v1")

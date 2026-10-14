@@ -87,8 +87,12 @@ api.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config;
 
-    // Check if error is 401 (Unauthorized) and not a retry
-    if (error.response?.status === 401 && !originalRequest._retry && !originalRequest.url.includes("/auth/login") && !originalRequest.url.includes("/auth/refresh")) {
+    // Check if error is 401 (Unauthorized) and not a retry.
+    // Never attempt token rotation on auth flows (login, register, refresh).
+    const reqUrl = originalRequest?.url || "";
+    const isAuthRequest = reqUrl.includes("/auth/login") || reqUrl.includes("/auth/register") || reqUrl.includes("/auth/refresh");
+
+    if (error.response?.status === 401 && !originalRequest?._retry && !isAuthRequest) {
       if (isRefreshing) {
         return new Promise((resolve, reject) => {
           failedQueue.push({ resolve, reject });
@@ -110,7 +114,9 @@ api.interceptors.response.use(
         if (typeof window !== "undefined") {
           localStorage.removeItem("he_access_token");
           localStorage.removeItem("he_refresh_token");
-          window.location.href = "/login";
+          if (!window.location.pathname.startsWith("/login") && !window.location.pathname.startsWith("/register")) {
+            window.location.href = "/login";
+          }
         }
         return Promise.reject(error);
       }

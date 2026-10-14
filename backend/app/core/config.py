@@ -62,7 +62,7 @@ class Settings(BaseSettings):
     SMTP_FROM: str = "noreply@horizonequity.com"
 
     # Security
-    RATE_LIMIT_PER_MINUTE: int = 60
+    RATE_LIMIT_PER_MINUTE: int = 240
     RATE_LIMIT_PER_HOUR: int = 1000
     MAX_LOGIN_ATTEMPTS: int = 5
     LOCKOUT_DURATION_MINUTES: int = 30
