@@ -30,6 +30,14 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         print(f"[WARN] Database schema verification deferred: {e}")
 
+    # Ensure investment plans are synced with latest yield rates
+    try:
+        from app.core.seed import sync_investment_plans
+        await sync_investment_plans()
+        print("[OK] Investment plans verified and synced with active rates")
+    except Exception as e:
+        print(f"[WARN] Investment plans auto-sync deferred: {e}")
+
     print(f"[INFO] API Docs: http://localhost:8000/api/docs")
 
     yield

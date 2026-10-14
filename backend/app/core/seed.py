@@ -13,73 +13,91 @@ from app.models.investment_plan import InvestmentPlan
 from app.core.security import hash_password
 from app.core.config import settings
 
-async def seed_data():
-    # Create all tables first if they don't exist
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+INVESTMENT_PLANS_DATA = [
+    {
+        "name": "Silver Plan",
+        "description": "Foundational yield tier for beginner allocations across diversified liquid digital assets and gold bullion.",
+        "min_amount": Decimal("100.0"),
+        "max_amount": Decimal("499.0"),
+        "return_percentage": Decimal("15.0"),
+        "duration_days": 2,
+        "referral_bonus_percentage": Decimal("5.0"),
+        "is_active": True,
+        "is_featured": False,
+        "sort_order": 1,
+    },
+    {
+        "name": "Gold Plan",
+        "description": "Growth yield portfolio with active algorithmic rebalancing across global forex and energy commodities.",
+        "min_amount": Decimal("500.0"),
+        "max_amount": Decimal("999.0"),
+        "return_percentage": Decimal("20.0"),
+        "duration_days": 3,
+        "referral_bonus_percentage": Decimal("7.0"),
+        "is_active": True,
+        "is_featured": True,
+        "sort_order": 2,
+    },
+    {
+        "name": "Platinum Plan",
+        "description": "Institutional grade multi-asset diversification with quantitative risk hedging and priority clearing.",
+        "min_amount": Decimal("1000.0"),
+        "max_amount": Decimal("4999.0"),
+        "return_percentage": Decimal("35.0"),
+        "duration_days": 7,
+        "referral_bonus_percentage": Decimal("10.0"),
+        "is_active": True,
+        "is_featured": True,
+        "sort_order": 3,
+    },
+    {
+        "name": "Diamond Plan",
+        "description": "Executive syndicate tier with institutional custody, private manager assistance, and uncapped capital limits.",
+        "min_amount": Decimal("5000.0"),
+        "max_amount": None,
+        "return_percentage": Decimal("45.0"),
+        "duration_days": 7,
+        "referral_bonus_percentage": Decimal("12.0"),
+        "is_active": True,
+        "is_featured": True,
+        "sort_order": 4,
+    },
+]
 
-    print("Seeding initial database data...")
+async def sync_investment_plans():
+    """Sync investment plan yield percentages and parameters with active database."""
     async with async_session() as db:
-        # 1. Seed Investment Plans (Exactly 4 tiers)
-        plans_data = [
-            {
-                "name": "Silver Plan",
-                "description": "Foundational yield tier for beginner allocations across diversified liquid digital assets and gold bullion.",
-                "min_amount": Decimal("100.0"),
-                "max_amount": Decimal("499.0"),
-                "return_percentage": Decimal("8.0"),
-                "duration_days": 2,
-                "referral_bonus_percentage": Decimal("5.0"),
-                "is_active": True,
-                "is_featured": False,
-                "sort_order": 1,
-            },
-            {
-                "name": "Gold Plan",
-                "description": "Growth yield portfolio with active algorithmic rebalancing across global forex and energy commodities.",
-                "min_amount": Decimal("500.0"),
-                "max_amount": Decimal("999.0"),
-                "return_percentage": Decimal("16.0"),
-                "duration_days": 3,
-                "referral_bonus_percentage": Decimal("7.0"),
-                "is_active": True,
-                "is_featured": True,
-                "sort_order": 2,
-            },
-            {
-                "name": "Platinum Plan",
-                "description": "Institutional grade multi-asset diversification with quantitative risk hedging and priority clearing.",
-                "min_amount": Decimal("1000.0"),
-                "max_amount": Decimal("4999.0"),
-                "return_percentage": Decimal("28.0"),
-                "duration_days": 7,
-                "referral_bonus_percentage": Decimal("10.0"),
-                "is_active": True,
-                "is_featured": True,
-                "sort_order": 3,
-            },
-            {
-                "name": "Diamond Plan",
-                "description": "Executive syndicate tier with institutional custody, private manager assistance, and uncapped capital limits.",
-                "min_amount": Decimal("5000.0"),
-                "max_amount": None,
-                "return_percentage": Decimal("45.0"),
-                "duration_days": 7,
-                "referral_bonus_percentage": Decimal("12.0"),
-                "is_active": True,
-                "is_featured": True,
-                "sort_order": 4,
-            },
-        ]
-
-        for p_data in plans_data:
+        for p_data in INVESTMENT_PLANS_DATA:
             q = select(InvestmentPlan).filter(InvestmentPlan.name == p_data["name"])
             res = await db.execute(q)
             existing_plan = res.scalars().first()
             if not existing_plan:
                 new_plan = InvestmentPlan(**p_data)
                 db.add(new_plan)
-                print(f"Created plan: {p_data['name']}")
+                print(f"[SEED] Created plan: {p_data['name']} ({p_data['return_percentage']}%)")
+            else:
+                existing_plan.return_percentage = p_data["return_percentage"]
+                existing_plan.description = p_data["description"]
+                existing_plan.min_amount = p_data["min_amount"]
+                existing_plan.max_amount = p_data["max_amount"]
+                existing_plan.duration_days = p_data["duration_days"]
+                existing_plan.referral_bonus_percentage = p_data["referral_bonus_percentage"]
+                existing_plan.is_active = p_data["is_active"]
+                existing_plan.sort_order = p_data["sort_order"]
+                db.add(existing_plan)
+                print(f"[SEED] Synced plan: {p_data['name']} -> {p_data['return_percentage']}%")
+        await db.commit()
+
+async def seed_data():
+    # Create all tables first if they don't exist
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+
+    print("Seeding initial database data...")
+    # 1. Sync Investment Plans (Exactly 4 tiers)
+    await sync_investment_plans()
+
+    async with async_session() as db:
 
         # 2. Seed / Update Admin User
         admin_email = settings.ADMIN_EMAIL
