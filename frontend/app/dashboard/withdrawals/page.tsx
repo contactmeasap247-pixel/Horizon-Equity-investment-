@@ -236,13 +236,13 @@ export default function InitiateWithdrawalPage() {
         </div>
       )}
 
-      {/* $5 Locked Bonus Notice */}
+      {/* Locked Bonus Notice */}
       {lockedBonusAmt > 0 && selectedCurrency === "USDT" && (
         <div className="panel p-4 border-[#4388F5]/30 bg-[#4388F5]/5 flex items-start gap-3">
           <Lock className="h-5 w-5 text-[#4388F5] shrink-0 mt-0.5" />
           <div className="text-xs text-[#A6B0BE] leading-relaxed">
-            <span className="font-bold text-white block">Promotional Bonus Policy ($5.00 USDT Locked)</span>
-            Your $5.00 promotional registration bonus is currently locked until you complete a qualifying investment (e.g. Silver Plan). It cannot be withdrawn directly and has been deducted from your maximum withdrawable balance.
+            <span className="font-bold text-white block">Promotional Bonus Policy (${Number(lockedBonusAmt).toFixed(2)} USDT Locked)</span>
+            Your ${Number(lockedBonusAmt).toFixed(2)} promotional registration bonus is currently locked until you complete a qualifying investment (e.g. Silver Plan). It cannot be withdrawn directly and has been deducted from your maximum withdrawable balance.
           </div>
         </div>
       )}

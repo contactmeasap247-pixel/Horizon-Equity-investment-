@@ -19,6 +19,7 @@ from app.models.transaction import Transaction
 from app.models.audit_log import AuditLog
 from app.schemas.wallet import AdminWalletCreate, AdminWalletUpdate, WithdrawalRequestCreate
 from app.services.notification_service import notification_service
+from app.services.email_service import email_service
 
 
 class WalletService:
@@ -234,6 +235,14 @@ class WalletService:
             message=f"Deposit of {amount} {currency} submitted for blockchain confirmation ({dep_ref}).",
         )
 
+        # Dispatch automated email via Brevo
+        user_res = await db.execute(select(User).filter(User.id == user_id))
+        dep_user = user_res.scalars().first()
+        if dep_user:
+            email_service.send_deposit_submitted_email(
+                dep_user.email, dep_user.full_name, str(amount), currency, dep_ref
+            )
+
         await db.commit()
         await db.refresh(new_request)
         return new_request
@@ -358,6 +367,12 @@ class WalletService:
             title="Withdrawal Request Placed",
             message=f"Withdrawal request for {amount} {currency} ({wd_ref}) has been submitted and is pending administrative review.",
         )
+
+        # Dispatch automated email via Brevo
+        if user:
+            email_service.send_withdrawal_submitted_email(
+                user.email, user.full_name, str(amount), currency, wd_ref, withdraw_in.wallet_address
+            )
 
         await db.commit()
         await db.refresh(new_request)

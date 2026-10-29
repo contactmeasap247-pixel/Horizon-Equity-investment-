@@ -20,6 +20,8 @@ from app.models.session_token import SessionToken
 from app.models.user_saved_wallet import UserSavedWallet
 from app.models.registration_bonus import RegistrationBonus
 from app.models.loan import LoanProduct, LoanApplication, LoanRepayment
+from app.models.auth_token import AuthToken
+from app.models.email_log import EmailLog
 
 __all__ = [
     "User",
@@ -42,4 +44,6 @@ __all__ = [
     "LoanProduct",
     "LoanApplication",
     "LoanRepayment",
+    "AuthToken",
+    "EmailLog",
 ]

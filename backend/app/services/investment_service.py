@@ -218,6 +218,19 @@ class InvestmentService:
 
         await db.commit()
         await db.refresh(new_investment)
+
+        # Dispatch automated email via Brevo
+        if user:
+            from app.services.email_service import email_service
+            email_service.send_investment_activated_email(
+                user.email,
+                user.full_name,
+                plan.name,
+                str(amount),
+                currency,
+                maturity_date.strftime("%Y-%m-%d"),
+                str(expected_return),
+            )
         
         # Reload investment with its plan
         reloaded_investment = await self.get_investment_by_id(db, new_investment.id)

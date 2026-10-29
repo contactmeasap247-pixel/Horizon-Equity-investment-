@@ -15,6 +15,7 @@ from app.schemas.auth import (
     ResetPasswordRequest,
     RefreshTokenRequest,
     VerifyEmailRequest,
+    ResendVerificationRequest,
 )
 from app.services.auth_service import auth_service
 from app.models.user import User
@@ -82,6 +83,16 @@ async def verify_email(
     """Verify a user's email address using their verification token."""
     await auth_service.verify_email_token(db, body.token)
     return {"detail": "Email verified successfully."}
+
+
+@router.post("/resend-verification", status_code=status.HTTP_200_OK)
+async def resend_verification(
+    body: ResendVerificationRequest,
+    db: AsyncSession = Depends(get_db)
+):
+    """Resend email verification token with 60s cooldown rate limiting."""
+    await auth_service.resend_verification_email(db, body.email)
+    return {"detail": "If the account exists and requires verification, a new verification link has been dispatched."}
 
 
 @router.post("/forgot-password", status_code=status.HTTP_200_OK)

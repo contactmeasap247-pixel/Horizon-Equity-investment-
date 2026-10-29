@@ -15,7 +15,7 @@ class RegistrationBonus(Base):
 
     id = Column(Uuid, primary_key=True, default=uuid.uuid4)
     user_id = Column(Uuid, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, unique=True, index=True)
-    amount = Column(DECIMAL(10, 2), default=5.00, nullable=False)
+    amount = Column(DECIMAL(10, 2), default=10.00, nullable=False)
     currency = Column(String(10), default="USDT", nullable=False)
     status = Column(String(30), default="locked", index=True)  # locked, unlocked, expired
     qualifying_investment_id = Column(Uuid, ForeignKey("investments.id"), nullable=True)

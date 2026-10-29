@@ -284,19 +284,19 @@ async def get_registration_bonus_status(
         )
         wallet = wallet_res.scalars().first()
         if not wallet:
-            wallet = Wallet(user_id=current_user.id, currency="USDT", balance=Decimal("5.00"))
+            wallet = Wallet(user_id=current_user.id, currency="USDT", balance=Decimal("10.00"))
             db.add(wallet)
         else:
-            wallet.balance += Decimal("5.00")
+            wallet.balance += Decimal("10.00")
             db.add(wallet)
 
         bonus = RegistrationBonus(
             user_id=current_user.id,
-            amount=Decimal("5.00"),
+            amount=Decimal("10.00"),
             currency="USDT",
             status="locked",
             awarded_at=datetime.utcnow(),
-            notes="Welcome bonus auto-credited to existing account.",
+            notes="Welcome bonus auto-credited ($10.00 USDT).",
         )
         db.add(bonus)
 
@@ -304,12 +304,12 @@ async def get_registration_bonus_status(
             user_id=current_user.id,
             type="registration_bonus",
             subtype="promotional_credit",
-            amount=Decimal("5.00"),
+            amount=Decimal("10.00"),
             fee=Decimal("0.0"),
             currency="USDT",
             status="completed",
             reference=f"BONUS-{current_user.id.hex[:8].upper()}",
-            description="Welcome promotional credit ($5.00 USDT). Locked until completing first qualifying investment.",
+            description="Welcome promotional credit ($10.00 USDT). Locked until completing first qualifying investment.",
         )
         db.add(tx)
         await db.commit()
@@ -332,6 +332,15 @@ async def get_registration_bonus_status(
             await db.commit()
             await db.refresh(bonus)
 
+            # Send bonus unlocked email notification
+            from app.services.email_service import email_service
+            email_service.send_bonus_unlocked_email(
+                current_user.email,
+                current_user.full_name,
+                bonus_amount=f"{float(bonus.amount):.2f}",
+                plan_name="Qualifying Investment Tier",
+            )
+
     return {
         "amount": float(bonus.amount),
         "currency": bonus.currency,
@@ -342,7 +351,7 @@ async def get_registration_bonus_status(
         "qualifying_investment_id": str(bonus.qualifying_investment_id) if bonus.qualifying_investment_id else None,
         "rules": {
             "title": "Welcome Registration Credit Policy",
-            "requirement": "The $5.00 welcome bonus is a promotional credit credited directly to your USDT balance. To unlock this bonus for withdrawal, you must successfully complete at least one qualifying investment contract (e.g. Silver Plan).",
+            "requirement": f"The ${float(bonus.amount):.2f} welcome bonus is a promotional credit credited directly to your USDT balance. To unlock this bonus for withdrawal, you must successfully complete at least one qualifying investment contract (e.g. Silver Plan).",
             "qualifying_plan": "Silver Starter Tier (Min $100, 2-day duration)",
         },
     }

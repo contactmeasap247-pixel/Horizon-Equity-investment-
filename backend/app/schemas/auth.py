@@ -45,3 +45,8 @@ class RefreshTokenRequest(BaseModel):
 class VerifyEmailRequest(BaseModel):
     """Schema for verifying email address with token."""
     token: str
+
+
+class ResendVerificationRequest(BaseModel):
+    """Schema for resending verification email."""
+    email: EmailStr

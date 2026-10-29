@@ -75,6 +75,7 @@ class User(Base):
     saved_wallets = relationship("UserSavedWallet", back_populates="user", cascade="all, delete-orphan")
     registration_bonus = relationship("RegistrationBonus", back_populates="user", uselist=False, cascade="all, delete-orphan")
     loan_applications = relationship("LoanApplication", back_populates="user", foreign_keys="LoanApplication.user_id", cascade="all, delete-orphan")
+    auth_tokens = relationship("AuthToken", back_populates="user", cascade="all, delete-orphan")
 
     def __repr__(self):
         return f"<User {self.email}>"

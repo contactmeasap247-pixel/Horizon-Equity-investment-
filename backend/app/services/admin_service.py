@@ -26,20 +26,23 @@ from app.models.audit_log import AuditLog
 from app.models.site_setting import SiteSetting
 from app.models.notification import Notification
 from app.models.user_saved_wallet import UserSavedWallet
+from app.models.registration_bonus import RegistrationBonus
+from app.models.email_log import EmailLog
 from app.services.notification_service import notification_service
 from app.services.transaction_service import transaction_service
 from app.services.email_service import email_service
 from app.middleware.maintenance import invalidate_maintenance_cache
+import asyncio
 
 
 # Default Email Templates with company-grade luxury aesthetic
 DEFAULT_EMAIL_TEMPLATES = {
     "account_welcome": {
         "key": "account_welcome",
-        "name": "Welcome to Horizon Equity",
+        "name": "Welcome & $10 Bonus Notification",
         "category": "ACCOUNT",
-        "subject": "Welcome to Horizon Equity — Your Premier Investment Platform",
-        "variables": ["user_name", "login_url", "support_email"],
+        "subject": "Welcome to Horizon Equity — Your $10 Welcome Bonus",
+        "variables": ["user_name", "bonus_amount", "login_url", "support_email"],
         "html_content": """<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0B0F14; color: #F5F7FA; padding: 40px 20px; max-width: 600px; margin: auto; border-radius: 8px; border: 1px solid #1A2332;">
   <div style="text-align: center; margin-bottom: 30px;">
     <h1 style="color: #4388F5; margin: 0; font-size: 24px; letter-spacing: 1px;">HORIZON EQUITY</h1>
@@ -47,7 +50,11 @@ DEFAULT_EMAIL_TEMPLATES = {
   </div>
   <div style="background: #111821; border: 1px solid #1E293B; border-radius: 8px; padding: 25px; margin-bottom: 25px;">
     <h2 style="font-size: 18px; margin-top: 0; color: #FFFFFF;">Welcome, {{user_name}}</h2>
-    <p style="color: #94A3B8; font-size: 14px; line-height: 1.6;">Thank you for registering your investor account with Horizon Equity. Your secure gateway to global digital asset portfolios, algorithmic copy trading, and yield strategies is now active.</p>
+    <p style="color: #94A3B8; font-size: 14px; line-height: 1.6;">Thank you for registering your investor account with Horizon Equity. We are pleased to confirm that a <strong>${{bonus_amount}} USDT Welcome Promotional Credit</strong> has been credited to your account.</p>
+    <div style="background: rgba(67, 136, 245, 0.1); border: 1px solid rgba(67, 136, 245, 0.25); border-radius: 6px; padding: 15px; margin: 20px 0;">
+      <p style="margin: 0 0 5px; color: #4388F5; font-weight: 700; font-size: 13px;">🎁 ${{bonus_amount}} Welcome Bonus Allocation</p>
+      <p style="margin: 0; color: #94A3B8; font-size: 12px; line-height: 1.5;">Your ${{bonus_amount}} bonus is viewable in your dashboard wallet. Under our promotional terms, this welcome bonus is locked for withdrawal until you successfully complete your first qualifying investment portfolio contract (e.g. Silver Starter Tier).</p>
+    </div>
     <div style="text-align: center; margin: 30px 0;">
       <a href="{{login_url}}" style="background: #4388F5; color: #FFFFFF; text-decoration: none; padding: 12px 30px; border-radius: 6px; font-weight: 600; font-size: 14px; display: inline-block;">Access Client Portal</a>
     </div>
@@ -57,7 +64,115 @@ DEFAULT_EMAIL_TEMPLATES = {
     <p>&copy; Horizon Equity Investment Group. All rights reserved.</p>
   </div>
 </div>""",
-        "text_content": "Welcome {{user_name}} to Horizon Equity. Access your client portal at {{login_url}} or contact {{support_email}}.",
+        "text_content": "Welcome {{user_name}} to Horizon Equity! Your ${{bonus_amount}} USDT welcome bonus has been credited. It will unlock for withdrawal upon completing your first qualifying investment. Access your portal at {{login_url}}.",
+        "is_active": True,
+    },
+    "account_verification": {
+        "key": "account_verification",
+        "name": "Email Verification Request",
+        "category": "ACCOUNT",
+        "subject": "Verify your Horizon Equity account",
+        "variables": ["user_name", "verification_link", "support_email"],
+        "html_content": """<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0B0F14; color: #F5F7FA; padding: 40px 20px; max-width: 600px; margin: auto; border-radius: 8px; border: 1px solid #1A2332;">
+  <div style="text-align: center; margin-bottom: 30px;">
+    <h1 style="color: #4388F5; margin: 0; font-size: 24px; letter-spacing: 1px;">HORIZON EQUITY</h1>
+  </div>
+  <div style="background: #111821; border: 1px solid #1E293B; border-radius: 8px; padding: 25px; margin-bottom: 25px;">
+    <h2 style="font-size: 18px; margin-top: 0; color: #FFFFFF;">Verify Your Email Address</h2>
+    <p style="color: #94A3B8; font-size: 14px; line-height: 1.6;">Hello {{user_name}}, please confirm your email address to secure your account and activate withdrawals. This verification link expires in 24 hours.</p>
+    <div style="text-align: center; margin: 30px 0;">
+      <a href="{{verification_link}}" style="background: #4388F5; color: #FFFFFF; text-decoration: none; padding: 12px 30px; border-radius: 6px; font-weight: 600; font-size: 14px; display: inline-block;">Verify Email Address</a>
+    </div>
+    <p style="color: #64748B; font-size: 12px; word-break: break-all;">Or copy and paste this link in your browser: {{verification_link}}</p>
+  </div>
+  <div style="color: #64748B; font-size: 12px; text-align: center;">&copy; Horizon Equity Investment Group</div>
+</div>""",
+        "text_content": "Please verify your Horizon Equity account by clicking the link: {{verification_link}} (Expires in 24 hours).",
+        "is_active": True,
+    },
+    "email_verified_confirmation": {
+        "key": "email_verified_confirmation",
+        "name": "Email Verification Confirmed",
+        "category": "ACCOUNT",
+        "subject": "Email Verified — Welcome to Horizon Equity",
+        "variables": ["user_name", "bonus_amount", "login_url"],
+        "html_content": """<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0B0F14; color: #F5F7FA; padding: 40px 20px; max-width: 600px; margin: auto; border-radius: 8px; border: 1px solid #1A2332;">
+  <div style="text-align: center; margin-bottom: 30px;"><h1 style="color: #4388F5; margin: 0; font-size: 24px;">HORIZON EQUITY</h1></div>
+  <div style="background: #111821; border: 1px solid #1E293B; border-radius: 8px; padding: 25px; margin-bottom: 25px;">
+    <h2 style="font-size: 18px; margin-top: 0; color: #27C58B;">Email Successfully Verified ✓</h2>
+    <p style="color: #94A3B8; font-size: 14px; line-height: 1.6;">Hello {{user_name}}, your email address has been verified. Your investor profile is now active.</p>
+    <p style="color: #94A3B8; font-size: 14px; line-height: 1.6;">Your <strong>${{bonus_amount}} Welcome Bonus</strong> remains credited to your wallet. You can unlock it for withdrawal by completing your first qualifying investment contract.</p>
+    <div style="text-align: center; margin: 30px 0;">
+      <a href="{{login_url}}" style="background: #4388F5; color: #FFFFFF; text-decoration: none; padding: 12px 30px; border-radius: 6px; font-weight: 600; font-size: 14px; display: inline-block;">Go to Dashboard</a>
+    </div>
+  </div>
+  <div style="color: #64748B; font-size: 12px; text-align: center;">&copy; Horizon Equity Investment Group</div>
+</div>""",
+        "text_content": "Your email has been verified successfully. Your ${{bonus_amount}} welcome bonus is active in your dashboard.",
+        "is_active": True,
+    },
+    "password_reset": {
+        "key": "password_reset",
+        "name": "Password Reset Request",
+        "category": "ACCOUNT",
+        "subject": "Horizon Equity — Password Reset Request",
+        "variables": ["user_name", "reset_link", "support_email"],
+        "html_content": """<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0B0F14; color: #F5F7FA; padding: 40px 20px; max-width: 600px; margin: auto; border-radius: 8px; border: 1px solid #1A2332;">
+  <div style="text-align: center; margin-bottom: 30px;"><h1 style="color: #4388F5; margin: 0; font-size: 24px;">HORIZON EQUITY</h1></div>
+  <div style="background: #111821; border: 1px solid #1E293B; border-radius: 8px; padding: 25px; margin-bottom: 25px;">
+    <h2 style="font-size: 18px; margin-top: 0; color: #FFFFFF;">Password Reset Request</h2>
+    <p style="color: #94A3B8; font-size: 14px; line-height: 1.6;">We received a request to reset your password. Click the button below to establish a new password. This link is single-use and expires in 1 hour.</p>
+    <div style="text-align: center; margin: 30px 0;">
+      <a href="{{reset_link}}" style="background: #4388F5; color: #FFFFFF; text-decoration: none; padding: 12px 30px; border-radius: 6px; font-weight: 600; font-size: 14px; display: inline-block;">Reset Password</a>
+    </div>
+    <p style="color: #64748B; font-size: 12px;">If you did not request this, please ignore this email or notify {{support_email}}.</p>
+  </div>
+  <div style="color: #64748B; font-size: 12px; text-align: center;">&copy; Horizon Equity Investment Group</div>
+</div>""",
+        "text_content": "Please reset your password by clicking: {{reset_link}} (Valid for 1 hour). If you did not make this request, contact {{support_email}}.",
+        "is_active": True,
+    },
+    "bonus_unlocked": {
+        "key": "bonus_unlocked",
+        "name": "Welcome Bonus Unlocked",
+        "category": "ACCOUNT",
+        "subject": "Your ${{bonus_amount}} Welcome Bonus is Now Unlocked for Withdrawal!",
+        "variables": ["user_name", "bonus_amount", "plan_name", "login_url"],
+        "html_content": """<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0B0F14; color: #F5F7FA; padding: 40px 20px; max-width: 600px; margin: auto; border-radius: 8px; border: 1px solid #1A2332;">
+  <div style="text-align: center; margin-bottom: 30px;"><h1 style="color: #4388F5; margin: 0; font-size: 24px;">HORIZON EQUITY</h1></div>
+  <div style="background: #111821; border: 1px solid rgba(39, 197, 139, 0.3); border-radius: 8px; padding: 25px; margin-bottom: 25px;">
+    <h2 style="font-size: 18px; margin-top: 0; color: #27C58B;">Welcome Bonus Unlocked! 🎉</h2>
+    <p style="color: #94A3B8; font-size: 14px; line-height: 1.6;">Congratulations {{user_name}}! With the completion of your qualifying investment (<strong>{{plan_name}}</strong>), your <strong>${{bonus_amount}} USDT Welcome Bonus</strong> is now fully unlocked.</p>
+    <p style="color: #94A3B8; font-size: 14px; line-height: 1.6;">You may now withdraw these funds or allocate them toward higher-yield portfolio plans.</p>
+    <div style="text-align: center; margin: 30px 0;">
+      <a href="{{login_url}}" style="background: #27C58B; color: #0B0F14; text-decoration: none; padding: 12px 30px; border-radius: 6px; font-weight: 700; font-size: 14px; display: inline-block;">View Withdrawable Balance</a>
+    </div>
+  </div>
+  <div style="color: #64748B; font-size: 12px; text-align: center;">&copy; Horizon Equity Investment Group</div>
+</div>""",
+        "text_content": "Congratulations {{user_name}}! Your ${{bonus_amount}} USDT welcome bonus has been unlocked and is available for withdrawal.",
+        "is_active": True,
+    },
+    "deposit_submitted": {
+        "key": "deposit_submitted",
+        "name": "Deposit Request Received",
+        "category": "TRANSACTIONS",
+        "subject": "Deposit Request Received — {{amount}} {{currency}} Pending Verification",
+        "variables": ["user_name", "amount", "currency", "reference", "date"],
+        "html_content": """<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0B0F14; color: #F5F7FA; padding: 40px 20px; max-width: 600px; margin: auto; border-radius: 8px; border: 1px solid #1A2332;">
+  <div style="text-align: center; margin-bottom: 30px;"><h1 style="color: #4388F5; margin: 0; font-size: 24px;">HORIZON EQUITY</h1></div>
+  <div style="background: #111821; border: 1px solid #1E293B; border-radius: 8px; padding: 25px; margin-bottom: 25px;">
+    <h2 style="font-size: 18px; margin-top: 0; color: #FFFFFF;">Deposit Request Under Review</h2>
+    <p style="color: #94A3B8; font-size: 14px;">Hello {{user_name}}, we have received your deposit submission. Our institutional settlement desk is verifying blockchain confirmations.</p>
+    <table style="width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 14px;">
+      <tr style="border-bottom: 1px solid #1E293B;"><td style="padding: 10px 0; color: #7D8998;">Amount</td><td style="padding: 10px 0; font-weight: 700; text-align: right; color: #E2E8F0;">{{amount}} {{currency}}</td></tr>
+      <tr style="border-bottom: 1px solid #1E293B;"><td style="padding: 10px 0; color: #7D8998;">Reference</td><td style="padding: 10px 0; text-align: right; color: #4388F5; font-family: monospace;">{{reference}}</td></tr>
+      <tr><td style="padding: 10px 0; color: #7D8998;">Timestamp</td><td style="padding: 10px 0; text-align: right; color: #94A3B8;">{{date}}</td></tr>
+    </table>
+  </div>
+  <div style="color: #64748B; font-size: 12px; text-align: center;">&copy; Horizon Equity Investment Group</div>
+</div>""",
+        "text_content": "Your deposit request for {{amount}} {{currency}} has been received. Reference: {{reference}}.",
         "is_active": True,
     },
     "deposit_confirmed": {
@@ -87,6 +202,48 @@ DEFAULT_EMAIL_TEMPLATES = {
         "text_content": "Your deposit of {{amount}} {{currency}} has been verified and credited. Reference: {{reference}}.",
         "is_active": True,
     },
+    "deposit_rejected": {
+        "key": "deposit_rejected",
+        "name": "Deposit Rejected",
+        "category": "TRANSACTIONS",
+        "subject": "Deposit Request Update — Action Required",
+        "variables": ["user_name", "amount", "currency", "reference", "reason", "support_email"],
+        "html_content": """<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0B0F14; color: #F5F7FA; padding: 40px 20px; max-width: 600px; margin: auto; border-radius: 8px; border: 1px solid #1A2332;">
+  <div style="text-align: center; margin-bottom: 30px;"><h1 style="color: #4388F5; margin: 0; font-size: 24px;">HORIZON EQUITY</h1></div>
+  <div style="background: #111821; border: 1px solid rgba(240, 100, 100, 0.3); border-radius: 8px; padding: 25px; margin-bottom: 25px;">
+    <h2 style="font-size: 18px; margin-top: 0; color: #F06464;">Deposit Verification Unsuccessful</h2>
+    <p style="color: #94A3B8; font-size: 14px;">Hello {{user_name}}, your deposit request for <strong>{{amount}} {{currency}}</strong> could not be verified.</p>
+    <p style="color: #E2E8F0; font-size: 13px; background: #0B0F14; padding: 12px; border-radius: 6px; border: 1px solid #1E293B;">Reason: {{reason}}</p>
+    <p style="color: #7D8998; font-size: 13px;">If you have questions or wish to provide additional blockchain hash proof, contact {{support_email}}.</p>
+  </div>
+  <div style="color: #64748B; font-size: 12px; text-align: center;">&copy; Horizon Equity Group</div>
+</div>""",
+        "text_content": "Your deposit of {{amount}} {{currency}} was rejected. Reason: {{reason}}. Contact: {{support_email}}.",
+        "is_active": True,
+    },
+    "withdrawal_submitted": {
+        "key": "withdrawal_submitted",
+        "name": "Withdrawal Request Received",
+        "category": "TRANSACTIONS",
+        "subject": "Withdrawal Request Received — Reference: {{reference}}",
+        "variables": ["user_name", "amount", "currency", "reference", "destination", "date"],
+        "html_content": """<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0B0F14; color: #F5F7FA; padding: 40px 20px; max-width: 600px; margin: auto; border-radius: 8px; border: 1px solid #1A2332;">
+  <div style="text-align: center; margin-bottom: 30px;"><h1 style="color: #4388F5; margin: 0; font-size: 24px;">HORIZON EQUITY</h1></div>
+  <div style="background: #111821; border: 1px solid #1E293B; border-radius: 8px; padding: 25px; margin-bottom: 25px;">
+    <h2 style="font-size: 18px; margin-top: 0; color: #FFFFFF;">Withdrawal Request Submitted</h2>
+    <p style="color: #94A3B8; font-size: 14px;">Hello {{user_name}}, we have received your request to withdraw <strong>{{amount}} {{currency}}</strong>.</p>
+    <table style="width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 14px;">
+      <tr style="border-bottom: 1px solid #1E293B;"><td style="padding: 10px 0; color: #7D8998;">Amount</td><td style="padding: 10px 0; font-weight: 700; text-align: right; color: #E2E8F0;">{{amount}} {{currency}}</td></tr>
+      <tr style="border-bottom: 1px solid #1E293B;"><td style="padding: 10px 0; color: #7D8998;">Reference</td><td style="padding: 10px 0; text-align: right; color: #4388F5; font-family: monospace;">{{reference}}</td></tr>
+      <tr style="border-bottom: 1px solid #1E293B;"><td style="padding: 10px 0; color: #7D8998;">Destination</td><td style="padding: 10px 0; text-align: right; color: #94A3B8; font-family: monospace; word-break: break-all;">{{destination}}</td></tr>
+      <tr><td style="padding: 10px 0; color: #7D8998;">Status</td><td style="padding: 10px 0; text-align: right; color: #F4BD50; font-weight: 600;">Pending Administrative Review</td></tr>
+    </table>
+  </div>
+  <div style="color: #64748B; font-size: 12px; text-align: center;">&copy; Horizon Equity Group</div>
+</div>""",
+        "text_content": "Your withdrawal request for {{amount}} {{currency}} has been received. Reference: {{reference}}. Destination: {{destination}}.",
+        "is_active": True,
+    },
     "withdrawal_completed": {
         "key": "withdrawal_completed",
         "name": "Withdrawal Completed",
@@ -110,6 +267,25 @@ DEFAULT_EMAIL_TEMPLATES = {
         "text_content": "Your withdrawal of {{amount}} {{currency}} has been processed. Destination: {{wallet_address}}. TXID: {{tx_hash}}",
         "is_active": True,
     },
+    "withdrawal_rejected": {
+        "key": "withdrawal_rejected",
+        "name": "Withdrawal Rejected",
+        "category": "TRANSACTIONS",
+        "subject": "Withdrawal Request Status Update",
+        "variables": ["user_name", "amount", "currency", "reference", "reason", "support_email"],
+        "html_content": """<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0B0F14; color: #F5F7FA; padding: 40px 20px; max-width: 600px; margin: auto; border-radius: 8px; border: 1px solid #1A2332;">
+  <div style="text-align: center; margin-bottom: 30px;"><h1 style="color: #4388F5; margin: 0; font-size: 24px;">HORIZON EQUITY</h1></div>
+  <div style="background: #111821; border: 1px solid rgba(240, 100, 100, 0.3); border-radius: 8px; padding: 25px; margin-bottom: 25px;">
+    <h2 style="font-size: 18px; margin-top: 0; color: #F06464;">Withdrawal Request Rejected</h2>
+    <p style="color: #94A3B8; font-size: 14px;">Hello {{user_name}}, your withdrawal request for <strong>{{amount}} {{currency}}</strong> was rejected and funds have been restored to your available wallet balance.</p>
+    <p style="color: #E2E8F0; font-size: 13px; background: #0B0F14; padding: 12px; border-radius: 6px; border: 1px solid #1E293B;">Reason: {{reason}}</p>
+    <p style="color: #7D8998; font-size: 13px;">If you have any questions, contact our support team at {{support_email}}.</p>
+  </div>
+  <div style="color: #64748B; font-size: 12px; text-align: center;">&copy; Horizon Equity Group</div>
+</div>""",
+        "text_content": "Your withdrawal request for {{amount}} {{currency}} has been rejected. Reason: {{reason}}. Funds have been refunded to your wallet.",
+        "is_active": True,
+    },
     "investment_activated": {
         "key": "investment_activated",
         "name": "Investment Plan Activated",
@@ -130,6 +306,30 @@ DEFAULT_EMAIL_TEMPLATES = {
   <div style="color: #64748B; font-size: 12px; text-align: center;">&copy; Horizon Equity Group</div>
 </div>""",
         "text_content": "Your investment of {{amount}} {{currency}} in {{plan_name}} has been activated. Scheduled maturity: {{maturity_date}}.",
+        "is_active": True,
+    },
+    "investment_matured": {
+        "key": "investment_matured",
+        "name": "Investment Contract Matured",
+        "category": "INVESTMENTS",
+        "subject": "Portfolio Matured — {{plan_name}} Contract Completed",
+        "variables": ["user_name", "plan_name", "amount", "return_amount", "currency", "login_url"],
+        "html_content": """<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0B0F14; color: #F5F7FA; padding: 40px 20px; max-width: 600px; margin: auto; border-radius: 8px; border: 1px solid #1A2332;">
+  <div style="text-align: center; margin-bottom: 30px;"><h1 style="color: #4388F5; margin: 0; font-size: 24px;">HORIZON EQUITY</h1></div>
+  <div style="background: #111821; border: 1px solid rgba(39, 197, 139, 0.3); border-radius: 8px; padding: 25px; margin-bottom: 25px;">
+    <h2 style="font-size: 18px; margin-top: 0; color: #27C58B;">Investment Contract Matured! 📈</h2>
+    <p style="color: #94A3B8; font-size: 14px;">Hello {{user_name}}, your <strong>{{plan_name}}</strong> portfolio investment contract has reached full maturity.</p>
+    <table style="width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 14px;">
+      <tr style="border-bottom: 1px solid #1E293B;"><td style="padding: 10px 0; color: #7D8998;">Initial Capital</td><td style="padding: 10px 0; font-weight: 700; text-align: right; color: #E2E8F0;">{{amount}} {{currency}}</td></tr>
+      <tr style="border-bottom: 1px solid #1E293B;"><td style="padding: 10px 0; color: #7D8998;">Total Payout Credited</td><td style="padding: 10px 0; font-weight: 700; text-align: right; color: #27C58B;">+{{return_amount}} {{currency}}</td></tr>
+    </table>
+    <div style="text-align: center; margin: 25px 0;">
+      <a href="{{login_url}}" style="background: #4388F5; color: #FFFFFF; text-decoration: none; padding: 12px 30px; border-radius: 6px; font-weight: 600; font-size: 14px; display: inline-block;">Access Portfolio</a>
+    </div>
+  </div>
+  <div style="color: #64748B; font-size: 12px; text-align: center;">&copy; Horizon Equity Group</div>
+</div>""",
+        "text_content": "Your investment in {{plan_name}} has matured! A total payout of {{return_amount}} {{currency}} was credited to your wallet.",
         "is_active": True,
     },
     "reinvestment_confirmed": {
@@ -827,6 +1027,36 @@ class AdminService:
                 message=f"Your {plan.name} investment has matured! {inv.expected_return} {inv.currency} has been credited to your wallet.",
             )
 
+            # Dispatch investment matured email & unlock promotional registration bonus if applicable
+            user_res = await db.execute(select(User).filter(User.id == inv.user_id))
+            mat_user = user_res.scalars().first()
+            if mat_user:
+                email_service.send_investment_matured_email(
+                    mat_user.email,
+                    mat_user.full_name,
+                    plan.name,
+                    str(inv.amount),
+                    str(inv.expected_return),
+                    inv.currency,
+                )
+
+                # Check and unlock welcome bonus
+                bonus_res = await db.execute(
+                    select(RegistrationBonus).filter(RegistrationBonus.user_id == inv.user_id, RegistrationBonus.status == "locked")
+                )
+                bonus = bonus_res.scalars().first()
+                if bonus:
+                    bonus.status = "unlocked"
+                    bonus.unlocked_at = now
+                    bonus.qualifying_investment_id = inv.id
+                    db.add(bonus)
+                    email_service.send_bonus_unlocked_email(
+                        mat_user.email,
+                        mat_user.full_name,
+                        bonus_amount=f"{float(bonus.amount):.2f}",
+                        plan_name=plan.name,
+                    )
+
             cur = inv.currency.upper()
             total_credited[cur] = total_credited.get(cur, 0.0) + float(inv.expected_return)
             processed_count += 1
@@ -1433,6 +1663,14 @@ class AdminService:
                 message=f"Your deposit of {deposit.amount} {deposit.currency} has been verified and credited.",
             )
 
+            # Dispatch verified email via Brevo
+            user_res = await db.execute(select(User).filter(User.id == deposit.user_id))
+            dep_user = user_res.scalars().first()
+            if dep_user:
+                email_service.send_deposit_confirmed_email(
+                    dep_user.email, dep_user.full_name, str(deposit.amount), deposit.currency, tx_ref
+                )
+
         elif status_clean == "rejected":
             deposit.rejection_reason = rejection_reason.strip() if rejection_reason else "Invalid proof details."
             await notification_service.create_notification(
@@ -1442,6 +1680,14 @@ class AdminService:
                 title="Deposit Rejected",
                 message=f"Your deposit request of {deposit.amount} {deposit.currency} was rejected. Reason: {deposit.rejection_reason}",
             )
+
+            # Dispatch rejected email via Brevo
+            user_res = await db.execute(select(User).filter(User.id == deposit.user_id))
+            dep_user = user_res.scalars().first()
+            if dep_user:
+                email_service.send_deposit_rejected_email(
+                    dep_user.email, dep_user.full_name, str(deposit.amount), deposit.currency, deposit.rejection_reason
+                )
 
         db.add(deposit)
         await db.commit()
@@ -1527,6 +1773,19 @@ class AdminService:
                 message=f"Your withdrawal of {withdrawal.amount} {withdrawal.currency} has been processed. TXID: {withdrawal.transaction_hash}",
             )
 
+            # Dispatch withdrawal completed email via Brevo
+            user_res = await db.execute(select(User).filter(User.id == withdrawal.user_id))
+            wd_user = user_res.scalars().first()
+            if wd_user:
+                email_service.send_withdrawal_completed_email(
+                    wd_user.email,
+                    wd_user.full_name,
+                    str(withdrawal.amount),
+                    withdrawal.currency,
+                    withdrawal.wallet_address,
+                    withdrawal.transaction_hash,
+                )
+
         elif status_clean == "rejected":
             reason = rejection_reason.strip() if rejection_reason else "Cancelled by Administrator."
             withdrawal.rejection_reason = reason
@@ -1554,6 +1813,19 @@ class AdminService:
                 title="Withdrawal Rejected",
                 message=f"Your withdrawal request of {withdrawal.amount} {withdrawal.currency} was rejected. Reason: {reason}",
             )
+
+            # Dispatch withdrawal rejected email via Brevo
+            user_res = await db.execute(select(User).filter(User.id == withdrawal.user_id))
+            wd_user = user_res.scalars().first()
+            if wd_user:
+                email_service.send_withdrawal_rejected_email(
+                    wd_user.email,
+                    wd_user.full_name,
+                    str(withdrawal.amount),
+                    withdrawal.currency,
+                    ref_tx,
+                    reason,
+                )
 
         db.add(withdrawal)
         await db.commit()
@@ -1786,6 +2058,186 @@ class AdminService:
         await db.commit()
         await db.refresh(wallet)
         return wallet
+
+    # ========================================================
+    # 13. DIRECT EMAIL COMPOSER & EMAIL LOG AUDIT
+    # ========================================================
+
+    @staticmethod
+    async def get_recipients_preview(
+        db: AsyncSession,
+        mode: str,
+        user_ids: Optional[List[uuid.UUID]] = None,
+        group: Optional[str] = None,
+        custom_email: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """Resolve list of recipients and count for admin email composer preview."""
+        recipients = []
+        mode = (mode or "").lower().strip()
+
+        if mode == "custom":
+            if custom_email and "@" in custom_email:
+                recipients.append({"id": "custom", "email": custom_email.strip().lower(), "name": "Custom Recipient"})
+        elif mode in ["single", "multiple"]:
+            if user_ids:
+                users_res = await db.execute(select(User).filter(User.id.in_(user_ids)))
+                for u in users_res.scalars().all():
+                    recipients.append({"id": str(u.id), "email": u.email, "name": u.full_name})
+        elif mode == "group":
+            group_clean = (group or "all").lower().strip()
+            if group_clean == "all":
+                query = select(User).filter(User.is_active == True, User.is_suspended == False)
+            elif group_clean == "active_investors":
+                query = (
+                    select(User)
+                    .join(Investment, Investment.user_id == User.id)
+                    .filter(Investment.status == "active")
+                    .distinct()
+                )
+            elif group_clean == "unverified":
+                query = select(User).filter(User.email_verified == False)
+            elif group_clean == "pending_kyc":
+                query = select(User).filter(
+                    User.kyc_status.in_(["submitted", "under_review", "pending"])
+                )
+            elif group_clean == "with_deposits":
+                query = (
+                    select(User)
+                    .join(DepositRequest, DepositRequest.user_id == User.id)
+                    .filter(DepositRequest.status == "verified")
+                    .distinct()
+                )
+            elif group_clean == "suspended":
+                query = select(User).filter(User.is_suspended == True)
+            else:
+                query = select(User).filter(User.is_active == True)
+
+            users_res = await db.execute(query)
+            for u in users_res.scalars().all():
+                recipients.append({"id": str(u.id), "email": u.email, "name": u.full_name})
+
+        return {
+            "count": len(recipients),
+            "recipients": recipients,
+        }
+
+    @staticmethod
+    async def send_admin_email(
+        db: AsyncSession,
+        admin_id: uuid.UUID,
+        payload: Dict[str, Any],
+    ) -> Dict[str, Any]:
+        """Dispatch personalized emails to selected recipients with operational logging."""
+        preview = await AdminService.get_recipients_preview(
+            db,
+            mode=payload.get("mode", ""),
+            user_ids=payload.get("user_ids"),
+            group=payload.get("group"),
+            custom_email=payload.get("custom_email"),
+        )
+        recipients = preview["recipients"]
+        if not recipients:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No valid recipients found for selection.")
+
+        subject_tpl = payload.get("subject", "").strip()
+        html_tpl = payload.get("html_content", "")
+        text_tpl = payload.get("text_content") or ""
+        template_key = payload.get("template_key")
+
+        successful = []
+        failed = []
+
+        for r in recipients:
+            to_email = r["email"]
+            to_name = r.get("name") or "Investor"
+
+            rendered_subject = subject_tpl.replace("{{user_name}}", to_name).replace("{{email}}", to_email)
+            rendered_html = html_tpl.replace("{{user_name}}", to_name).replace("{{email}}", to_email)
+            rendered_text = text_tpl.replace("{{user_name}}", to_name).replace("{{email}}", to_email)
+
+            success, msg_id, err_msg = await asyncio.to_thread(
+                email_service._send_email_sync,
+                to_email=to_email,
+                subject=rendered_subject,
+                html_content=rendered_html,
+                text_content=rendered_text,
+                template_key=template_key,
+            )
+
+            status_str = "sent" if success else "failed"
+            await email_service.record_email_log(
+                recipient=to_email,
+                subject=rendered_subject,
+                template_key=template_key,
+                status=status_str,
+                provider_message_id=msg_id,
+                error_message=err_msg,
+            )
+
+            if success:
+                successful.append(to_email)
+            else:
+                failed.append({"email": to_email, "reason": err_msg or "Dispatch error"})
+
+        audit = AuditLog(
+            admin_id=admin_id,
+            action="admin_email_sent",
+            entity_type="email_composer",
+            new_values={
+                "mode": payload.get("mode"),
+                "subject": subject_tpl,
+                "total": len(recipients),
+                "successful": len(successful),
+                "failed": len(failed),
+            },
+        )
+        db.add(audit)
+        await db.commit()
+
+        return {
+            "total": len(recipients),
+            "success_count": len(successful),
+            "failed_count": len(failed),
+            "successful": successful,
+            "failed": failed,
+            "summary": f"Dispatched {len(successful)} of {len(recipients)} messages successfully.",
+        }
+
+    @staticmethod
+    async def get_email_logs(
+        db: AsyncSession,
+        limit: int = 50,
+        offset: int = 0,
+        status_filter: Optional[str] = None,
+        search: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """Fetch paginated Brevo delivery tracking logs."""
+        query = select(EmailLog)
+        if status_filter:
+            query = query.filter(EmailLog.status == status_filter.lower().strip())
+        if search:
+            s = f"%{search.strip()}%"
+            query = query.filter(or_(EmailLog.recipient.ilike(s), EmailLog.subject.ilike(s)))
+
+        total = (await db.execute(select(func.count(EmailLog.id)).select_from(query.subquery()))).scalar() or 0
+        result = await db.execute(query.order_by(desc(EmailLog.created_at)).offset(offset).limit(limit))
+        logs = result.scalars().all()
+
+        items = [
+            {
+                "id": str(l.id),
+                "recipient": l.recipient,
+                "subject": l.subject,
+                "template_key": l.template_key,
+                "status": l.status,
+                "provider_message_id": l.provider_message_id,
+                "error_message": l.error_message,
+                "created_at": l.created_at.isoformat() if l.created_at else None,
+                "updated_at": l.updated_at.isoformat() if l.updated_at else None,
+            }
+            for l in logs
+        ]
+        return {"total": total, "items": items, "limit": limit, "offset": offset}
 
 
 admin_service = AdminService()

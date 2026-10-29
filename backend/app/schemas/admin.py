@@ -261,3 +261,15 @@ class SecurityControlsUpdateRequest(BaseModel):
     auto_withdrawal_max_threshold: Optional[float] = None
     auto_withdrawal_allowed_currencies: Optional[List[str]] = None
     auto_withdrawal_requires_kyc: Optional[bool] = None
+
+
+class AdminEmailDispatchPayload(BaseModel):
+    """Payload for administrative direct email composer and bulk dispatch."""
+    mode: str = Field(..., description="Recipient mode: single, multiple, group, or custom")
+    user_ids: Optional[List[UUID]] = Field(None, description="Target user IDs when mode is single or multiple")
+    group: Optional[str] = Field(None, description="Target group key: all, active_investors, unverified, pending_kyc, with_deposits, suspended")
+    custom_email: Optional[str] = Field(None, description="Custom recipient email address when mode is custom")
+    subject: str = Field(..., min_length=2, max_length=250, description="Subject line")
+    html_content: str = Field(..., min_length=5, description="HTML formatted email body")
+    text_content: Optional[str] = Field(None, description="Plain text fallback alternative")
+    template_key: Optional[str] = Field(None, description="Optional template key reference")

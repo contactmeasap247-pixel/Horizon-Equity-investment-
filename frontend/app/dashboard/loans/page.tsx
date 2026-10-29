@@ -253,7 +253,7 @@ export default function LoansPage() {
       <div className="panel p-4 bg-[#151F2B]/60 border-white/10 flex items-start gap-3">
         <Info className="h-5 w-5 text-[#4388F5] shrink-0 mt-0.5" />
         <p className="text-xs text-[#A6B0BE] leading-relaxed">
-          <strong>Promotional Bonus Policy:</strong> The $5 registration bonus operates as a separate promotional welcome credit and cannot count as a completed capital investment. Loan eligibility requires completion of an actual portfolio investment tier (e.g. Silver Starter Tier).
+          <strong>Promotional Bonus Policy:</strong> The $10 registration bonus operates as a separate promotional welcome credit and cannot count as a completed capital investment. Loan eligibility requires completion of an actual portfolio investment tier (e.g. Silver Starter Tier).
         </p>
       </div>
 

@@ -188,7 +188,7 @@ export default function DashboardOverview() {
             <div>
               <div className="flex items-center gap-2">
                 <span className="text-xs font-bold text-white">
-                  ${bonus.amount}.00 USDT Registration Bonus Credited
+                  ${Number(bonus.amount).toFixed(2)} USDT Welcome Bonus Credited
                 </span>
                 <span
                   className={`text-[9px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wider ${
@@ -202,7 +202,7 @@ export default function DashboardOverview() {
               </div>
               <p className="text-[11px] text-[#A6B0BE] mt-0.5">
                 {bonus.status === "unlocked"
-                  ? "Congratulations! Your qualifying investment has completed. Your $5 bonus is now unlocked for withdrawal."
+                  ? `Congratulations! Your qualifying investment has completed. Your $${Number(bonus.amount).toFixed(2)} welcome bonus is now unlocked for withdrawal.`
                   : "Complete your first qualifying investment contract (e.g. Silver Plan) to unlock this welcome bonus for withdrawal."}
               </p>
             </div>

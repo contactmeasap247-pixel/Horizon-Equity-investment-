@@ -16,7 +16,9 @@ from app.models.wallet import Wallet
 from app.models.transaction import Transaction
 from app.models.referral_commission import ReferralCommission
 from app.models.user import User
+from app.models.registration_bonus import RegistrationBonus
 from app.services.notification_service import notification_service
+from app.services.email_service import email_service
 
 def async_task(f):
     @wraps(f)
@@ -91,6 +93,36 @@ async def check_matured_investments():
                     title="Investment Matured! 🎉",
                     message=f"Your investment of {inv.amount} {inv.currency} in the {inv.plan.name} Tier has matured! A total return of {inv.expected_return} {inv.currency} was credited to your wallet.",
                 )
+
+                # Dispatch investment matured email & unlock promotional registration bonus
+                if inv.user:
+                    email_service.send_investment_matured_email(
+                        inv.user.email,
+                        inv.user.full_name,
+                        inv.plan.name,
+                        str(inv.amount),
+                        str(inv.expected_return),
+                        inv.currency,
+                    )
+
+                    # Check and unlock welcome bonus
+                    bonus_query = select(RegistrationBonus).filter(
+                        RegistrationBonus.user_id == inv.user_id,
+                        RegistrationBonus.status == "locked",
+                    )
+                    bonus_res = await db.execute(bonus_query)
+                    bonus = bonus_res.scalars().first()
+                    if bonus:
+                        bonus.status = "unlocked"
+                        bonus.unlocked_at = now
+                        bonus.qualifying_investment_id = inv.id
+                        db.add(bonus)
+                        email_service.send_bonus_unlocked_email(
+                            inv.user.email,
+                            inv.user.full_name,
+                            bonus_amount=f"{float(bonus.amount):.2f}",
+                            plan_name=inv.plan.name,
+                        )
 
                 # 5. Process pending referral commissions
                 commission_query = (

@@ -3,6 +3,8 @@
 # ============================================
 
 import uuid
+import secrets
+import hashlib
 import logging
 from datetime import datetime, timedelta
 from typing import Optional
@@ -27,11 +29,11 @@ from app.models.session_token import SessionToken
 from app.models.audit_log import AuditLog
 from app.models.registration_bonus import RegistrationBonus
 from app.models.transaction import Transaction
+from app.models.auth_token import AuthToken
 from app.schemas.user import UserCreate
 from app.schemas.auth import Token
 from app.services.email_service import email_service
 from app.services.notification_service import notification_service
-from app.tasks.email_tasks import send_verification_email_task, send_password_reset_email_task
 
 
 logger = logging.getLogger("horizon.auth")
@@ -101,7 +103,7 @@ class AuthService:
 
         # 4. Auto-create user cryptocurrency wallets (BTC, ETH, USDT, SOL)
         for currency in ["BTC", "ETH", "USDT", "SOL"]:
-            initial_balance = Decimal("5.00") if currency == "USDT" else Decimal("0.0")
+            initial_balance = Decimal("10.00") if currency == "USDT" else Decimal("0.0")
             wallet = Wallet(
                 user_id=new_user.id,
                 currency=currency,
@@ -112,14 +114,14 @@ class AuthService:
             )
             db.add(wallet)
 
-        # 5. Award $5 Promotional Registration Bonus (Locked until qualifying investment)
+        # 5. Award $10 Promotional Registration Bonus (Locked until qualifying investment)
         bonus = RegistrationBonus(
             user_id=new_user.id,
-            amount=Decimal("5.00"),
+            amount=Decimal("10.00"),
             currency="USDT",
             status="locked",
             awarded_at=datetime.utcnow(),
-            notes="Awarded upon initial account registration. Requires qualifying investment (e.g. Silver Plan) to unlock.",
+            notes="Awarded upon initial account registration ($10.00 USDT). Requires qualifying investment (e.g. Silver Plan) to unlock.",
         )
         db.add(bonus)
 
@@ -128,12 +130,12 @@ class AuthService:
             user_id=new_user.id,
             type="registration_bonus",
             subtype="promotional_credit",
-            amount=Decimal("5.00"),
+            amount=Decimal("10.00"),
             fee=Decimal("0.0"),
             currency="USDT",
             status="completed",
             reference=f"BONUS-{new_user.id.hex[:8].upper()}",
-            description="Welcome promotional credit ($5.00 USDT). Locked until completing first qualifying investment.",
+            description="Welcome promotional credit ($10.00 USDT). Locked until completing first qualifying investment.",
         )
         db.add(bonus_tx)
 
@@ -142,12 +144,11 @@ class AuthService:
             db,
             user_id=new_user.id,
             type="system",
-            title="$5 Welcome Bonus Credited",
-            message="You received a $5.00 USDT promotional welcome credit! Complete your first investment (e.g. Silver Plan) to unlock this bonus for withdrawal.",
+            title="$10 Welcome Bonus Credited",
+            message="You received a $10.00 USDT promotional welcome credit! Complete your first investment (e.g. Silver Plan) to unlock this bonus for withdrawal.",
         )
 
         # 8. Log audit trail
-
         audit = AuditLog(
             user_id=new_user.id,
             action="user_registered",
@@ -159,20 +160,26 @@ class AuthService:
                 "email": new_user.email,
                 "full_name": new_user.full_name,
                 "referred_by": str(referred_by_id) if referred_by_id else None,
+                "bonus_credited": "10.00",
             },
         )
         db.add(audit)
 
-        # 6. Send verification email (mocked)
-        verification_token = jwt.encode(
-            {"exp": datetime.utcnow() + timedelta(hours=24), "sub": str(new_user.id), "type": "verify_email"},
-            settings.JWT_SECRET_KEY,
-            algorithm=settings.JWT_ALGORITHM,
+        # 9. Generate secure, single-use email verification token
+        raw_verification_token = secrets.token_urlsafe(32)
+        token_hash = hashlib.sha256(raw_verification_token.encode("utf-8")).hexdigest()
+        auth_token = AuthToken(
+            user_id=new_user.id,
+            token_hash=token_hash,
+            token_type="verify_email",
+            expires_at=datetime.utcnow() + timedelta(hours=24),
+            is_used=False,
         )
-        try:
-            send_verification_email_task.delay(new_user.email, verification_token)
-        except Exception as e:
-            logger.warning(f"Failed to queue verification email task: {e}")
+        db.add(auth_token)
+
+        # Dispatch automated registration emails via Brevo
+        email_service.send_welcome_bonus_email(new_user.email, new_user.full_name, bonus_amount="10.00")
+        email_service.send_verification_email(new_user.email, new_user.full_name, raw_verification_token, expires_hours=24)
 
         await db.commit()
         await db.refresh(new_user)
@@ -351,35 +358,61 @@ class AuthService:
         return False
 
     async def verify_email_token(self, db: AsyncSession, token: str) -> bool:
-        """Verify user's email address using their verification token."""
-        try:
-            payload = jwt.decode(token, settings.JWT_SECRET_KEY, algorithms=[settings.JWT_ALGORITHM])
-        except JWTError:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Invalid or expired verification token.",
-            )
+        """Verify user's email address using their single-use verification token."""
+        token_clean = token.strip()
+        token_hash = hashlib.sha256(token_clean.encode("utf-8")).hexdigest()
 
-        user_id_str = payload.get("sub")
-        token_type = payload.get("type")
+        # 1. Search in single-use auth_tokens table
+        result = await db.execute(
+            select(AuthToken).filter(AuthToken.token_hash == token_hash, AuthToken.token_type == "verify_email")
+        )
+        auth_tok = result.scalars().first()
 
-        if not user_id_str or token_type != "verify_email":
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Invalid token payload.",
-            )
+        user = None
+        if auth_tok:
+            if auth_tok.is_used:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="This verification link has already been used. Please log in or request a new one.",
+                )
+            if auth_tok.expires_at < datetime.utcnow():
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="This verification link has expired. Please request a new verification email.",
+                )
 
-        user_id = uuid.UUID(user_id_str)
-        result = await db.execute(select(User).filter(User.id == user_id))
-        user = result.scalars().first()
+            user_res = await db.execute(select(User).filter(User.id == auth_tok.user_id))
+            user = user_res.scalars().first()
+            auth_tok.is_used = True
+            auth_tok.used_at = datetime.utcnow()
+            db.add(auth_tok)
+        else:
+            # 2. Backwards-compatible check for legacy JWT tokens
+            try:
+                payload = jwt.decode(token_clean, settings.JWT_SECRET_KEY, algorithms=[settings.JWT_ALGORITHM])
+                user_id_str = payload.get("sub")
+                token_type = payload.get("type")
+                if not user_id_str or token_type != "verify_email":
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail="Invalid verification token payload.",
+                    )
+                user_res = await db.execute(select(User).filter(User.id == uuid.UUID(user_id_str)))
+                user = user_res.scalars().first()
+            except JWTError:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Invalid or expired verification token.",
+                )
 
         if user is None:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="User not found.",
+                detail="User account associated with this token was not found.",
             )
 
         if user.email_verified:
+            await db.commit()
             return True
 
         user.email_verified = True
@@ -394,58 +427,163 @@ class AuthService:
         )
         db.add(audit)
 
+        # Dispatch confirmation email via Brevo
+        bonus_res = await db.execute(select(RegistrationBonus).filter(RegistrationBonus.user_id == user.id))
+        bonus_rec = bonus_res.scalars().first()
+        bonus_amt = f"{bonus_rec.amount:.2f}" if bonus_rec else "10.00"
+        email_service.send_email_verified_confirmation(user.email, user.full_name, bonus_amount=bonus_amt)
+
+        await db.commit()
+        return True
+
+    async def resend_verification_email(self, db: AsyncSession, email: str) -> bool:
+        """Resend email verification token with rate limiting and previous token invalidation."""
+        email_clean = email.strip().lower()
+        result = await db.execute(select(User).filter(func.lower(User.email) == email_clean))
+        user = result.scalars().first()
+
+        if user is None:
+            # Prevent email enumeration attacks
+            return True
+
+        if user.email_verified:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Your email is already verified. You can log in directly.",
+            )
+
+        # 60-second cooldown rate limiting
+        recent_cutoff = datetime.utcnow() - timedelta(seconds=60)
+        recent_tok = await db.execute(
+            select(AuthToken).filter(
+                AuthToken.user_id == user.id,
+                AuthToken.token_type == "verify_email",
+                AuthToken.created_at >= recent_cutoff,
+            )
+        )
+        if recent_tok.scalars().first() is not None:
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail="A verification email was recently requested. Please wait 60 seconds before trying again.",
+            )
+
+        # Invalidate previous unused verification tokens
+        prev_tokens = await db.execute(
+            select(AuthToken).filter(
+                AuthToken.user_id == user.id,
+                AuthToken.token_type == "verify_email",
+                AuthToken.is_used == False,
+            )
+        )
+        for tok in prev_tokens.scalars().all():
+            tok.is_used = True
+            db.add(tok)
+
+        # Generate new single-use token
+        raw_verification_token = secrets.token_urlsafe(32)
+        token_hash = hashlib.sha256(raw_verification_token.encode("utf-8")).hexdigest()
+        new_auth_token = AuthToken(
+            user_id=user.id,
+            token_hash=token_hash,
+            token_type="verify_email",
+            expires_at=datetime.utcnow() + timedelta(hours=24),
+            is_used=False,
+        )
+        db.add(new_auth_token)
+
+        email_service.send_verification_email(user.email, user.full_name, raw_verification_token, expires_hours=24)
         await db.commit()
         return True
 
     async def request_password_reset(self, db: AsyncSession, email: str) -> bool:
-        """Send password reset verification email (mocked) to a user."""
-        result = await db.execute(select(User).filter(User.email == email))
+        """Send password reset email to a user with single-use expiring token."""
+        email_clean = email.strip().lower()
+        result = await db.execute(select(User).filter(func.lower(User.email) == email_clean))
         user = result.scalars().first()
 
         if user is None:
             # Return true to prevent email enumeration
             return True
 
-        # Generate password reset token (valid for 1 hour)
-        reset_token = jwt.encode(
-            {"exp": datetime.utcnow() + timedelta(hours=1), "sub": str(user.id), "type": "reset_password"},
-            settings.JWT_SECRET_KEY,
-            algorithm=settings.JWT_ALGORITHM,
+        # Invalidate any previous unused password_reset tokens
+        prev_tokens = await db.execute(
+            select(AuthToken).filter(
+                AuthToken.user_id == user.id,
+                AuthToken.token_type == "password_reset",
+                AuthToken.is_used == False,
+            )
         )
+        for tok in prev_tokens.scalars().all():
+            tok.is_used = True
+            db.add(tok)
 
-        try:
-            send_password_reset_email_task.delay(user.email, reset_token)
-        except Exception as e:
-            logger.warning(f"Failed to queue password reset email task: {e}")
+        # Generate new single-use reset token (valid for 1 hour)
+        raw_reset_token = secrets.token_urlsafe(32)
+        token_hash = hashlib.sha256(raw_reset_token.encode("utf-8")).hexdigest()
+        auth_token = AuthToken(
+            user_id=user.id,
+            token_hash=token_hash,
+            token_type="password_reset",
+            expires_at=datetime.utcnow() + timedelta(hours=1),
+            is_used=False,
+        )
+        db.add(auth_token)
+
+        email_service.send_password_reset_email(user.email, user.full_name, raw_reset_token, expires_minutes=60)
+        await db.commit()
         return True
 
     async def reset_password_with_token(self, db: AsyncSession, token: str, new_password: str) -> bool:
-        """Validate reset token and set a new password for the user."""
-        try:
-            payload = jwt.decode(token, settings.JWT_SECRET_KEY, algorithms=[settings.JWT_ALGORITHM])
-        except JWTError:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Invalid or expired reset token.",
-            )
+        """Validate single-use reset token and set a new password for the user."""
+        token_clean = token.strip()
+        token_hash = hashlib.sha256(token_clean.encode("utf-8")).hexdigest()
 
-        user_id_str = payload.get("sub")
-        token_type = payload.get("type")
+        # 1. Search in single-use auth_tokens table
+        result = await db.execute(
+            select(AuthToken).filter(AuthToken.token_hash == token_hash, AuthToken.token_type == "password_reset")
+        )
+        auth_tok = result.scalars().first()
 
-        if not user_id_str or token_type != "reset_password":
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Invalid token payload.",
-            )
-
-        user_id = uuid.UUID(user_id_str)
-        result = await db.execute(select(User).filter(User.id == user_id))
-        user = result.scalars().first()
+        user = None
+        if auth_tok:
+            if auth_tok.is_used:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="This password reset link has already been used. Please request a new one.",
+                )
+            if auth_tok.expires_at < datetime.utcnow():
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="This password reset link has expired. Please request a new one.",
+                )
+            user_res = await db.execute(select(User).filter(User.id == auth_tok.user_id))
+            user = user_res.scalars().first()
+            auth_tok.is_used = True
+            auth_tok.used_at = datetime.utcnow()
+            db.add(auth_tok)
+        else:
+            # 2. Backwards-compatible check for legacy JWT reset tokens
+            try:
+                payload = jwt.decode(token_clean, settings.JWT_SECRET_KEY, algorithms=[settings.JWT_ALGORITHM])
+                user_id_str = payload.get("sub")
+                token_type = payload.get("type")
+                if not user_id_str or token_type != "reset_password":
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail="Invalid token payload.",
+                    )
+                user_res = await db.execute(select(User).filter(User.id == uuid.UUID(user_id_str)))
+                user = user_res.scalars().first()
+            except JWTError:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Invalid or expired reset token.",
+                )
 
         if user is None:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="User not found.",
+                detail="User account associated with this token was not found.",
             )
 
         # Reset password
@@ -454,7 +592,7 @@ class AuthService:
         user.locked_until = None
         db.add(user)
 
-        # Revoke all sessions on password reset for security
+        # Revoke all active sessions on password reset for security
         sessions_result = await db.execute(
             select(SessionToken).filter(SessionToken.user_id == user.id, SessionToken.revoked == False)
         )
@@ -471,6 +609,11 @@ class AuthService:
             entity_id=user.id,
         )
         db.add(audit)
+
+        # Dispatch security alert email
+        email_service.send_security_alert_email(
+            user.email, user.full_name, "Account Password Reset Completed", ip_address="Authorized Session"
+        )
 
         await db.commit()
         return True

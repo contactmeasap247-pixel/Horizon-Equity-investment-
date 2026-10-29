@@ -35,6 +35,7 @@ from app.schemas.admin import (
     AuditLogItem,
     SecurityControlsData,
     SecurityControlsUpdateRequest,
+    AdminEmailDispatchPayload,
 )
 from app.schemas.user import UserResponse
 from app.schemas.wallet import DepositRequestResponse, WithdrawalRequestResponse, WalletResponse
@@ -505,6 +506,71 @@ async def test_send_email_template(
         template_key=key,
         recipient_email=body.recipient_email,
         variables=body.variables,
+    )
+
+
+@router.get("/emails/recipients-preview")
+async def preview_email_recipients(
+    mode: str = Query("group", description="Recipient mode: single, multiple, group, or custom"),
+    group: Optional[str] = Query(None, description="Group name: all, active_investors, unverified, pending_kyc, with_deposits, suspended"),
+    user_ids: Optional[str] = Query(None, description="Comma-separated user UUIDs"),
+    custom_email: Optional[str] = Query(None, description="Custom recipient email"),
+    current_admin: User = Depends(get_admin_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Retrieve preview of matching recipients and exact count before executing email sends."""
+    parsed_ids = []
+    if user_ids:
+        for raw_id in user_ids.split(","):
+            raw_id = raw_id.strip()
+            if raw_id:
+                try:
+                    parsed_ids.append(UUID(raw_id))
+                except ValueError:
+                    pass
+
+    return await admin_service.get_recipients_preview(
+        db,
+        mode=mode,
+        user_ids=parsed_ids if parsed_ids else None,
+        group=group,
+        custom_email=custom_email,
+    )
+
+
+@router.post("/emails/send")
+async def send_admin_email(
+    body: AdminEmailDispatchPayload,
+    current_admin: User = Depends(get_admin_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Send an email to an individual registered user, multiple users, eligible user groups,
+    or a custom address using Brevo with operational audit logging.
+    """
+    return await admin_service.send_admin_email(
+        db,
+        admin_id=current_admin.id,
+        payload=body.model_dump(),
+    )
+
+
+@router.get("/emails/logs")
+async def get_email_logs(
+    limit: int = Query(50, ge=1, le=200),
+    offset: int = Query(0, ge=0),
+    status: Optional[str] = Query(None, description="Filter by status: sent, delivered, bounced, opened, failed"),
+    search: Optional[str] = Query(None, description="Search by recipient email or subject"),
+    current_admin: User = Depends(get_admin_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Retrieve audit and delivery tracking logs for all dispatched transactional emails."""
+    return await admin_service.get_email_logs(
+        db,
+        limit=limit,
+        offset=offset,
+        status_filter=status,
+        search=search,
     )
 
 
