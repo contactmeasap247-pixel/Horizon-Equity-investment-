@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { LanguageProvider } from "@/lib/language-context";
 import NavigationProgress from "@/app/components/NavigationProgress";
+import ServerKeepAlive from "@/app/components/ServerKeepAlive";
 
 export const metadata: Metadata = {
   metadataBase: new URL(
@@ -33,6 +34,7 @@ export default function RootLayout({
         <meta httpEquiv="Content-Security-Policy" content="upgrade-insecure-requests" />
       </head>
       <body className="min-h-screen bg-canvas text-text selection:bg-accent/25 selection:text-text antialiased">
+        <ServerKeepAlive />
         <NavigationProgress />
         <LanguageProvider>{children}</LanguageProvider>
       </body>

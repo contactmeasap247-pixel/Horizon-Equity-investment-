@@ -3,7 +3,7 @@
 // ============================================
 
 import { create } from "zustand";
-import { api } from "./api";
+import { api, warmUpBackend } from "./api";
 
 interface UserProfile {
   id: string;
@@ -153,6 +153,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
         // Give the Render container time to boot (3.5s delay before next attempt)
         onStatus?.(`Server waking up from sleep... Reconnecting (attempt ${attempt + 1}/${maxAttempts})...`);
+        warmUpBackend().catch(() => {});
         await new Promise((resolve) => setTimeout(resolve, 3500));
       }
     }
@@ -162,7 +163,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   register: async (fullName, email, password, referralCode, onStatus) => {
     const cleanEmail = email.trim().toLowerCase();
-    const maxAttempts = 2;
+    const maxAttempts = 3;
     let lastError: unknown;
 
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
@@ -204,7 +205,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           throw new Error(extractErrorMessage(error, "Registration failed. Please check input parameters."));
         }
 
-        onStatus?.(`Server waking up from sleep... Retrying registration...`);
+        onStatus?.(`Server waking up from sleep... Retrying registration (attempt ${attempt + 1}/${maxAttempts})...`);
+        warmUpBackend().catch(() => {});
         await new Promise((resolve) => setTimeout(resolve, 3500));
       }
     }
@@ -239,7 +241,14 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         user: response.data,
         isAuthenticated: true,
       });
-    } catch {
+    } catch (error: unknown) {
+      const status = (error as { response?: { status?: number } })?.response?.status;
+      if (status === 401 || status === 403) {
+        if (typeof window !== "undefined") {
+          localStorage.removeItem("he_access_token");
+          localStorage.removeItem("he_refresh_token");
+        }
+      }
       set({
         user: null,
         isAuthenticated: false,
@@ -252,15 +261,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
     const accessToken = typeof window !== "undefined" ? localStorage.getItem("he_access_token") : null;
     if (accessToken) {
-      try {
-        await get().fetchProfile();
-      } catch {
-        console.warn("Session restore failed, cleaning tokens.");
-        if (typeof window !== "undefined") {
-          localStorage.removeItem("he_access_token");
-          localStorage.removeItem("he_refresh_token");
-        }
-      }
+      await get().fetchProfile();
     }
     set({ isInitialized: true });
   },

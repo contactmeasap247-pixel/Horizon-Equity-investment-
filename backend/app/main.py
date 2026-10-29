@@ -5,15 +5,63 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
+import asyncio
+import os
 import uvicorn
 
 from app.core.config import settings
-from app.core.database import engine, Base
+from app.core.database import engine, Base, async_session
 from app.api.v1.router import api_router
 from app.middleware import LoggingMiddleware, RateLimitMiddleware, MaintenanceMiddleware
 
 # Import all models so they are registered with SQLAlchemy
 import app.models  # noqa: F401
+
+
+async def _self_keepalive_loop():
+    """Background self-keepalive task to prevent Render container idle sleep
+    and serverless PostgreSQL (Neon/Supabase) cold-starts.
+    Runs every 4 minutes (240s), well below the 5-minute DB idle threshold
+    and Render's 15-minute container sleep window.
+    """
+    import httpx
+    from sqlalchemy import text
+
+    external_url = (
+        os.getenv("RENDER_EXTERNAL_URL")
+        or os.getenv("BACKEND_PUBLIC_URL")
+        or "https://horizon-equity-backend.onrender.com"
+    ).rstrip("/")
+
+    # Initial delay after startup before beginning periodic keep-alive
+    await asyncio.sleep(60)
+
+    while True:
+        try:
+            # 1. Keep PostgreSQL connection pool warm (prevents serverless DB scale-to-zero)
+            async with async_session() as session:
+                await session.execute(text("SELECT 1"))
+        except asyncio.CancelledError:
+            break
+        except Exception as e:
+            print(f"[KEEPALIVE] Database warm-up ping warning: {e}")
+
+        try:
+            # 2. Ping external Render URL through edge router to reset inactivity timer
+            async with httpx.AsyncClient(timeout=15.0) as client:
+                await client.get(
+                    f"{external_url}/health",
+                    headers={"User-Agent": "HorizonEquity-KeepAlive/1.0"},
+                )
+        except asyncio.CancelledError:
+            break
+        except Exception:
+            pass
+
+        try:
+            await asyncio.sleep(240)
+        except asyncio.CancelledError:
+            break
 
 
 @asynccontextmanager
@@ -38,11 +86,19 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         print(f"[WARN] Investment plans auto-sync deferred: {e}")
 
+    # Launch background keep-alive loop to prevent idle sleep
+    keepalive_task = asyncio.create_task(_self_keepalive_loop())
+    print("[OK] Background keep-alive daemon started (240s interval)")
     print(f"[INFO] API Docs: http://localhost:8000/api/docs")
 
     yield
 
     # Shutdown
+    keepalive_task.cancel()
+    try:
+        await keepalive_task
+    except asyncio.CancelledError:
+        pass
     await engine.dispose()
     print("[STOP] Application shutdown")
 
@@ -121,8 +177,8 @@ async def health():
     }
 
 
-@app.get("/health/ready", tags=["Health"])
-@app.get("/api/v1/health/ready", tags=["Health"])
+@app.api_route("/health/ready", methods=["GET", "HEAD"], tags=["Health"])
+@app.api_route("/api/v1/health/ready", methods=["GET", "HEAD"], tags=["Health"])
 async def health_ready():
     """Database readiness probe.
     Separated from the lightweight keep-alive liveness check to prevent
@@ -130,7 +186,6 @@ async def health_ready():
     """
     from datetime import datetime
     from sqlalchemy import text
-    from app.core.database import async_session
 
     db_status = "ok"
     try:

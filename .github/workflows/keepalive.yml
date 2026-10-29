@@ -2,37 +2,40 @@ name: Render 24/7 Keepalive Ping
 
 on:
   schedule:
-    # Ping every 10 minutes to stay safely below Render's 15-minute inactivity timeout.
-    # Note: On GitHub Actions private repositories, monthly runtime is bounded by account quotas.
-    # For zero-cost 24/7 coverage, complementary free webhook monitors (e.g., cron-job.org) can ping the same endpoint.
-    - cron: '*/10 * * * *'
+    # Ping every 5 minutes to stay well below Render's 15-minute container inactivity timeout
+    # and serverless PostgreSQL's 5-minute idle connection timeout.
+    - cron: '*/5 * * * *'
   workflow_dispatch:
 
 jobs:
   ping:
-    name: Keep Render Backend Awake
+    name: Keep Render Backend & Database Awake
     runs-on: ubuntu-latest
     steps:
-      - name: Ping Render Backend Health Check
+      - name: Ping Render Backend Health & Readiness Probes
         run: |
           echo "=================================================="
           echo "Pinging Horizon Equity Backend on Render..."
-          echo "Endpoint: https://horizon-equity-backend.onrender.com/health"
-          echo "Started: $(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+          echo "Liveness:  https://horizon-equity-backend.onrender.com/health"
+          echo "Readiness: https://horizon-equity-backend.onrender.com/health/ready"
+          echo "Started:   $(date -u +'%Y-%m-%dT%H:%M:%SZ')"
           echo "=================================================="
 
-          MAX_ATTEMPTS=2
+          MAX_ATTEMPTS=3
           ATTEMPT=1
           SUCCESS=0
 
           while [ $ATTEMPT -le $MAX_ATTEMPTS ]; do
-            echo "[Attempt $ATTEMPT/$MAX_ATTEMPTS] Sending health request..."
+            echo "[Attempt $ATTEMPT/$MAX_ATTEMPTS] Sending liveness health request..."
             # Use 45s timeout to allow Render container cold-start to complete if sleeping
             STATUS_CODE=$(curl -s -S -o /dev/null -w "%{http_code}" --max-time 45 "https://horizon-equity-backend.onrender.com/health" || echo "000")
-            echo "Response Status Code: $STATUS_CODE"
+            echo "Liveness Status Code: $STATUS_CODE"
 
             if [ "$STATUS_CODE" = "200" ]; then
-              echo "SUCCESS: Backend is alive, healthy, and responsive!"
+              echo "SUCCESS: Backend container is alive and responsive!"
+              # Also warm up the database connection pool via /health/ready
+              READY_CODE=$(curl -s -S -o /dev/null -w "%{http_code}" --max-time 30 "https://horizon-equity-backend.onrender.com/health/ready" || echo "000")
+              echo "Database Readiness Status Code: $READY_CODE"
               SUCCESS=1
               break
             else

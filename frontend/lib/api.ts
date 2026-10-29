@@ -2,7 +2,12 @@
 // HORIZON EQUITY - API CLIENT (AXIOS)
 // ============================================
 
-import axios from "axios";
+import axios, { InternalAxiosRequestConfig } from "axios";
+
+interface RetryableAxiosRequestConfig extends InternalAxiosRequestConfig {
+  _retry?: boolean;
+  _wakeupRetries?: number;
+}
 
 const getApiUrl = (): string => {
   let url = (process.env.NEXT_PUBLIC_API_URL || "").trim();
@@ -48,27 +53,41 @@ export const api = axios.create({
   },
 });
 
+let activeWarmupPromise: Promise<boolean> | null = null;
+
 /**
- * Asynchronous background pre-warming for the Render backend.
+ * Asynchronous background pre-warming for the Render backend and database pool.
+ * Deduplicated so concurrent calls share the same wake-up probe.
  * Non-blocking, fails silently without interfering with user operations.
- * Starts waking up the sleeping free-tier instance as soon as users view the site.
  */
 export const warmUpBackend = async (): Promise<boolean> => {
   if (typeof window === "undefined") return false;
-  try {
-    let rootUrl = API_URL.replace(/\/api\/v1\/?$/, "");
-    if (window.location.protocol === "https:" && rootUrl.startsWith("http://")) {
-      rootUrl = "https://" + rootUrl.slice(7);
+  if (activeWarmupPromise) return activeWarmupPromise;
+
+  activeWarmupPromise = (async () => {
+    try {
+      let rootUrl = API_URL.replace(/\/api\/v1\/?$/, "");
+      if (window.location.protocol === "https:" && rootUrl.startsWith("http://")) {
+        rootUrl = "https://" + rootUrl.slice(7);
+      }
+
+      // Trigger local Next.js keep-alive proxy (warms both container & DB pool) in parallel with direct ping
+      fetch("/api/keepalive", { method: "GET", cache: "no-store" }).catch(() => {});
+
+      const res = await fetch(`${rootUrl}/health`, {
+        method: "GET",
+        mode: "cors",
+        cache: "no-store",
+      });
+      return res.ok;
+    } catch {
+      return false;
+    } finally {
+      activeWarmupPromise = null;
     }
-    const res = await fetch(`${rootUrl}/health`, {
-      method: "GET",
-      mode: "cors",
-      cache: "no-store",
-    });
-    return res.ok;
-  } catch {
-    return false;
-  }
+  })();
+
+  return activeWarmupPromise;
 };
 
 // Interceptor to inject JWT access tokens and guard against mixed content
@@ -113,17 +132,51 @@ const processQueue = (error: unknown, token: string | null = null) => {
   failedQueue = [];
 };
 
+const MAX_WAKEUP_RETRIES = 2;
+
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
-    const originalRequest = error.config;
+    const originalRequest = error.config as RetryableAxiosRequestConfig | undefined;
+    if (!originalRequest) {
+      return Promise.reject(error);
+    }
 
-    // Check if error is 401 (Unauthorized) and not a retry.
+    const status = error.response?.status;
+    const isMaintenance = Boolean(error.response?.data?.maintenance);
+
+    // 1. Automatic resilience against Render server idle sleep / cold-start gateway errors
+    const isColdStartOrNetworkError =
+      !isMaintenance &&
+      (error.code === "ECONNABORTED" ||
+        !error.response ||
+        status === 502 ||
+        status === 503 ||
+        status === 504 ||
+        Boolean(error.message?.includes("Network Error")) ||
+        Boolean(error.message?.includes("timeout")));
+
+    const reqUrl = originalRequest.url || "";
+    const isAuthRequest =
+      reqUrl.includes("/auth/login") ||
+      reqUrl.includes("/auth/register") ||
+      reqUrl.includes("/auth/refresh");
+
+    // Auth store handles its own status-reporting retry loop for login/register;
+    // all other API requests automatically retry here when waking the backend.
+    if (isColdStartOrNetworkError && !isAuthRequest) {
+      const retryCount = originalRequest._wakeupRetries ?? 0;
+      if (retryCount < MAX_WAKEUP_RETRIES) {
+        originalRequest._wakeupRetries = retryCount + 1;
+        await warmUpBackend();
+        await new Promise((resolve) => setTimeout(resolve, 2500));
+        return api(originalRequest);
+      }
+    }
+
+    // 2. Check if error is 401 (Unauthorized) and not a retry.
     // Never attempt token rotation on auth flows (login, register, refresh).
-    const reqUrl = originalRequest?.url || "";
-    const isAuthRequest = reqUrl.includes("/auth/login") || reqUrl.includes("/auth/register") || reqUrl.includes("/auth/refresh");
-
-    if (error.response?.status === 401 && !originalRequest?._retry && !isAuthRequest) {
+    if (status === 401 && !originalRequest._retry && !isAuthRequest) {
       if (isRefreshing) {
         return new Promise((resolve, reject) => {
           failedQueue.push({ resolve, reject });
@@ -180,7 +233,10 @@ api.interceptors.response.use(
         processQueue(refreshError, null);
         isRefreshing = false;
 
-        if (typeof window !== "undefined") {
+        const refreshStatus = (refreshError as { response?: { status?: number } })?.response?.status;
+        // Only wipe tokens if the refresh token was genuinely rejected (401/403),
+        // not if the backend was temporarily waking from idle sleep.
+        if (typeof window !== "undefined" && (refreshStatus === 401 || refreshStatus === 403)) {
           localStorage.removeItem("he_access_token");
           localStorage.removeItem("he_refresh_token");
           window.location.href = "/login";
