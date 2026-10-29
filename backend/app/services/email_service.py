@@ -41,9 +41,23 @@ class EmailService:
             logger.error(f"Failed to send email to {to_email} via SMTP: {e}")
 
     @staticmethod
+    def _get_frontend_url() -> str:
+        """Resolve secure frontend base URL for verification and password reset links."""
+        url = (settings.VERCEL_FRONTEND_URL or "").strip()
+        if not url:
+            return "http://localhost:3000" if settings.DEBUG else "https://horizon-equity-investment.vercel.app"
+        url = url.rstrip("/")
+        if url.startswith("http://") and "localhost" not in url and "127.0.0.1" not in url:
+            url = "https://" + url[7:]
+        elif not url.startswith("http://") and not url.startswith("https://"):
+            url = f"https://{url}"
+        return url
+
+    @staticmethod
     def send_verification_email(email: str, token: str):
         """Send an email verification message."""
-        verification_link = f"http://localhost:3000/auth/verify-email?token={token}"
+        base_url = EmailService._get_frontend_url()
+        verification_link = f"{base_url}/auth/verify-email?token={token}"
         text_content = f"Please verify your account by clicking the link: {verification_link}"
         html_content = f"""
         <html>
@@ -60,7 +74,8 @@ class EmailService:
     @staticmethod
     def send_password_reset_email(email: str, token: str):
         """Send a password reset email."""
-        reset_link = f"http://localhost:3000/auth/reset-password?token={token}"
+        base_url = EmailService._get_frontend_url()
+        reset_link = f"{base_url}/auth/reset-password?token={token}"
         text_content = f"We received a request to reset your password. Please click the link to reset your password: {reset_link}"
         html_content = f"""
         <html>

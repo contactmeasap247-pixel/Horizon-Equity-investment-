@@ -5,10 +5,28 @@
 import axios from "axios";
 
 const getApiUrl = (): string => {
-  let url = process.env.NEXT_PUBLIC_API_URL;
-  if (!url || (typeof window !== "undefined" && window.location.hostname !== "localhost" && url.includes("localhost"))) {
+  let url = (process.env.NEXT_PUBLIC_API_URL || "").trim();
+
+  const isBrowser = typeof window !== "undefined";
+  const isHttps = isBrowser && window.location.protocol === "https:";
+  const isRemoteBrowser = isBrowser && window.location.hostname !== "localhost" && window.location.hostname !== "127.0.0.1";
+  const isProduction = process.env.NODE_ENV === "production";
+
+  // If unconfigured, or in production / remote browser pointing to localhost, fallback to secure production backend
+  if (!url || ((isRemoteBrowser || isProduction) && (url.includes("localhost") || url.includes("127.0.0.1")))) {
     url = "https://horizon-equity-backend.onrender.com/api/v1";
   }
+
+  // Prevent mixed content: ensure protocol is HTTPS if page is served over HTTPS or for any remote endpoint
+  if (url.startsWith("http://")) {
+    const isLocalEndpoint = url.includes("localhost") || url.includes("127.0.0.1");
+    if (!isLocalEndpoint || isHttps || isProduction) {
+      url = "https://" + url.slice(7);
+    }
+  } else if (url.startsWith("//")) {
+    url = "https:" + url;
+  }
+
   url = url.trim().replace(/\/+$/, "");
   if (!url.endsWith("/api/v1")) {
     if (url.endsWith("/api")) {
@@ -38,7 +56,10 @@ export const api = axios.create({
 export const warmUpBackend = async (): Promise<boolean> => {
   if (typeof window === "undefined") return false;
   try {
-    const rootUrl = API_URL.replace(/\/api\/v1\/?$/, "");
+    let rootUrl = API_URL.replace(/\/api\/v1\/?$/, "");
+    if (window.location.protocol === "https:" && rootUrl.startsWith("http://")) {
+      rootUrl = "https://" + rootUrl.slice(7);
+    }
     const res = await fetch(`${rootUrl}/health`, {
       method: "GET",
       mode: "cors",
@@ -50,9 +71,19 @@ export const warmUpBackend = async (): Promise<boolean> => {
   }
 };
 
-// Interceptor to inject JWT access tokens
+// Interceptor to inject JWT access tokens and guard against mixed content
 api.interceptors.request.use(
   (config) => {
+    // Mixed Content Guard: Ensure outgoing API requests strictly use HTTPS when on an HTTPS origin
+    if (typeof window !== "undefined" && window.location.protocol === "https:") {
+      if (config.baseURL && config.baseURL.startsWith("http://") && !config.baseURL.includes("localhost")) {
+        config.baseURL = "https://" + config.baseURL.slice(7);
+      }
+      if (config.url && config.url.startsWith("http://") && !config.url.includes("localhost")) {
+        config.url = "https://" + config.url.slice(7);
+      }
+    }
+
     if (typeof window !== "undefined") {
       const token = localStorage.getItem("he_access_token");
       if (token) {
@@ -122,8 +153,12 @@ api.interceptors.response.use(
       }
 
       try {
+        let refreshUrl = `${API_URL}/auth/refresh`;
+        if (typeof window !== "undefined" && window.location.protocol === "https:" && refreshUrl.startsWith("http://") && !refreshUrl.includes("localhost")) {
+          refreshUrl = "https://" + refreshUrl.slice(7);
+        }
         // Request token refresh
-        const response = await axios.post(`${API_URL}/auth/refresh`, {
+        const response = await axios.post(refreshUrl, {
           refresh_token: refreshToken,
         });
 
