@@ -54,12 +54,14 @@ class Settings(BaseSettings):
     ADMIN_EMAIL: str = "only-me@gmail.com"
     ADMIN_PASSWORD: str = "connect@me-alone"
 
-    # Email
-    SMTP_HOST: str = "smtp.gmail.com"
+    # Email (Brevo SMTP & API)
+    SMTP_HOST: str = "smtp-relay.brevo.com"
     SMTP_PORT: int = 587
-    SMTP_USER: str = "noreply@horizonequity.com"
+    SMTP_USER: str = ""
     SMTP_PASSWORD: str = "stub-password"
     SMTP_FROM: str = "noreply@horizonequity.com"
+    SMTP_FROM_NAME: str = "Horizon Equity"
+    BREVO_API_KEY: Optional[str] = None
 
     # Security
     RATE_LIMIT_PER_MINUTE: int = 240

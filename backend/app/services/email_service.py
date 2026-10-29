@@ -16,29 +16,59 @@ class EmailService:
 
     @staticmethod
     def _send_email(to_email: str, subject: str, html_content: str, text_content: str):
-        if settings.SMTP_PASSWORD == "stub-password":
-            logger.info(f"[STUB EMAIL] To: {to_email} | Subject: {subject}\nContent: {text_content}")
-            print(f"\n[MOCK EMAIL]\nTo: {to_email}\nSubject: {subject}\n{text_content}\n")
-            return
+        sender_name = getattr(settings, "SMTP_FROM_NAME", "Horizon Equity")
 
-        try:
-            msg = MIMEMultipart("alternative")
-            msg["Subject"] = subject
-            msg["From"] = settings.SMTP_FROM
-            msg["To"] = to_email
+        # 1. Brevo REST API (HTTPS - bypasses any outbound SMTP port restrictions on Render/cloud)
+        if settings.BREVO_API_KEY and settings.BREVO_API_KEY.strip() and settings.BREVO_API_KEY != "stub-brevo-key":
+            try:
+                import httpx
+                payload = {
+                    "sender": {"name": sender_name, "email": settings.SMTP_FROM},
+                    "to": [{"email": to_email}],
+                    "subject": subject,
+                    "htmlContent": html_content,
+                    "textContent": text_content,
+                }
+                headers = {
+                    "accept": "application/json",
+                    "api-key": settings.BREVO_API_KEY.strip(),
+                    "content-type": "application/json",
+                }
+                with httpx.Client(timeout=10.0) as client:
+                    resp = client.post("https://api.brevo.com/v3/smtp/email", json=payload, headers=headers)
+                if resp.status_code in (200, 201, 202):
+                    logger.info(f"Email successfully sent to {to_email} via Brevo API")
+                    return
+                else:
+                    logger.error(f"Brevo API error ({resp.status_code}): {resp.text}")
+            except Exception as e:
+                logger.error(f"Failed to send email to {to_email} via Brevo API: {e}")
 
-            part1 = MIMEText(text_content, "plain")
-            part2 = MIMEText(html_content, "html")
-            msg.attach(part1)
-            msg.attach(part2)
+        # 2. Brevo or Generic SMTP Relay
+        if settings.SMTP_PASSWORD and settings.SMTP_PASSWORD != "stub-password" and settings.SMTP_USER:
+            try:
+                msg = MIMEMultipart("alternative")
+                msg["Subject"] = subject
+                msg["From"] = f"{sender_name} <{settings.SMTP_FROM}>"
+                msg["To"] = to_email
 
-            with smtplib.SMTP(settings.SMTP_HOST, settings.SMTP_PORT) as server:
-                server.starttls()
-                server.login(settings.SMTP_USER, settings.SMTP_PASSWORD)
-                server.sendmail(settings.SMTP_FROM, to_email, msg.as_string())
-            logger.info(f"Email successfully sent to {to_email} via SMTP")
-        except Exception as e:
-            logger.error(f"Failed to send email to {to_email} via SMTP: {e}")
+                part1 = MIMEText(text_content, "plain")
+                part2 = MIMEText(html_content, "html")
+                msg.attach(part1)
+                msg.attach(part2)
+
+                with smtplib.SMTP(settings.SMTP_HOST, settings.SMTP_PORT, timeout=15) as server:
+                    server.starttls()
+                    server.login(settings.SMTP_USER, settings.SMTP_PASSWORD)
+                    server.sendmail(settings.SMTP_FROM, to_email, msg.as_string())
+                logger.info(f"Email successfully sent to {to_email} via SMTP ({settings.SMTP_HOST})")
+                return
+            except Exception as e:
+                logger.error(f"Failed to send email to {to_email} via SMTP: {e}")
+
+        # 3. Fallback mock / stub for local dev
+        logger.info(f"[STUB EMAIL] To: {to_email} | Subject: {subject}\nContent: {text_content}")
+        print(f"\n[MOCK EMAIL]\nTo: {to_email}\nSubject: {subject}\n{text_content}\n")
 
     @staticmethod
     def _get_frontend_url() -> str:
