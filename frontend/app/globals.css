@@ -1437,3 +1437,32 @@ div[data-nextjs-dev-tools],
     scroll-behavior: auto !important;
   }
 }
+
+/* Continuously Scrolling Market Ticker Track */
+@keyframes ticker-scroll {
+  0% {
+    transform: translate3d(0, 0, 0);
+  }
+  100% {
+    transform: translate3d(-50%, 0, 0);
+  }
+}
+
+.ticker-track {
+  display: flex;
+  width: max-content;
+  animation: ticker-scroll 38s linear infinite;
+  will-change: transform;
+}
+
+.ticker-track:hover {
+  animation-play-state: paused;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ticker-track {
+    animation: none !important;
+    overflow-x: auto;
+  }
+}
+

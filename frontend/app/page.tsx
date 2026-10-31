@@ -2,6 +2,7 @@
 
 import { useState, useId } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import {
   ArrowRight,
   ChevronRight,
@@ -12,14 +13,13 @@ import {
   Lock,
   Zap,
   Headphones,
-  ArrowUpRight,
-  ArrowDownRight,
   Plus,
   Flame,
   Building2,
 } from "lucide-react";
 import PublicNav from "@/app/components/PublicNav";
 import PublicFooter from "@/app/components/PublicFooter";
+import MarketTicker from "@/app/components/MarketTicker";
 import { useLanguage } from "@/lib/language-context";
 import { useMarketPrices } from "@/lib/use-market-prices";
 
@@ -164,25 +164,11 @@ const FAQ_ITEMS = [
 
 export default function HomePage() {
   const { t, dir } = useLanguage();
-  const { rates, categories } = useMarketPrices();
+  const { categories, ticker, isStale } = useMarketPrices();
   const [calcPlan, setCalcPlan] = useState(INVESTMENT_PLANS[1]);
   const [calcAmount, setCalcAmount] = useState(750);
   const [openFaq, setOpenFaq] = useState<number | null>(0);
   const calcAmountId = useId();
-
-  // Real-time dynamic ticker items from live streaming rates
-  const liveTickerItems = categories.length > 0
-    ? categories.flatMap((c) => c.items)
-    : [
-        { symbol: "BTC/USD", name: "Bitcoin", price: `$${rates.BTC.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, change: "+1.84%", up: true },
-        { symbol: "ETH/USD", name: "Ethereum", price: `$${rates.ETH.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, change: "-0.42%", up: false },
-        { symbol: "SOL/USD", name: "Solana", price: `$${rates.SOL.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, change: "+3.15%", up: true },
-        { symbol: "GOLD", name: "Gold Spot", price: `$${rates.GOLD.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, change: "+0.85%", up: true },
-        { symbol: "SILVER", name: "Silver Spot", price: `$${rates.SILVER.toFixed(2)}`, change: "+1.12%", up: true },
-        { symbol: "EUR/USD", name: "Euro / USD", price: rates.EUR_USD.toFixed(4), change: "+0.18%", up: true },
-        { symbol: "CRUDE", name: "Brent Crude", price: `$${rates.CRUDE.toFixed(2)}`, change: "-0.65%", up: false },
-        { symbol: "SPX", name: "S&P 500", price: rates.SPX.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }), change: "+0.72%", up: true },
-      ];
 
   // Dynamic yields
   const totalProfit = calcAmount * (calcPlan.rate / 100);
@@ -201,22 +187,19 @@ export default function HomePage() {
           HERO SECTION (MULTI-ASSET TRADING)
           ────────────────────────────────────────── */}
       <section className="relative min-h-[640px] lg:min-h-[720px] flex items-center overflow-hidden border-b border-[#263345]">
-        {/* Background image & deep directional navy gradient overlay */}
+        {/* Desktop full-bleed visual backdrop (lg and above) */}
         <div
-          className="absolute inset-0 bg-cover bg-center lg:bg-right pointer-events-none"
+          className="hidden lg:block absolute inset-y-0 right-0 w-[55%] xl:w-[60%] bg-cover bg-[center_right] pointer-events-none"
           style={{ backgroundImage: "url('/hero-multi-asset.jpg')" }}
         />
-        <div
-          className="absolute inset-0 pointer-events-none bg-gradient-to-r from-[#080C12] via-[#080C12]/95 via-[55%] md:via-[60%] to-[#080C12]/40"
-        />
-        <div
-          className="absolute inset-0 pointer-events-none bg-gradient-to-t from-[#080C12] via-transparent to-[#080C12]/70"
-        />
+        {/* Directional desktop gradients preserving left-side text clarity while leaving right visual vibrant */}
+        <div className="hidden lg:block absolute inset-0 pointer-events-none bg-gradient-to-r from-[#080C12] via-[#080C12]/85 via-[45%] to-transparent" />
+        <div className="hidden lg:block absolute inset-0 pointer-events-none bg-gradient-to-t from-[#080C12] via-transparent to-[#080C12]/60" />
 
-        <div className="container-page relative z-10 py-16 md:py-24">
+        <div className="container-page relative z-10 py-12 sm:py-16 md:py-24">
           <div className="max-w-2xl lg:max-w-3xl text-left">
             {/* Supporting kicker */}
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded bg-[#111A26] border border-[#263345] text-xs font-mono text-[#A0AEC0] mb-6 animate-fade">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded bg-[#111A26] border border-[#263345] text-xs font-mono text-[#A0AEC0] mb-5 sm:mb-6 animate-fade">
               <span className="w-1.5 h-1.5 rounded-full bg-[#4C8DFF] animate-pulse" />
               <span className="tracking-wider uppercase font-semibold text-[11px]">
                 {t("hero_kicker")}
@@ -224,18 +207,48 @@ export default function HomePage() {
             </div>
 
             {/* Heading */}
-            <h1 className="t-display text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight mb-6 leading-[1.08] animate-rise">
+            <h1 className="t-display text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight mb-4 sm:mb-6 leading-[1.08] animate-rise">
               {t("hero_title_1")}<br />
               <span className="text-[#4C8DFF]">{t("hero_title_2")}</span>
             </h1>
 
             {/* Subtitle */}
-            <p className="text-base sm:text-lg text-[#A0AEC0] max-w-xl leading-relaxed mb-8 animate-rise delay-1 font-sans">
+            <p className="text-base sm:text-lg text-[#A0AEC0] max-w-xl leading-relaxed mb-6 sm:mb-8 animate-rise delay-1 font-sans">
               {t("hero_subtitle")}
             </p>
 
+            {/* Mobile & Tablet Dedicated Hero Visual Frame (Visible on mobile/tablet, never obscured by text) */}
+            <div className="block lg:hidden my-6 w-full relative rounded-2xl overflow-hidden border border-[#263345] bg-[#0E1520] shadow-[0_12px_40px_rgba(0,0,0,0.6)] animate-rise delay-2 group">
+              <div className="relative w-full aspect-[16/10] sm:aspect-[16/9]">
+                <Image
+                  src="/hero-multi-asset.jpg"
+                  alt="Diversified Multi-Asset Institutional Markets - Gold Bullion, Digital Assets, Global Equities, Energy"
+                  fill
+                  priority
+                  sizes="(max-width: 768px) 100vw, (max-width: 1024px) 80vw, 50vw"
+                  className="object-cover object-[72%_center]"
+                />
+                {/* Subtle vignette border gradient */}
+                <div className="absolute inset-0 bg-gradient-to-t from-[#080C12]/90 via-transparent to-transparent pointer-events-none" />
+                <div className="absolute inset-0 ring-1 ring-inset ring-white/10 rounded-2xl pointer-events-none" />
+
+                {/* Floating asset badge pills */}
+                <div className="absolute bottom-2.5 inset-x-2.5 sm:bottom-3 sm:inset-x-3 flex items-center justify-between text-[11px] font-mono text-[#F1F5F9] pointer-events-none">
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#080C12]/85 backdrop-blur-md border border-[#263345] shadow-lg">
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#31C48D] animate-pulse" />
+                    <span className="text-[10px] sm:text-[11px] tracking-wide font-medium text-[#E2E8F0]">
+                      Bullion · Crypto · Real Estate · Energy
+                    </span>
+                  </span>
+                  <span className="hidden xs:inline-flex items-center px-2 py-0.5 rounded bg-[#080C12]/80 backdrop-blur-md text-[10px] text-[#A0AEC0] border border-white/5">
+                    Multi-Asset Prime
+                  </span>
+                </div>
+              </div>
+            </div>
+
             {/* Call to Actions */}
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3.5 mb-14 animate-rise delay-2">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3.5 mb-10 sm:mb-14 animate-rise delay-2">
               <Link
                 href="/register"
                 className="btn btn-primary btn-lg justify-center shadow-lg font-mono text-sm tracking-wide"
@@ -284,44 +297,12 @@ export default function HomePage() {
       </section>
 
       {/* ──────────────────────────────────────────
-          REAL-TIME MARKET TICKER TAPE
+          REAL-TIME MARKET TICKER TAPE (CONTINUOUS SCROLLING)
           ────────────────────────────────────────── */}
-      <section
-        className="py-3 bg-[#0B0F14] border-b border-white/10 overflow-hidden"
-        aria-label="Market Data"
-      >
-        <div className="flex gap-4 items-center whitespace-nowrap overflow-x-auto scrollbar-none px-6">
-          <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-[#7D8998] shrink-0 pr-4 border-r border-white/10 font-mono">
-            <span className="w-2 h-2 rounded-full bg-[#27C58B] animate-pulse" />
-            <span>{t("live_markets")}</span>
-          </div>
-
-          <div className="flex items-center gap-6 shrink-0">
-            {liveTickerItems.map((item, idx) => (
-              <Link
-                key={idx}
-                href="/markets"
-                className="inline-flex items-center gap-2.5 text-xs font-medium hover:text-white transition-colors"
-              >
-                <span className="font-semibold text-[#F5F7FA] font-mono">{item.symbol}</span>
-                <span className="num text-[#A6B0BE] font-mono">{item.price}</span>
-                <span
-                  className={`num font-semibold inline-flex items-center gap-0.5 font-mono ${
-                    item.up ? "text-[#27C58B]" : "text-[#F06464]"
-                  }`}
-                >
-                  {item.up ? (
-                    <ArrowUpRight className="w-3 h-3" />
-                  ) : (
-                    <ArrowDownRight className="w-3 h-3" />
-                  )}
-                  {item.change}
-                </span>
-              </Link>
-            ))}
-          </div>
-        </div>
-      </section>
+      <MarketTicker
+        items={ticker.length > 0 ? ticker : categories.flatMap((c) => c.items)}
+        isStale={isStale}
+      />
 
       {/* ──────────────────────────────────────────
           CORE CAPABILITIES / ECOSYSTEM PILLARS
