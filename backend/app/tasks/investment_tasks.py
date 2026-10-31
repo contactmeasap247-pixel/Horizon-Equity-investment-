@@ -94,8 +94,9 @@ async def check_matured_investments():
                     message=f"Your investment of {inv.amount} {inv.currency} in the {inv.plan.name} Tier has matured! A total return of {inv.expected_return} {inv.currency} was credited to your wallet.",
                 )
 
-                # Dispatch investment matured email & unlock promotional registration bonus
+                # Dispatch investment matured email & unlock promotional registration bonus in user's saved language
                 if inv.user:
+                    user_lang = getattr(inv.user, "preferred_language", "en") or "en"
                     email_service.send_investment_matured_email(
                         inv.user.email,
                         inv.user.full_name,
@@ -103,6 +104,7 @@ async def check_matured_investments():
                         str(inv.amount),
                         str(inv.expected_return),
                         inv.currency,
+                        lang=user_lang,
                     )
 
                     # Check and unlock welcome bonus
@@ -122,6 +124,7 @@ async def check_matured_investments():
                             inv.user.full_name,
                             bonus_amount=f"{float(bonus.amount):.2f}",
                             plan_name=inv.plan.name,
+                            lang=user_lang,
                         )
 
                 # 5. Process pending referral commissions

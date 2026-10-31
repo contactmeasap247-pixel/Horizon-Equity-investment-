@@ -17,40 +17,39 @@ export default function PublicFooter() {
           <div className="col-span-2 flex flex-col gap-4">
             <BrandLogo size="md" href="/" />
             <p className="text-xs text-[#7D8998] leading-relaxed max-w-sm mt-1">
-              {t("footer_desc") ||
-                "Horizon Equity delivers institutional-grade multi-asset allocation, algorithmic yield strategies, and deep liquidity across digital currencies, equities, and sovereign debt."}
+              {t("footer_desc")}
             </p>
 
             <div className="inline-flex items-center gap-2 self-start px-2.5 py-1 rounded bg-[#111821] border border-white/10 text-[11px] text-[#27C58B]">
               <span className="w-1.5 h-1.5 rounded-full bg-[#27C58B] animate-pulse" />
-              <span>{t("footer_cluster") || "Core Systems Operational • 100% Uptime"}</span>
+              <span>{t("footer_cluster")}</span>
             </div>
           </div>
 
           {/* Investment Products */}
           <div className="flex flex-col gap-3">
             <h4 className="text-[11px] font-semibold uppercase tracking-wider text-[#F5F7FA] font-mono">
-              {t("footer_ecosystem") || "Products"}
+              {t("footer_ecosystem")}
             </h4>
             <ul className="flex flex-col gap-2.5 text-xs font-mono">
               <li>
                 <Link href="/plans" className="hover:text-white transition-colors">
-                  {t("nav_plans") || "Structured Plans"}
+                  {t("nav_plans")}
                 </Link>
               </li>
               <li>
                 <Link href="/markets" className="hover:text-white transition-colors">
-                  {t("nav_markets") || "Markets & Orderbooks"}
+                  {t("nav_markets")}
                 </Link>
               </li>
               <li>
                 <Link href="/calculator" className="hover:text-white transition-colors">
-                  {t("nav_calculator") || "Yield Simulator"}
+                  {t("nav_calculator")}
                 </Link>
               </li>
               <li>
                 <Link href="/copy-trading" className="hover:text-white transition-colors">
-                  {t("nav_copy") || "Copy Trading Network"}
+                  {t("nav_copy")}
                 </Link>
               </li>
             </ul>
@@ -59,32 +58,32 @@ export default function PublicFooter() {
           {/* Asset Classes */}
           <div className="flex flex-col gap-3">
             <h4 className="text-[11px] font-semibold uppercase tracking-wider text-[#F5F7FA] font-mono">
-              {t("footer_markets") || "Asset Classes"}
+              {t("footer_markets")}
             </h4>
             <ul className="flex flex-col gap-2.5 text-xs">
               <li>
                 <Link href="/markets" className="hover:text-white transition-colors">
-                  Precious Metals &amp; Gold
+                  {t("Precious Metals & Gold")}
                 </Link>
               </li>
               <li>
                 <Link href="/markets" className="hover:text-white transition-colors">
-                  Crypto (BTC / ETH / SOL)
+                  {t("Crypto (BTC / ETH / SOL)")}
                 </Link>
               </li>
               <li>
                 <Link href="/markets" className="hover:text-white transition-colors">
-                  Forex Hub (G10 Pairs)
+                  {t("Forex Hub (G10 Pairs)")}
                 </Link>
               </li>
               <li>
                 <Link href="/markets" className="hover:text-white transition-colors">
-                  Oil, Gas &amp; Energy Futures
+                  {t("Oil, Gas & Energy Futures")}
                 </Link>
               </li>
               <li>
                 <Link href="/markets" className="hover:text-white transition-colors">
-                  Real Estate Syndicates
+                  {t("Real Estate Syndicates")}
                 </Link>
               </li>
             </ul>
@@ -93,37 +92,37 @@ export default function PublicFooter() {
           {/* Institutional Desks & Legal */}
           <div className="flex flex-col gap-3">
             <h4 className="text-[11px] font-semibold uppercase tracking-wider text-[#F5F7FA] font-mono">
-              Desks &amp; Legal
+              {t("Desks & Legal")}
             </h4>
             <ul className="flex flex-col gap-2.5 text-xs">
               <li>
                 <Link href="/contact" className="hover:text-white transition-colors">
-                  Global Trading Desks
+                  {t("Global Trading Desks")}
                 </Link>
               </li>
               <li>
                 <Link href="/faq" className="hover:text-white transition-colors">
-                  Frequently Asked Questions
+                  {t("Frequently Asked Questions")}
                 </Link>
               </li>
               <li>
                 <Link href="/security" className="hover:text-white transition-colors">
-                  Cold Vault Security
+                  {t("Cold Vault Security")}
                 </Link>
               </li>
               <li>
                 <Link href="/terms" className="hover:text-white transition-colors">
-                  Terms and Conditions
+                  {t("Terms and Conditions")}
                 </Link>
               </li>
               <li>
                 <Link href="/privacy" className="hover:text-white transition-colors">
-                  Privacy &amp; Data Security
+                  {t("Privacy & Data Security")}
                 </Link>
               </li>
               <li>
                 <Link href="/risk" className="hover:text-[#F16B75] transition-colors">
-                  Risk Disclosure
+                  {t("Risk Disclosure")}
                 </Link>
               </li>
             </ul>
@@ -133,20 +132,19 @@ export default function PublicFooter() {
         {/* Legal Disclaimer & Bottom Bar */}
         <div className="pt-8 border-t border-white/10 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 text-xs text-[#718096]">
           <div className="flex flex-wrap items-center gap-4">
-            <p>© {currentYear} Horizon Equity Inc. {t("footer_rights") || "All rights reserved."}</p>
+            <p>© {currentYear} Horizon Equity Inc. {t("footer_rights")}</p>
             <div className="flex items-center gap-3 font-mono text-[11px]">
-              <Link href="/terms" className="hover:text-white transition-colors">Terms</Link>
+              <Link href="/terms" className="hover:text-white transition-colors">{t("Terms")}</Link>
               <span>•</span>
-              <Link href="/privacy" className="hover:text-white transition-colors">Privacy</Link>
+              <Link href="/privacy" className="hover:text-white transition-colors">{t("Privacy")}</Link>
               <span>•</span>
-              <Link href="/risk" className="hover:text-white transition-colors">Risk</Link>
+              <Link href="/risk" className="hover:text-white transition-colors">{t("Risk")}</Link>
               <span>•</span>
-              <Link href="/contact" className="hover:text-white transition-colors">Contact</Link>
+              <Link href="/contact" className="hover:text-white transition-colors">{t("Contact")}</Link>
             </div>
           </div>
           <p className="text-[11px] leading-relaxed max-w-xl text-left md:text-right">
-            {t("footer_disclaimer") ||
-              "Risk Disclosure: Multi-asset trading across precious metals, cryptocurrency, forex, energy, and real estate carries market risk of loss. Past algorithmic performance does not guarantee future results. Client reserves are held in air-gapped institutional custody."}
+            {t("footer_disclaimer")}
           </p>
         </div>
       </div>

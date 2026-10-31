@@ -16,6 +16,7 @@ class UserBase(BaseModel):
     country: Optional[str] = None
     city: Optional[str] = None
     address: Optional[str] = None
+    preferred_language: Optional[str] = "en"
     btc_wallet: Optional[str] = None
     usdt_wallet: Optional[str] = None
     eth_wallet: Optional[str] = None
@@ -35,6 +36,7 @@ class UserUpdate(BaseModel):
     country: Optional[str] = None
     city: Optional[str] = None
     address: Optional[str] = None
+    preferred_language: Optional[str] = None
     btc_wallet: Optional[str] = None
     usdt_wallet: Optional[str] = None
     eth_wallet: Optional[str] = None

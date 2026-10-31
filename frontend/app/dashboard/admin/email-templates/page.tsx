@@ -399,9 +399,9 @@ export default function AdminEmailManagementPage() {
       currency: "USDT",
       reference: "TX-78945",
       date: new Date().toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" }),
-      login_url: "https://horizon-equity-investment.vercel.app/auth/login",
-      dashboard_url: "https://horizon-equity-investment.vercel.app/dashboard",
-      rules_url: "https://horizon-equity-investment.vercel.app/dashboard/withdrawals",
+      login_url: "https://www.horizon-equity.net/auth/login",
+      dashboard_url: "https://www.horizon-equity.net/dashboard",
+      rules_url: "https://www.horizon-equity.net/dashboard/withdrawals",
       support_email: "support@horizonequity.net",
     };
     Object.entries(samples).forEach(([k, v]) => {

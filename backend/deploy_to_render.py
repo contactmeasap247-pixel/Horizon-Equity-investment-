@@ -107,12 +107,13 @@ def deploy():
         print("[ERROR] ADMIN_PASSWORD is missing in environment or backend/.env")
         sys.exit(1)
 
-    allowed_origins = f"{VERCEL_FRONTEND_URL},http://localhost:3000,http://localhost:8000"
+    allowed_origins = f"https://www.horizon-equity.net,https://horizon-equity.net,{VERCEL_FRONTEND_URL},http://localhost:3000,http://localhost:8000"
 
     env_vars = [
         {"key": "DATABASE_URL", "value": db_url},
         {"key": "REDIS_URL", "value": redis_url},
         {"key": "ALLOWED_ORIGINS", "value": allowed_origins},
+        {"key": "CUSTOM_DOMAIN", "value": "horizon-equity.net"},
         {"key": "VERCEL_FRONTEND_URL", "value": VERCEL_FRONTEND_URL},
         {"key": "JWT_SECRET_KEY", "value": jwt_secret},
         {"key": "JWT_ALGORITHM", "value": "HS256"},

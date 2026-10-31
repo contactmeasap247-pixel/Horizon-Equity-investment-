@@ -5,13 +5,16 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { User, Mail, Lock, Eye, EyeOff, Loader2, ArrowLeft, AlertCircle, CheckCircle2 } from "lucide-react";
 import BrandLogo from "@/app/components/BrandLogo";
+import LanguageSelector from "@/app/components/LanguageSelector";
 import { useAuthStore } from "@/lib/auth-store";
 import { warmUpBackend } from "@/lib/api";
+import { useLanguage } from "@/lib/language-context";
 
 function RegisterForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { register, isAuthenticated, isInitialized, initialize } = useAuthStore();
+  const { t } = useLanguage();
 
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
@@ -49,11 +52,11 @@ function RegisterForm() {
     if (isLoading) return;
 
     if (!fullName || !email || !password) {
-      setErrorMsg("Please populate all required fields.");
+      setErrorMsg(t("Please populate all required fields."));
       return;
     }
     if (!agreeTerms) {
-      setErrorMsg("You must accept the terms of service to open an account.");
+      setErrorMsg(t("You must accept the terms of service to open an account."));
       return;
     }
 
@@ -64,9 +67,9 @@ function RegisterForm() {
 
     try {
       await register(fullName.trim(), email.trim(), password, referralCode.trim() || undefined, (status) => {
-        setStatusMsg(status);
+        setStatusMsg(t(status));
       });
-      setSuccessMsg("Account initialized successfully! Redirecting you to sign in...");
+      setSuccessMsg(t("Account initialized successfully! Redirecting you to sign in..."));
 
       setTimeout(() => {
         router.push(`/login?email=${encodeURIComponent(email)}`);
@@ -74,7 +77,7 @@ function RegisterForm() {
     } catch (err: unknown) {
       const message =
         err instanceof Error ? err.message : "Registration failed. Please check input parameters.";
-      setErrorMsg(message);
+      setErrorMsg(t(message));
     } finally {
       setIsLoading(false);
       setStatusMsg(null);
@@ -86,9 +89,9 @@ function RegisterForm() {
       {/* Brand Header */}
       <div className="flex flex-col items-center text-center">
         <BrandLogo size="md" href="/" withSubtitle={false} />
-        <h1 className="text-xl font-bold tracking-tight text-white mt-4">Open Protected Account</h1>
+        <h1 className="text-xl font-bold tracking-tight text-white mt-4">{t("auth_register_title")}</h1>
         <p className="text-xs text-[#7D8998] mt-1">
-          Access automated compounding yields and multi-currency wallets
+          {t("auth_register_sub")}
         </p>
       </div>
 
@@ -120,7 +123,7 @@ function RegisterForm() {
         {/* Full Name */}
         <div className="field">
           <label htmlFor="reg-name" className="field-label">
-            <span>Full Legal Name *</span>
+            <span>{t("auth_full_name")} *</span>
           </label>
           <div className="control">
             <span className="control-icon" aria-hidden="true">
@@ -143,7 +146,7 @@ function RegisterForm() {
         {/* Email Address */}
         <div className="field">
           <label htmlFor="reg-email" className="field-label">
-            <span>Email Address *</span>
+            <span>{t("auth_email")} *</span>
           </label>
           <div className="control">
             <span className="control-icon" aria-hidden="true">
@@ -166,7 +169,7 @@ function RegisterForm() {
         {/* Password */}
         <div className="field">
           <label htmlFor="reg-password" className="field-label">
-            <span>Password (min. 6 characters) *</span>
+            <span>{t("auth_password_min")} *</span>
           </label>
           <div className="control">
             <span className="control-icon" aria-hidden="true">
@@ -199,8 +202,8 @@ function RegisterForm() {
         {/* Referral Code (Optional) */}
         <div className="field">
           <div className="field-label">
-            <label htmlFor="reg-ref">Referral Code</label>
-            <span className="field-optional">Optional</span>
+            <label htmlFor="reg-ref">{t("auth_referral")}</label>
+            <span className="field-optional">{t("auth_optional")}</span>
           </div>
           <input
             id="reg-ref"
@@ -225,8 +228,7 @@ function RegisterForm() {
             disabled={isLoading}
           />
           <label htmlFor="agree-terms" className="text-xs text-[#A6B0BE] leading-relaxed cursor-pointer select-none">
-            I acknowledge the platform{" "}
-            <span className="text-[#4388F5]">Terms of Service</span> and confirm that capital investments adhere to sovereign regulatory standards.
+            {t("auth_agree_terms")}
           </label>
         </div>
 
@@ -239,19 +241,19 @@ function RegisterForm() {
           {isLoading ? (
             <>
               <Loader2 className="w-4 h-4 animate-spin mr-1" />
-              <span>{statusMsg || "Creating Client Account..."}</span>
+              <span>{statusMsg || t("auth_creating_account")}</span>
             </>
           ) : (
-            "Complete Account Registration"
+            t("auth_complete_reg")
           )}
         </button>
       </form>
 
       {/* Footer Switch */}
       <div className="pt-4 border-t border-white/5 text-center text-xs text-[#7D8998]">
-        Already registered with Horizon Equity?{" "}
+        {t("auth_already_registered")}{" "}
         <Link href="/login" className="font-semibold text-[#4388F5] hover:text-[#5A9AFF] transition-colors">
-          Sign In Here
+          {t("auth_sign_in_here")}
         </Link>
       </div>
     </div>
@@ -259,19 +261,21 @@ function RegisterForm() {
 }
 
 export default function RegisterPage() {
+  const { t, dir } = useLanguage();
   return (
-    <div className="min-h-screen bg-[#0B0F14] text-[#F5F7FA] flex flex-col justify-center items-center px-4 py-12 relative selection:bg-[#4388F5]/30">
+    <div dir={dir} className="min-h-screen bg-[#0B0F14] text-[#F5F7FA] flex flex-col justify-center items-center px-4 py-12 relative selection:bg-[#4388F5]/30">
       <div className="w-full max-w-[440px] mb-6 flex justify-between items-center">
         <Link
           href="/"
           className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#A6B0BE] hover:text-white transition-colors"
         >
           <ArrowLeft className="w-3.5 h-3.5" />
-          <span>Back to Homepage</span>
+          <span>{t("auth_back_home")}</span>
         </Link>
+        <LanguageSelector compact />
       </div>
 
-      <Suspense fallback={<div className="panel p-8 text-xs text-[#7D8998]">Loading registration...</div>}>
+      <Suspense fallback={<div className="panel p-8 text-xs text-[#7D8998]">{t("Loading registration...")}</div>}>
         <RegisterForm />
       </Suspense>
     </div>

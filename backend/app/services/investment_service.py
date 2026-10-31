@@ -219,7 +219,7 @@ class InvestmentService:
         await db.commit()
         await db.refresh(new_investment)
 
-        # Dispatch automated email via Brevo
+        # Dispatch automated email via Brevo in user's saved language
         if user:
             from app.services.email_service import email_service
             email_service.send_investment_activated_email(
@@ -230,6 +230,7 @@ class InvestmentService:
                 currency,
                 maturity_date.strftime("%Y-%m-%d"),
                 str(expected_return),
+                lang=getattr(user, "preferred_language", "en") or "en",
             )
         
         # Reload investment with its plan

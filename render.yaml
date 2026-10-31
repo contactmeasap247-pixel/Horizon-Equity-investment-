@@ -22,7 +22,9 @@ services:
       - key: REDIS_URL
         sync: false
       - key: ALLOWED_ORIGINS
-        value: https://horizon-equity-investment.vercel.app,http://localhost:3000
+        value: https://www.horizon-equity.net,https://horizon-equity.net,https://horizon-equity-investment.vercel.app,http://localhost:3000,http://localhost:8000
+      - key: CUSTOM_DOMAIN
+        value: horizon-equity.net
       - key: VERCEL_FRONTEND_URL
         value: https://horizon-equity-investment.vercel.app
       - key: JWT_SECRET_KEY

@@ -10,7 +10,6 @@ import {
   Share2,
   HelpCircle,
   History,
-  Shield,
   ShieldCheck,
   LogOut,
   Bell,
@@ -30,12 +29,12 @@ import {
   Landmark,
   Briefcase,
   ReceiptText,
-
 } from "lucide-react";
 import { useAuthStore } from "@/lib/auth-store";
 import { api } from "@/lib/api";
 import BrandLogo from "@/app/components/BrandLogo";
 import LanguageSelector from "@/app/components/LanguageSelector";
+import { useLanguage } from "@/lib/language-context";
 
 interface NotificationItem {
   id: string;
@@ -49,6 +48,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const router = useRouter();
   const pathname = usePathname();
   const { user, isAuthenticated, isInitialized, initialize, logout } = useAuthStore();
+  const { t, dir, formatDate } = useLanguage();
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [notifDropdownOpen, setNotifDropdownOpen] = useState(false);
@@ -104,57 +104,56 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   if (!isInitialized || (!isAuthenticated && isInitialized)) {
     return (
-      <div className="min-h-screen bg-[#0B0F14] flex flex-col items-center justify-center text-white gap-3">
+      <div dir={dir} className="min-h-screen bg-[#0B0F14] flex flex-col items-center justify-center text-white gap-3">
         <Loader2 className="h-8 w-8 animate-spin text-[#4388F5]" />
-        <p className="text-xs text-[#7D8998]">Verifying secure session...</p>
+        <p className="text-xs text-[#7D8998]">{t("dash_verifying_session")}</p>
       </div>
     );
   }
 
   const menuItems = [
-    { name: "Overview", href: "/dashboard", icon: LayoutDashboard },
-    { name: "Take a Loan", href: "/dashboard/loans", icon: Landmark, badge: "PRO" },
-    { name: "Verification", href: "/dashboard/verification", icon: ShieldCheck },
-    { name: "Wallets", href: "/dashboard/wallets", icon: Wallet },
-    { name: "Deposits", href: "/dashboard/deposits", icon: ArrowDownLeft },
-    { name: "My Deposits", href: "/dashboard/my-deposits", icon: Layers },
-    { name: "Withdrawals", href: "/dashboard/withdrawals", icon: ArrowUpRight },
-    { name: "Withdrawal History", href: "/dashboard/withdrawal-history", icon: History },
-    { name: "Investment Plans", href: "/dashboard/investments", icon: TrendingUp },
-    { name: "Active Investments", href: "/dashboard/active-investments", icon: Briefcase },
-    { name: "Referral Network", href: "/dashboard/referrals", icon: Share2 },
-    { name: "Transactions", href: "/dashboard/transactions", icon: ReceiptText },
-    { name: "Support Desk", href: "/dashboard/tickets", icon: HelpCircle },
-    { name: "Settings", href: "/dashboard/settings", icon: Settings },
+    { name: t("dash_overview"), href: "/dashboard", icon: LayoutDashboard },
+    { name: t("dash_take_loan"), href: "/dashboard/loans", icon: Landmark, badge: "PRO" },
+    { name: t("dash_verification"), href: "/dashboard/verification", icon: ShieldCheck },
+    { name: t("dash_wallets"), href: "/dashboard/wallets", icon: Wallet },
+    { name: t("dash_deposits"), href: "/dashboard/deposits", icon: ArrowDownLeft },
+    { name: t("dash_my_deposits"), href: "/dashboard/my-deposits", icon: Layers },
+    { name: t("dash_withdrawals"), href: "/dashboard/withdrawals", icon: ArrowUpRight },
+    { name: t("dash_withdrawal_history"), href: "/dashboard/withdrawal-history", icon: History },
+    { name: t("dash_investment_plans"), href: "/dashboard/investments", icon: TrendingUp },
+    { name: t("dash_active_investments"), href: "/dashboard/active-investments", icon: Briefcase },
+    { name: t("dash_referral_network"), href: "/dashboard/referrals", icon: Share2 },
+    { name: t("dash_transactions"), href: "/dashboard/transactions", icon: ReceiptText },
+    { name: t("dash_support_desk"), href: "/dashboard/tickets", icon: HelpCircle },
+    { name: t("dash_settings"), href: "/dashboard/settings", icon: Settings },
   ];
 
   const adminItems = [
-    { name: "Overview", href: "/dashboard/admin", icon: LayoutDashboard },
-    { name: "Users", href: "/dashboard/admin/users", icon: Users },
-    { name: "KYC Submissions", href: "/dashboard/admin/kyc", icon: ShieldCheck },
-    { name: "Loan Management", href: "/dashboard/admin/loans", icon: Landmark },
-    { name: "Deposits", href: "/dashboard/admin/deposits", icon: ArrowDownLeft },
-    { name: "Withdrawal Requests", href: "/dashboard/admin/withdrawals", icon: ArrowUpRight },
-    { name: "Transactions", href: "/dashboard/admin/transactions", icon: History },
-    { name: "Active Deposits", href: "/dashboard/admin/active-deposits", icon: Layers },
-    { name: "Referral Earnings", href: "/dashboard/admin/referrals", icon: Share2 },
-    { name: "Exchange Management", href: "/dashboard/admin/exchange", icon: Repeat },
-    { name: "Email Templates", href: "/dashboard/admin/email-templates", icon: Mail },
-    { name: "Notifications", href: "/dashboard/admin/notifications", icon: Bell },
-    { name: "Audit Logs", href: "/dashboard/admin/audit-logs", icon: FileText },
-    { name: "Security & Controls", href: "/dashboard/admin/security", icon: Lock },
-    { name: "Platform Settings", href: "/dashboard/admin/settings", icon: Settings },
-    { name: "System Wallets", href: "/dashboard/admin/wallets", icon: Wallet },
+    { name: t("dash_overview"), href: "/dashboard/admin", icon: LayoutDashboard },
+    { name: t("admin_users"), href: "/dashboard/admin/users", icon: Users },
+    { name: t("admin_kyc"), href: "/dashboard/admin/kyc", icon: ShieldCheck },
+    { name: t("admin_loans"), href: "/dashboard/admin/loans", icon: Landmark },
+    { name: t("dash_deposits"), href: "/dashboard/admin/deposits", icon: ArrowDownLeft },
+    { name: t("admin_withdrawals"), href: "/dashboard/admin/withdrawals", icon: ArrowUpRight },
+    { name: t("dash_transactions"), href: "/dashboard/admin/transactions", icon: History },
+    { name: t("admin_active_deposits"), href: "/dashboard/admin/active-deposits", icon: Layers },
+    { name: t("admin_referrals"), href: "/dashboard/admin/referrals", icon: Share2 },
+    { name: t("admin_exchange"), href: "/dashboard/admin/exchange", icon: Repeat },
+    { name: t("admin_email_templates"), href: "/dashboard/admin/email-templates", icon: Mail },
+    { name: t("admin_notifications"), href: "/dashboard/admin/notifications", icon: Bell },
+    { name: t("admin_audit_logs"), href: "/dashboard/admin/audit-logs", icon: FileText },
+    { name: t("admin_security"), href: "/dashboard/admin/security", icon: Lock },
+    { name: t("admin_settings"), href: "/dashboard/admin/settings", icon: Settings },
+    { name: t("admin_wallets"), href: "/dashboard/admin/wallets", icon: Wallet },
   ];
-
 
   const currentTitle =
     menuItems.find((i) => i.href === pathname)?.name ||
     adminItems.find((i) => i.href === pathname)?.name ||
-    "Client Portal";
+    t("dash_client_portal");
 
   return (
-    <div className="min-h-screen bg-[#0B0F14] flex flex-col md:flex-row text-[#F5F7FA] font-sans selection:bg-[#4388F5]/30">
+    <div dir={dir} className="min-h-screen bg-[#0B0F14] flex flex-col md:flex-row text-[#F5F7FA] font-sans selection:bg-[#4388F5]/30">
       {/* Mobile Drawer Backdrop */}
       {mobileMenuOpen && (
         <div
@@ -186,14 +185,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           {/* Navigation Links */}
           <nav className="flex flex-col gap-1" aria-label="Portal Navigation">
             <span className="text-[10px] font-semibold uppercase tracking-wider text-[#7D8998] px-2 mb-1">
-              Member Operations
+              {t("dash_member_operations")}
             </span>
             {menuItems.map((item) => {
               const Icon = item.icon;
               const isActive = pathname === item.href;
               return (
                 <Link
-                  key={item.name}
+                  key={item.href}
                   href={item.href}
                   onClick={() => setMobileMenuOpen(false)}
                   aria-current={isActive ? "page" : undefined}
@@ -203,13 +202,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     <Icon className={`h-4 w-4 shrink-0 ${isActive ? "text-[#4388F5]" : "text-[#7D8998]"}`} />
                     <span className="truncate">{item.name}</span>
                   </div>
-                  {"badge" in item && (item as any).badge && (
+                  {"badge" in item && item.badge && (
                     <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-[#27C58B]/15 text-[#27C58B] border border-[#27C58B]/30 tracking-wider">
-                      {(item as any).badge}
+                      {item.badge}
                     </span>
                   )}
                 </Link>
-
               );
             })}
 
@@ -217,14 +215,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             {user?.is_admin && (
               <>
                 <span className="text-[10px] font-semibold uppercase tracking-wider text-[#7D8998] px-2 mt-5 mb-1">
-                  System Administration
+                  {t("dash_system_admin")}
                 </span>
                 {adminItems.map((item) => {
                   const Icon = item.icon;
                   const isActive = pathname === item.href;
                   return (
                     <Link
-                      key={item.name}
+                      key={item.href}
                       href={item.href}
                       onClick={() => setMobileMenuOpen(false)}
                       aria-current={isActive ? "page" : undefined}
@@ -258,7 +256,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             className="side-link w-full text-left text-xs text-[#F06464] hover:bg-[#F06464]/10 hover:text-[#F06464]"
           >
             <LogOut className="h-4 w-4 text-[#F06464]" />
-            <span>Sign Out</span>
+            <span>{t("dash_sign_out")}</span>
           </button>
         </div>
       </aside>
@@ -287,7 +285,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               <button
                 type="button"
                 onClick={() => setNotifDropdownOpen(!notifDropdownOpen)}
-                aria-label={`Notifications (${unreadCount} unread)`}
+                aria-label={`${t("dash_notifications")} (${unreadCount})`}
                 className="h-9 w-9 rounded-md border border-white/10 bg-[#111821] flex items-center justify-center text-[#A6B0BE] hover:text-white hover:border-white/20 transition-colors relative"
               >
                 <Bell className="h-4 w-4" />
@@ -302,23 +300,23 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     className="fixed inset-0 z-40"
                     onClick={() => setNotifDropdownOpen(false)}
                   />
-                  <div className="absolute right-0 mt-2 w-80 max-h-96 bg-[#151F2B] border border-white/10 rounded-md shadow-2xl overflow-y-auto flex flex-col z-50 animate-rise">
+                  <div className={`absolute ${dir === "rtl" ? "left-0" : "right-0"} mt-2 w-80 max-h-96 bg-[#151F2B] border border-white/10 rounded-md shadow-2xl overflow-y-auto flex flex-col z-50 animate-rise`}>
                     <div className="p-3.5 border-b border-white/10 flex items-center justify-between">
-                      <span className="font-semibold text-xs text-white">Notifications ({unreadCount})</span>
+                      <span className="font-semibold text-xs text-white">{t("dash_notifications")} ({unreadCount})</span>
                       {unreadCount > 0 && (
                         <button
                           type="button"
                           onClick={markAllRead}
                           className="text-[10px] text-[#4388F5] font-semibold hover:underline"
                         >
-                          Mark all as read
+                          {t("dash_mark_all_read")}
                         </button>
                       )}
                     </div>
                     <div className="flex flex-col divide-y divide-white/5">
                       {notifications.length === 0 ? (
                         <div className="p-6 text-center text-xs text-[#7D8998]">
-                          No notifications to display
+                          {t("dash_no_notifications")}
                         </div>
                       ) : (
                         notifications.map((n) => (
@@ -329,14 +327,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                             }`}
                           >
                             <div className="flex justify-between items-start gap-2">
-                              <span className="font-semibold text-white">{n.title}</span>
+                              <span className="font-semibold text-white">{t(n.title)}</span>
                               {!n.is_read && (
                                 <span className="h-1.5 w-1.5 rounded-full bg-[#4388F5] shrink-0 mt-1" />
                               )}
                             </div>
-                            <p className="text-[#A6B0BE] leading-relaxed mt-0.5">{n.message}</p>
+                            <p className="text-[#A6B0BE] leading-relaxed mt-0.5">{t(n.message)}</p>
                             <span className="text-[10px] text-[#7D8998] mt-1">
-                              {new Date(n.created_at).toLocaleString()}
+                              {formatDate(n.created_at, { dateStyle: "medium", timeStyle: "short" })}
                             </span>
                           </div>
                         ))
@@ -351,7 +349,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             <div className="hidden sm:flex items-center gap-2 px-2.5 py-1 rounded-md border border-white/10 bg-[#111821]">
               <span className="text-xs font-semibold text-[#F5F7FA]">{user?.full_name}</span>
               {user?.is_admin && (
-                <span className="badge badge-accent text-[9px] py-0 px-1">Admin</span>
+                <span className="badge badge-accent text-[9px] py-0 px-1">{t("Admin")}</span>
               )}
             </div>
           </div>
@@ -364,7 +362,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             <div className="alert alert-danger mb-6">
               <AlertTriangle className="h-4 w-4 shrink-0" />
               <div className="alert-content text-xs">
-                Your KYC compliance application was rejected. Please open a support ticket to re-verify your identity documentation.
+                {t("dash_kyc_rejected_alert")}
               </div>
             </div>
           )}

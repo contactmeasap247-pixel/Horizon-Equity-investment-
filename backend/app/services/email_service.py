@@ -13,6 +13,7 @@ from email.mime.multipart import MIMEMultipart
 from typing import Dict, Any, Optional, Tuple
 
 from app.core.config import settings
+from app.services.email_translations import build_localized_email
 
 logger = logging.getLogger("horizon.email")
 
@@ -23,9 +24,12 @@ class EmailService:
     @staticmethod
     def _get_frontend_url() -> str:
         """Resolve secure frontend base URL for verification and action links."""
+        custom_domain = (getattr(settings, "CUSTOM_DOMAIN", "") or "").strip().lower().replace("https://", "").replace("http://", "").rstrip("/")
+        if custom_domain and not settings.DEBUG:
+            return f"https://www.{custom_domain}"
         url = (getattr(settings, "VERCEL_FRONTEND_URL", "") or "").strip()
         if not url:
-            return "http://localhost:3000" if settings.DEBUG else "https://horizon-equity-investment.vercel.app"
+            return "http://localhost:3000" if settings.DEBUG else "https://www.horizon-equity.net"
         url = url.rstrip("/")
         if url.startswith("http://") and "localhost" not in url and "127.0.0.1" not in url:
             url = "https://" + url[7:]
@@ -147,11 +151,22 @@ class EmailService:
             logger.error(f"Failed to record email log in database: {e}")
 
     @staticmethod
-    def render_template(template_key: str, variables: Dict[str, Any]) -> Tuple[str, str, str]:
+    def render_template(
+        template_key: str,
+        variables: Dict[str, Any],
+        lang: Optional[str] = "en",
+    ) -> Tuple[str, str, str]:
         """
-        Load template by key from DEFAULT_EMAIL_TEMPLATES and substitute variables.
+        Load template and substitute variables with full 9-language localization support.
+        Falls back intentionally to default English templates if a translation is absent.
         Returns: (subject, html_content, text_content)
         """
+        # 1. Try localized email builder first
+        localized = build_localized_email(template_key, variables, lang=lang)
+        if localized:
+            return localized
+
+        # 2. Fall back to DEFAULT_EMAIL_TEMPLATES
         from app.services.admin_service import DEFAULT_EMAIL_TEMPLATES
 
         KEY_ALIASES = {
@@ -197,9 +212,10 @@ class EmailService:
         to_email: str,
         template_key: str,
         variables: Dict[str, Any],
+        lang: Optional[str] = "en",
     ) -> bool:
         """Render a system template and dispatch via Brevo with operational logging."""
-        subject, html_content, text_content = self.render_template(template_key, variables)
+        subject, html_content, text_content = self.render_template(template_key, variables, lang=lang)
         success, msg_id, err_msg = await asyncio.to_thread(
             self._send_email_sync,
             to_email=to_email,
@@ -220,20 +236,32 @@ class EmailService:
         )
         return success
 
-    def dispatch_background(self, to_email: str, template_key: str, variables: Dict[str, Any]):
+    def dispatch_background(
+        self,
+        to_email: str,
+        template_key: str,
+        variables: Dict[str, Any],
+        lang: Optional[str] = "en",
+    ):
         """Schedule email sending on the running asyncio loop without blocking caller."""
         try:
             loop = asyncio.get_running_loop()
-            loop.create_task(self.send_templated_email(to_email, template_key, variables))
+            loop.create_task(self.send_templated_email(to_email, template_key, variables, lang=lang))
         except RuntimeError:
             # No running event loop, dispatch in thread
-            asyncio.run(self.send_templated_email(to_email, template_key, variables))
+            asyncio.run(self.send_templated_email(to_email, template_key, variables, lang=lang))
 
     # ========================================================
     # HIGH-LEVEL TRANSACTIONAL EMAIL HELPERS
     # ========================================================
 
-    def send_welcome_bonus_email(self, user_email: str, user_name: str, bonus_amount: str = "10.00"):
+    def send_welcome_bonus_email(
+        self,
+        user_email: str,
+        user_name: str,
+        bonus_amount: str = "10.00",
+        lang: Optional[str] = "en",
+    ):
         """Send Phase 6 Email 1: Welcome to Horizon Equity — Your $10 Welcome Bonus."""
         base_url = self._get_frontend_url()
         self.dispatch_background(
@@ -242,12 +270,21 @@ class EmailService:
             variables={
                 "user_name": user_name or "Investor",
                 "bonus_amount": bonus_amount,
+                "login_url": f"{base_url}/auth/login",
                 "dashboard_url": f"{base_url}/dashboard",
                 "rules_url": f"{base_url}/dashboard/withdrawals",
             },
+            lang=lang,
         )
 
-    def send_verification_email(self, user_email: str, user_name: str, token: str, expires_hours: int = 24):
+    def send_verification_email(
+        self,
+        user_email: str,
+        user_name: str,
+        token: str,
+        expires_hours: int = 24,
+        lang: Optional[str] = "en",
+    ):
         """Send Phase 6 Email 2: Account Email Verification."""
         base_url = self._get_frontend_url()
         verification_link = f"{base_url}/auth/verify-email?token={token}"
@@ -259,9 +296,16 @@ class EmailService:
                 "verification_link": verification_link,
                 "expires_hours": str(expires_hours),
             },
+            lang=lang,
         )
 
-    def send_email_verified_confirmation(self, user_email: str, user_name: str, bonus_amount: str = "10.00"):
+    def send_email_verified_confirmation(
+        self,
+        user_email: str,
+        user_name: str,
+        bonus_amount: str = "10.00",
+        lang: Optional[str] = "en",
+    ):
         """Send Phase 3C: Email Verified Confirmation."""
         base_url = self._get_frontend_url()
         self.dispatch_background(
@@ -270,12 +314,21 @@ class EmailService:
             variables={
                 "user_name": user_name or "Investor",
                 "bonus_amount": bonus_amount,
+                "login_url": f"{base_url}/auth/login",
                 "dashboard_url": f"{base_url}/dashboard",
                 "invest_url": f"{base_url}/dashboard/investments",
             },
+            lang=lang,
         )
 
-    def send_password_reset_email(self, user_email: str, user_name: str, token: str, expires_minutes: int = 60):
+    def send_password_reset_email(
+        self,
+        user_email: str,
+        user_name: str,
+        token: str,
+        expires_minutes: int = 60,
+        lang: Optional[str] = "en",
+    ):
         """Send Phase 3D: Secure Password Reset."""
         base_url = self._get_frontend_url()
         reset_link = f"{base_url}/auth/reset-password?token={token}"
@@ -287,6 +340,7 @@ class EmailService:
                 "reset_link": reset_link,
                 "expires_minutes": str(expires_minutes),
             },
+            lang=lang,
         )
 
     def send_bonus_unlocked_email(
@@ -295,6 +349,7 @@ class EmailService:
         user_name: str,
         bonus_amount: str = "10.00",
         plan_name: str = "Silver Starter Tier",
+        lang: Optional[str] = "en",
     ):
         """Send Phase 6 Email 3: Promotional Bonus Unlocked for Withdrawal."""
         base_url = self._get_frontend_url()
@@ -305,13 +360,24 @@ class EmailService:
                 "user_name": user_name or "Investor",
                 "bonus_amount": bonus_amount,
                 "plan_name": plan_name,
+                "login_url": f"{base_url}/dashboard",
                 "dashboard_url": f"{base_url}/dashboard",
                 "withdraw_url": f"{base_url}/dashboard/withdrawals",
             },
+            lang=lang,
         )
 
-    def send_deposit_submitted_email(self, user_email: str, user_name: str, amount: str, currency: str, reference: str):
+    def send_deposit_submitted_email(
+        self,
+        user_email: str,
+        user_name: str,
+        amount: str,
+        currency: str,
+        reference: str,
+        lang: Optional[str] = "en",
+    ):
         """Send Phase 7: Deposit Submitted."""
+        base_url = self._get_frontend_url()
         self.dispatch_background(
             to_email=user_email,
             template_key="deposit_submitted",
@@ -320,10 +386,20 @@ class EmailService:
                 "amount": str(amount),
                 "currency": currency.upper(),
                 "reference": reference,
+                "dashboard_url": f"{base_url}/dashboard/deposits",
             },
+            lang=lang,
         )
 
-    def send_deposit_confirmed_email(self, user_email: str, user_name: str, amount: str, currency: str, tx_hash: str):
+    def send_deposit_confirmed_email(
+        self,
+        user_email: str,
+        user_name: str,
+        amount: str,
+        currency: str,
+        tx_hash: str,
+        lang: Optional[str] = "en",
+    ):
         """Send Phase 7: Deposit Confirmed & Credited."""
         base_url = self._get_frontend_url()
         self.dispatch_background(
@@ -335,11 +411,22 @@ class EmailService:
                 "currency": currency.upper(),
                 "tx_hash": tx_hash or "Confirmed on-chain",
                 "login_url": f"{base_url}/dashboard",
+                "dashboard_url": f"{base_url}/dashboard",
             },
+            lang=lang,
         )
 
-    def send_deposit_rejected_email(self, user_email: str, user_name: str, amount: str, currency: str, reason: str):
+    def send_deposit_rejected_email(
+        self,
+        user_email: str,
+        user_name: str,
+        amount: str,
+        currency: str,
+        reason: str,
+        lang: Optional[str] = "en",
+    ):
         """Send Phase 7: Deposit Rejected."""
+        base_url = self._get_frontend_url()
         self.dispatch_background(
             to_email=user_email,
             template_key="deposit_rejected",
@@ -348,13 +435,23 @@ class EmailService:
                 "amount": str(amount),
                 "currency": currency.upper(),
                 "reason": reason or "Verification proof mismatch.",
+                "dashboard_url": f"{base_url}/dashboard/tickets",
             },
+            lang=lang,
         )
 
     def send_withdrawal_submitted_email(
-        self, user_email: str, user_name: str, amount: str, currency: str, reference: str, destination: str
+        self,
+        user_email: str,
+        user_name: str,
+        amount: str,
+        currency: str,
+        reference: str,
+        destination: str,
+        lang: Optional[str] = "en",
     ):
         """Send Phase 6 Email 4 & Phase 7: Withdrawal Submitted."""
+        base_url = self._get_frontend_url()
         self.dispatch_background(
             to_email=user_email,
             template_key="withdrawal_submitted",
@@ -364,13 +461,23 @@ class EmailService:
                 "currency": currency.upper(),
                 "reference": reference,
                 "destination": destination,
+                "dashboard_url": f"{base_url}/dashboard/withdrawal-history",
             },
+            lang=lang,
         )
 
     def send_withdrawal_completed_email(
-        self, user_email: str, user_name: str, amount: str, currency: str, wallet_address: str, tx_hash: str
+        self,
+        user_email: str,
+        user_name: str,
+        amount: str,
+        currency: str,
+        wallet_address: str,
+        tx_hash: str,
+        lang: Optional[str] = "en",
     ):
         """Send Phase 6 Email 6 & Phase 7: Withdrawal Completed."""
+        base_url = self._get_frontend_url()
         self.dispatch_background(
             to_email=user_email,
             template_key="withdrawal_completed",
@@ -380,13 +487,23 @@ class EmailService:
                 "currency": currency.upper(),
                 "wallet_address": wallet_address,
                 "tx_hash": tx_hash,
+                "dashboard_url": f"{base_url}/dashboard/withdrawal-history",
             },
+            lang=lang,
         )
 
     def send_withdrawal_rejected_email(
-        self, user_email: str, user_name: str, amount: str, currency: str, reference: str, reason: str
+        self,
+        user_email: str,
+        user_name: str,
+        amount: str,
+        currency: str,
+        reference: str,
+        reason: str,
+        lang: Optional[str] = "en",
     ):
         """Send Phase 6 Email 5 & Phase 7: Withdrawal Rejected."""
+        base_url = self._get_frontend_url()
         self.dispatch_background(
             to_email=user_email,
             template_key="withdrawal_rejected",
@@ -396,7 +513,9 @@ class EmailService:
                 "currency": currency.upper(),
                 "reference": reference,
                 "reason": reason or "Administrative compliance rejection.",
+                "dashboard_url": f"{base_url}/dashboard/tickets",
             },
+            lang=lang,
         )
 
     def send_investment_activated_email(
@@ -408,8 +527,10 @@ class EmailService:
         currency: str,
         maturity_date: str,
         expected_return: str,
+        lang: Optional[str] = "en",
     ):
         """Send Phase 7: Investment Plan Activated."""
+        base_url = self._get_frontend_url()
         self.dispatch_background(
             to_email=user_email,
             template_key="investment_activated",
@@ -420,7 +541,9 @@ class EmailService:
                 "currency": currency.upper(),
                 "maturity_date": maturity_date,
                 "expected_return": str(expected_return),
+                "dashboard_url": f"{base_url}/dashboard/active-investments",
             },
+            lang=lang,
         )
 
     def send_investment_matured_email(
@@ -431,6 +554,7 @@ class EmailService:
         amount: str,
         return_amount: str,
         currency: str,
+        lang: Optional[str] = "en",
     ):
         """Send Phase 7: Investment Contract Matured."""
         base_url = self._get_frontend_url()
@@ -444,11 +568,21 @@ class EmailService:
                 "return_amount": str(return_amount),
                 "currency": currency.upper(),
                 "login_url": f"{base_url}/dashboard",
+                "dashboard_url": f"{base_url}/dashboard",
             },
+            lang=lang,
         )
 
-    def send_security_alert_email(self, user_email: str, user_name: str, event_type: str, ip_address: str):
+    def send_security_alert_email(
+        self,
+        user_email: str,
+        user_name: str,
+        event_type: str,
+        ip_address: str,
+        lang: Optional[str] = "en",
+    ):
         """Send Phase 7: Security Alert."""
+        base_url = self._get_frontend_url()
         self.dispatch_background(
             to_email=user_email,
             template_key="security_alert",
@@ -457,7 +591,9 @@ class EmailService:
                 "event_type": event_type,
                 "ip_address": ip_address or "Unknown IP",
                 "timestamp": datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC"),
+                "dashboard_url": f"{base_url}/dashboard/settings",
             },
+            lang=lang,
         )
 
 

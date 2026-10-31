@@ -10,7 +10,6 @@ import {
   Check,
   ChevronRight,
   ArrowUpRight,
-  Clock,
   Loader2,
   ShieldCheck,
   Gift,
@@ -20,6 +19,7 @@ import { useAuthStore } from "@/lib/auth-store";
 import { api } from "@/lib/api";
 import { toNum, formatCrypto, formatUsd } from "@/lib/format";
 import { useMarketPrices } from "@/lib/use-market-prices";
+import { useLanguage } from "@/lib/language-context";
 
 interface WalletItem {
   id: string;
@@ -54,6 +54,7 @@ const DEFAULT_CRYPTO_RATES: Record<string, number> = {
 export default function DashboardOverview() {
   const { user } = useAuthStore();
   const { rates: liveRates } = useMarketPrices();
+  const { t, formatDate } = useLanguage();
   const [wallets, setWallets] = useState<WalletItem[]>([]);
   const [investments, setInvestments] = useState<InvestmentItem[]>([]);
   const [referralCode, setReferralCode] = useState("");
@@ -88,7 +89,6 @@ export default function DashboardOverview() {
             setReferralEarnings(toNum(referralsRes.data.referral_earnings));
           }
         }
-
       } catch (e) {
         console.error("Error loading dashboard data:", e);
       } finally {
@@ -137,19 +137,19 @@ export default function DashboardOverview() {
   };
 
   const getDaysLeft = (endStr?: string) => {
-    if (!endStr) return "Active";
+    if (!endStr) return t("Active");
     const end = new Date(endStr).getTime();
-    if (isNaN(end)) return "Active";
+    if (isNaN(end)) return t("Active");
     const diff = end - Date.now();
     const days = Math.ceil(diff / (1000 * 60 * 60 * 24));
-    return days > 0 ? `${days} days left` : "Matured";
+    return days > 0 ? t(`${days} days left`) : t("Matured");
   };
 
   if (isLoading) {
     return (
       <div className="h-[60vh] flex flex-col items-center justify-center gap-3">
         <Loader2 className="h-8 w-8 animate-spin text-[#4388F5]" />
-        <p className="text-xs text-[#7D8998]">Loading portfolio telemetry...</p>
+        <p className="text-xs text-[#7D8998]">{t("Loading portfolio telemetry...")}</p>
       </div>
     );
   }
@@ -160,19 +160,19 @@ export default function DashboardOverview() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-white/10">
         <div>
           <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-white">
-            Welcome back, {user?.full_name || "Valued Investor"}
+            {t(`Welcome back, ${user?.full_name || t("Valued Investor")}`)}
           </h2>
           <p className="text-xs text-[#A6B0BE] mt-1">
-            Real-time multi-asset liquidity reserves and daily yield compounding performance.
+            {t("Real-time multi-asset liquidity reserves and daily yield compounding performance.")}
           </p>
         </div>
 
         <div className="grid grid-cols-2 sm:flex items-center gap-2.5 sm:gap-3 w-full sm:w-auto">
           <Link href="/dashboard/deposits" className="btn btn-secondary btn-sm font-semibold justify-center text-center">
-            <span>Deposit Funds</span>
+            <span>{t("Deposit Funds")}</span>
           </Link>
           <Link href="/dashboard/investments" className="btn btn-primary btn-sm font-semibold shadow-sm justify-center text-center">
-            <span>Invest Now</span>
+            <span>{t("Invest Now")}</span>
             <ArrowUpRight className="h-3.5 w-3.5 ml-1" />
           </Link>
         </div>
@@ -188,7 +188,7 @@ export default function DashboardOverview() {
             <div>
               <div className="flex items-center gap-2">
                 <span className="text-xs font-bold text-white">
-                  ${Number(bonus.amount).toFixed(2)} USDT Welcome Bonus Credited
+                  {t(`$${Number(bonus.amount).toFixed(2)} USDT Welcome Bonus Credited`)}
                 </span>
                 <span
                   className={`text-[9px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wider ${
@@ -197,13 +197,13 @@ export default function DashboardOverview() {
                       : "bg-[#F3B94F]/15 text-[#F3B94F] border border-[#F3B94F]/30"
                   }`}
                 >
-                  {bonus.status === "unlocked" ? "Unlocked for Withdrawal" : "Locked (Qualifying Plan Required)"}
+                  {bonus.status === "unlocked" ? t("Unlocked for Withdrawal") : t("Locked (Qualifying Plan Required)")}
                 </span>
               </div>
               <p className="text-[11px] text-[#A6B0BE] mt-0.5">
                 {bonus.status === "unlocked"
-                  ? `Congratulations! Your qualifying investment has completed. Your $${Number(bonus.amount).toFixed(2)} welcome bonus is now unlocked for withdrawal.`
-                  : "Complete your first qualifying investment contract (e.g. Silver Plan) to unlock this welcome bonus for withdrawal."}
+                  ? t(`Congratulations! Your qualifying investment has completed. Your $${Number(bonus.amount).toFixed(2)} welcome bonus is now unlocked for withdrawal.`)
+                  : t("Complete your first qualifying investment contract (e.g. Silver Plan) to unlock this welcome bonus for withdrawal.")}
               </p>
             </div>
           </div>
@@ -211,7 +211,7 @@ export default function DashboardOverview() {
             href="/dashboard/investments"
             className="text-xs font-semibold text-[#4388F5] hover:underline shrink-0"
           >
-            {bonus.status === "unlocked" ? "View Balances →" : "Explore Qualifying Plans →"}
+            {bonus.status === "unlocked" ? t("View Balances →") : t("Explore Qualifying Plans →")}
           </Link>
         </div>
       )}
@@ -221,7 +221,7 @@ export default function DashboardOverview() {
         {/* Total Assets */}
         <div className="panel p-3.5 sm:p-5 flex flex-col justify-between min-h-[110px] sm:min-h-0">
           <div className="flex items-center justify-between text-[#7D8998] text-[11px] sm:text-xs font-medium gap-1">
-            <span className="truncate">Total Assets</span>
+            <span className="truncate">{t("Total Assets")}</span>
             <Wallet className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-[#4388F5] shrink-0" />
           </div>
           <div className="my-1.5 sm:my-2.5">
@@ -230,15 +230,15 @@ export default function DashboardOverview() {
             </span>
           </div>
           <span className="text-[10px] sm:text-[11px] text-[#A6B0BE] block truncate">
-            <span className="sm:hidden">Live USD Balances</span>
-            <span className="hidden sm:inline">Aggregated Live Balances (USD)</span>
+            <span className="sm:hidden">{t("Live USD Balances")}</span>
+            <span className="hidden sm:inline">{t("Aggregated Live Balances (USD)")}</span>
           </span>
         </div>
 
         {/* Active Yield Contracts */}
         <div className="panel p-3.5 sm:p-5 flex flex-col justify-between min-h-[110px] sm:min-h-0">
           <div className="flex items-center justify-between text-[#7D8998] text-[11px] sm:text-xs font-medium gap-1">
-            <span className="truncate">Active Contracts</span>
+            <span className="truncate">{t("Active Contracts")}</span>
             <TrendingUp className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-[#4388F5] shrink-0" />
           </div>
           <div className="my-1.5 sm:my-2.5">
@@ -247,14 +247,14 @@ export default function DashboardOverview() {
             </span>
           </div>
           <span className="text-[10px] sm:text-[11px] text-[#27C58B] block truncate">
-            Accruing yield daily
+            {t("Accruing yield daily")}
           </span>
         </div>
 
         {/* Referral Earnings */}
         <div className="panel p-3.5 sm:p-5 flex flex-col justify-between min-h-[110px] sm:min-h-0">
           <div className="flex items-center justify-between text-[#7D8998] text-[11px] sm:text-xs font-medium gap-1">
-            <span className="truncate">Referral Earnings</span>
+            <span className="truncate">{t("Referral Earnings")}</span>
             <Users className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-[#27C58B] shrink-0" />
           </div>
           <div className="my-1.5 sm:my-2.5">
@@ -263,7 +263,7 @@ export default function DashboardOverview() {
             </span>
           </div>
           <span className="text-[10px] sm:text-[11px] text-[#A6B0BE] block truncate">
-            {referralCount} affiliated members
+            {t(`${referralCount} affiliated members`)}
           </span>
         </div>
 
@@ -273,7 +273,7 @@ export default function DashboardOverview() {
           className="panel p-3.5 sm:p-5 flex flex-col justify-between min-h-[110px] sm:min-h-0 hover:border-[#4388F5]/40 transition group cursor-pointer"
         >
           <div className="flex items-center justify-between text-[#7D8998] text-[11px] sm:text-xs font-medium gap-1">
-            <span className="truncate group-hover:text-white transition">KYC Compliance</span>
+            <span className="truncate group-hover:text-white transition">{t("KYC Compliance")}</span>
             <ShieldCheck className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-[#4388F5] shrink-0" />
           </div>
           <div className="my-1.5 sm:my-2.5">
@@ -287,25 +287,24 @@ export default function DashboardOverview() {
               }`}
             >
               {user?.kyc_status === "verified" || user?.kyc_status === "approved"
-                ? "Verified"
+                ? t("Verified")
                 : user?.kyc_status === "under_review" || user?.kyc_status === "submitted"
-                ? "Under Review"
-                : user?.kyc_status || "Pending"}
+                ? t("Under Review")
+                : t(user?.kyc_status || "Pending")}
             </span>
           </div>
           <span className="text-[10px] sm:text-[11px] text-[#4388F5] group-hover:underline block truncate">
             {user?.kyc_status === "verified" || user?.kyc_status === "approved"
-              ? "Tier-1 Standing Active"
-              : "Complete Verification →"}
+              ? t("Tier-1 Standing Active")
+              : t("Complete Verification →")}
           </span>
         </Link>
       </div>
 
-
       {/* Individual Cryptocurrencies Grid */}
       <div>
         <h3 className="text-xs font-semibold uppercase tracking-wider text-[#7D8998] mb-3">
-          Liquid Asset Reserves
+          {t("Liquid Asset Reserves")}
         </h3>
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           {["BTC", "ETH", "USDT", "SOL"].map((curr) => {
@@ -316,7 +315,7 @@ export default function DashboardOverview() {
             return (
               <div key={curr} className="panel p-3.5 sm:p-4 flex flex-col justify-between min-h-[122px] sm:min-h-0">
                 <div className="flex justify-between items-center gap-1">
-                  <span className="font-bold text-xs text-white truncate">{curr} Wallet</span>
+                  <span className="font-bold text-xs text-white truncate">{t(`${curr} Wallet`)}</span>
                   <span className="badge badge-accent text-[9px] sm:text-[10px] font-bold px-1.5 py-0.5 shrink-0">{curr}</span>
                 </div>
                 <div className="my-2 sm:my-3 flex flex-col min-w-0">
@@ -325,11 +324,11 @@ export default function DashboardOverview() {
                   </span>
                   {frozen > 0 ? (
                     <span className="num text-[10px] sm:text-[11px] text-[#7D8998] mt-0.5 truncate block">
-                      Locked: {formatCrypto(frozen, 4)} {curr}
+                      {t(`Locked: ${formatCrypto(frozen, 4)} ${curr}`)}
                     </span>
                   ) : (
                     <span className="text-[10px] sm:text-[11px] text-[#7D8998] mt-0.5 truncate block opacity-60">
-                      0.0000 Locked
+                      {t("0.0000 Locked")}
                     </span>
                   )}
                 </div>
@@ -337,7 +336,7 @@ export default function DashboardOverview() {
                   href="/dashboard/wallets"
                   className="inline-flex items-center justify-between text-[10px] sm:text-[11px] font-semibold text-[#4388F5] hover:text-[#5A9AFF] pt-2 border-t border-white/5 w-full group"
                 >
-                  <span className="truncate">Deposit / Withdraw</span>
+                  <span className="truncate">{t("Deposit / Withdraw")}</span>
                   <ChevronRight className="w-3 h-3 shrink-0 transition-transform group-hover:translate-x-0.5" />
                 </Link>
               </div>
@@ -352,13 +351,13 @@ export default function DashboardOverview() {
         <div className="lg:col-span-7 panel p-6 flex flex-col gap-5">
           <div className="flex justify-between items-center pb-4 border-b border-white/10">
             <h3 className="font-semibold text-sm text-white flex items-center gap-2">
-              <TrendingUp className="h-4 w-4 text-[#4388F5]" /> Active Yield Contracts
+              <TrendingUp className="h-4 w-4 text-[#4388F5]" /> {t("Active Yield Contracts")}
             </h3>
             <Link
               href="/dashboard/investments"
               className="text-xs font-semibold text-[#4388F5] hover:text-[#5A9AFF] inline-flex items-center gap-0.5"
             >
-              <span>Explore Tiers</span>
+              <span>{t("Explore Tiers")}</span>
               <ChevronRight className="h-3.5 w-3.5" />
             </Link>
           </div>
@@ -366,7 +365,7 @@ export default function DashboardOverview() {
           <div className="flex flex-col gap-3">
             {investments.length === 0 ? (
               <div className="p-8 text-center text-xs text-[#7D8998] border border-dashed border-white/10 rounded-md">
-                No active yield contracts running. Explore our structured tiers to start earning.
+                {t("No active yield contracts running. Explore our structured tiers to start earning.")}
               </div>
             ) : (
               investments.map((inv) => {
@@ -377,9 +376,9 @@ export default function DashboardOverview() {
                   <div key={inv.id} className="p-4 rounded-md bg-[#0B0F14] border border-white/10 flex flex-col gap-2.5">
                     <div className="flex justify-between items-start">
                       <div>
-                        <span className="font-semibold text-xs text-white block">{planName} Tier</span>
+                        <span className="font-semibold text-xs text-white block">{t(`${planName} Tier`)}</span>
                         <span className="num text-[11px] text-[#7D8998] mt-0.5 block">
-                          Principal: {formatCrypto(inv.amount, 4)} {inv.currency}
+                          {t(`Principal: ${formatCrypto(inv.amount, 4)} ${inv.currency}`)}
                         </span>
                       </div>
                       <span className="badge badge-accent text-[10px] font-bold">
@@ -393,13 +392,13 @@ export default function DashboardOverview() {
                         <span style={{ width: `${percentage}%` }} />
                       </div>
                       <div className="flex justify-between text-[10px] text-[#7D8998] num">
-                        <span>Started: {inv.start_date ? new Date(inv.start_date).toLocaleDateString() : "Active"}</span>
-                        <span>Maturity: {percentage}%</span>
+                        <span>{t(`Started: ${inv.start_date ? formatDate(inv.start_date) : t("Active")}`)}</span>
+                        <span>{t(`Maturity: ${percentage}%`)}</span>
                       </div>
                     </div>
 
                     <div className="flex justify-between items-center text-xs pt-2 border-t border-white/5 mt-1">
-                      <span className="text-[#7D8998]">Expected Total Settlement:</span>
+                      <span className="text-[#7D8998]">{t("Expected Total Settlement:")}</span>
                       <span className="num font-bold text-white font-mono">
                         {formatCrypto(inv.expected_return, 5)} {inv.currency}
                       </span>
@@ -414,22 +413,22 @@ export default function DashboardOverview() {
         {/* Referral Card */}
         <div className="lg:col-span-5 panel p-6 flex flex-col gap-5">
           <h3 className="font-semibold text-sm text-white flex items-center gap-2 pb-4 border-b border-white/10">
-            <Users className="h-4 w-4 text-[#4388F5]" /> Partner Program
+            <Users className="h-4 w-4 text-[#4388F5]" /> {t("Partner Program")}
           </h3>
 
           <p className="text-xs text-[#A6B0BE] leading-relaxed">
-            Earn direct compounding commissions when your partners register and fund investment tiers. Commissions credit immediately to your liquid balance.
+            {t("Earn direct compounding commissions when your partners register and fund investment tiers. Commissions credit immediately to your liquid balance.")}
           </p>
 
           <div className="flex flex-col gap-1.5">
             <label className="text-[11px] font-semibold text-[#7D8998] uppercase tracking-wider">
-              Your Referral Link
+              {t("Your Referral Link")}
             </label>
             <div className="flex gap-2">
               <input
                 type="text"
                 readOnly
-                value={referralCode ? `${typeof window !== "undefined" ? window.location.origin : ""}/register?ref=${referralCode}` : "Generating..."}
+                value={referralCode ? `${typeof window !== "undefined" ? window.location.origin : ""}/register?ref=${referralCode}` : t("Generating...")}
                 className="input text-xs font-mono select-all"
               />
               <button
@@ -445,11 +444,11 @@ export default function DashboardOverview() {
 
           <div className="grid grid-cols-2 gap-3 text-center pt-3 border-t border-white/10">
             <div className="p-3 rounded bg-[#0B0F14] border border-white/5">
-              <span className="text-[10px] text-[#7D8998] uppercase block font-medium">Referred Members</span>
+              <span className="text-[10px] text-[#7D8998] uppercase block font-medium">{t("Referred Members")}</span>
               <span className="num text-xl font-bold text-white mt-0.5 block">{referralCount}</span>
             </div>
             <div className="p-3 rounded bg-[#0B0F14] border border-white/5">
-              <span className="text-[10px] text-[#7D8998] uppercase block font-medium">Earned Rewards</span>
+              <span className="text-[10px] text-[#7D8998] uppercase block font-medium">{t("Earned Rewards")}</span>
               <span className="num text-xl font-bold text-[#27C58B] mt-0.5 block">${formatUsd(referralEarnings)}</span>
             </div>
           </div>

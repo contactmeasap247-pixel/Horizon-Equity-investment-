@@ -5,12 +5,15 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Mail, Lock, Eye, EyeOff, Loader2, ArrowLeft, AlertCircle } from "lucide-react";
 import BrandLogo from "@/app/components/BrandLogo";
+import LanguageSelector from "@/app/components/LanguageSelector";
 import { useAuthStore } from "@/lib/auth-store";
 import { warmUpBackend } from "@/lib/api";
+import { useLanguage } from "@/lib/language-context";
 
 export default function LoginPage() {
   const router = useRouter();
   const { login, isAuthenticated, isInitialized, initialize } = useAuthStore();
+  const { t, dir } = useLanguage();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -37,7 +40,7 @@ export default function LoginPage() {
     if (isLoading) return;
 
     if (!email || !password) {
-      setErrorMsg("Please provide both email and password.");
+      setErrorMsg(t("Please provide both email and password."));
       return;
     }
 
@@ -47,13 +50,13 @@ export default function LoginPage() {
 
     try {
       await login(email.trim(), password, (status) => {
-        setStatusMsg(status);
+        setStatusMsg(t(status));
       });
       router.push("/dashboard");
     } catch (err: unknown) {
       const message =
         err instanceof Error ? err.message : "Incorrect credentials. Please verify your email and password.";
-      setErrorMsg(message);
+      setErrorMsg(t(message));
     } finally {
       setIsLoading(false);
       setStatusMsg(null);
@@ -61,16 +64,17 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#0B0F14] text-[#F5F7FA] flex flex-col justify-center items-center px-4 py-12 relative selection:bg-[#4388F5]/30">
-      {/* Top Bar / Back Button */}
+    <div dir={dir} className="min-h-screen bg-[#0B0F14] text-[#F5F7FA] flex flex-col justify-center items-center px-4 py-12 relative selection:bg-[#4388F5]/30">
+      {/* Top Bar / Back Button + Language Selector */}
       <div className="w-full max-w-[420px] mb-6 flex justify-between items-center">
         <Link
           href="/"
           className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#A6B0BE] hover:text-white transition-colors"
         >
           <ArrowLeft className="w-3.5 h-3.5" />
-          <span>Back to Homepage</span>
+          <span>{t("auth_back_home")}</span>
         </Link>
+        <LanguageSelector compact />
       </div>
 
       {/* Main Auth Container */}
@@ -78,9 +82,9 @@ export default function LoginPage() {
         {/* Brand Header */}
         <div className="flex flex-col items-center text-center">
           <BrandLogo size="md" href="/" withSubtitle={false} />
-          <h1 className="text-xl font-bold tracking-tight text-white mt-4">Client Sign In</h1>
+          <h1 className="text-xl font-bold tracking-tight text-white mt-4">{t("auth_login_title")}</h1>
           <p className="text-xs text-[#7D8998] mt-1">
-            Access your multi-asset portfolio and institutional accounts
+            {t("auth_login_sub")}
           </p>
         </div>
 
@@ -105,7 +109,7 @@ export default function LoginPage() {
           {/* Email Address */}
           <div className="field">
             <label htmlFor="login-email" className="field-label">
-              <span>Email Address</span>
+              <span>{t("auth_email")}</span>
             </label>
             <div className="control">
               <span className="control-icon" aria-hidden="true">
@@ -128,7 +132,7 @@ export default function LoginPage() {
           {/* Password */}
           <div className="field">
             <div className="field-label">
-              <label htmlFor="login-password">Password</label>
+              <label htmlFor="login-password">{t("auth_password")}</label>
             </div>
             <div className="control">
               <span className="control-icon" aria-hidden="true">
@@ -166,19 +170,19 @@ export default function LoginPage() {
             {isLoading ? (
               <>
                 <Loader2 className="w-4 h-4 animate-spin mr-1" />
-                <span>{statusMsg || "Authenticating Session..."}</span>
+                <span>{statusMsg || t("auth_signing_in")}</span>
               </>
             ) : (
-              "Sign In to Account"
+              t("auth_sign_in_btn")
             )}
           </button>
         </form>
 
         {/* Footer switch */}
         <div className="pt-4 border-t border-white/5 text-center text-xs text-[#7D8998]">
-          Don't have an institutional account yet?{" "}
+          {t("auth_no_account")}{" "}
           <Link href="/register" className="font-semibold text-[#4388F5] hover:text-[#5A9AFF] transition-colors">
-            Open Account
+            {t("auth_open_account")}
           </Link>
         </div>
       </div>

@@ -108,6 +108,11 @@ api.interceptors.request.use(
       if (token) {
         config.headers.Authorization = `Bearer ${token}`;
       }
+      const prefLang = localStorage.getItem("horizon_preferred_lang");
+      if (prefLang) {
+        config.headers["Accept-Language"] = prefLang;
+        config.headers["X-Language"] = prefLang;
+      }
     }
     return config;
   },

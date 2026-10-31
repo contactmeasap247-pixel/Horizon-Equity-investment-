@@ -64,11 +64,6 @@ class WalletService:
         
         # If set to primary, clear existing primary flags for this currency
         if wallet_in.is_primary:
-            await db.execute(
-                select(AdminWallet)
-                .filter(AdminWallet.currency == currency, AdminWallet.is_primary == True)
-            )
-            # We will handle unsetting in update/save logic
             existing_primaries_result = await db.execute(
                 select(AdminWallet).filter(AdminWallet.currency == currency, AdminWallet.is_primary == True)
             )
@@ -166,7 +161,6 @@ class WalletService:
         currency = currency.upper()
 
         # Find active admin wallet for receiving deposit
-        # Try primary first
         admin_wallet_result = await db.execute(
             select(AdminWallet).filter(
                 AdminWallet.currency == currency,
@@ -235,12 +229,17 @@ class WalletService:
             message=f"Deposit of {amount} {currency} submitted for blockchain confirmation ({dep_ref}).",
         )
 
-        # Dispatch automated email via Brevo
+        # Dispatch automated email via Brevo in user's saved language
         user_res = await db.execute(select(User).filter(User.id == user_id))
         dep_user = user_res.scalars().first()
         if dep_user:
             email_service.send_deposit_submitted_email(
-                dep_user.email, dep_user.full_name, str(amount), currency, dep_ref
+                dep_user.email,
+                dep_user.full_name,
+                str(amount),
+                currency,
+                dep_ref,
+                lang=getattr(dep_user, "preferred_language", "en") or "en",
             )
 
         await db.commit()
@@ -368,10 +367,16 @@ class WalletService:
             message=f"Withdrawal request for {amount} {currency} ({wd_ref}) has been submitted and is pending administrative review.",
         )
 
-        # Dispatch automated email via Brevo
+        # Dispatch automated email via Brevo in user's saved language
         if user:
             email_service.send_withdrawal_submitted_email(
-                user.email, user.full_name, str(amount), currency, wd_ref, withdraw_in.wallet_address
+                user.email,
+                user.full_name,
+                str(amount),
+                currency,
+                wd_ref,
+                withdraw_in.wallet_address,
+                lang=getattr(user, "preferred_language", "en") or "en",
             )
 
         await db.commit()

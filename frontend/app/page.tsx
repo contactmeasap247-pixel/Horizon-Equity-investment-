@@ -27,8 +27,6 @@ import { useMarketPrices } from "@/lib/use-market-prices";
    DATA DEFINITIONS
    --------------------------------------------------------------------- */
 
-
-
 const INVESTMENT_PLANS = [
   {
     id: "silver",
@@ -208,7 +206,6 @@ export default function HomePage() {
           className="absolute inset-0 bg-cover bg-center lg:bg-right pointer-events-none"
           style={{ backgroundImage: "url('/hero-multi-asset.jpg')" }}
         />
-        {/* Left 55-60% clean contrast gradient: 080C12 -> 080C12/95 via 60% -> 080C12/35 */}
         <div
           className="absolute inset-0 pointer-events-none bg-gradient-to-r from-[#080C12] via-[#080C12]/95 via-[55%] md:via-[60%] to-[#080C12]/40"
         />
@@ -222,19 +219,19 @@ export default function HomePage() {
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded bg-[#111A26] border border-[#263345] text-xs font-mono text-[#A0AEC0] mb-6 animate-fade">
               <span className="w-1.5 h-1.5 rounded-full bg-[#4C8DFF] animate-pulse" />
               <span className="tracking-wider uppercase font-semibold text-[11px]">
-                METALS · CRYPTO · FOREX · ENERGY · REAL ESTATE
+                {t("hero_kicker")}
               </span>
             </div>
 
             {/* Heading */}
             <h1 className="t-display text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight mb-6 leading-[1.08] animate-rise">
-              Trade Beyond<br />
-              <span className="text-[#4C8DFF]">a Single Market.</span>
+              {t("hero_title_1")}<br />
+              <span className="text-[#4C8DFF]">{t("hero_title_2")}</span>
             </h1>
 
             {/* Subtitle */}
             <p className="text-base sm:text-lg text-[#A0AEC0] max-w-xl leading-relaxed mb-8 animate-rise delay-1 font-sans">
-              Explore opportunities across precious metals, crypto, forex, energy, and real estate through one connected investment platform.
+              {t("hero_subtitle")}
             </p>
 
             {/* Call to Actions */}
@@ -243,7 +240,7 @@ export default function HomePage() {
                 href="/register"
                 className="btn btn-primary btn-lg justify-center shadow-lg font-mono text-sm tracking-wide"
               >
-                <span>Get Started</span>
+                <span>{t("hero_cta_invest")}</span>
                 <ArrowRight className="w-4 h-4 ml-1.5" />
               </Link>
 
@@ -251,7 +248,7 @@ export default function HomePage() {
                 href="/markets"
                 className="btn btn-secondary btn-lg justify-center font-mono text-sm tracking-wide text-[#F1F5F9]"
               >
-                <span>Explore Markets</span>
+                <span>{t("hero_cta_explore")}</span>
                 <ChevronRight className="w-4 h-4 ml-0.5 text-[#718096]" />
               </Link>
             </div>
@@ -259,27 +256,27 @@ export default function HomePage() {
             {/* Key Metrics Strip */}
             <div className="w-full max-w-2xl metric-strip text-left animate-rise delay-3">
               <div className="metric">
-                <span className="metric-label">Aggregated Volume</span>
-                <span className="metric-value font-mono">$2.48B+</span>
-                <span className="metric-sub text-[#31C48D] font-mono">+24% YoY</span>
+                <span className="metric-label">{t("hero_stat_vol_label")}</span>
+                <span className="metric-value font-mono">{t("hero_stat_vol")}</span>
+                <span className="metric-sub text-[#31C48D] font-mono">{t("hero_stat_vol_sub")}</span>
               </div>
 
               <div className="metric">
-                <span className="metric-label">Active Desks</span>
-                <span className="metric-value font-mono">142,500+</span>
-                <span className="metric-sub font-mono">140+ Jurisdictions</span>
+                <span className="metric-label">{t("hero_stat_investors_label")}</span>
+                <span className="metric-value font-mono">{t("hero_stat_investors")}</span>
+                <span className="metric-sub font-mono">{t("hero_stat_investors_sub")}</span>
               </div>
 
               <div className="metric">
-                <span className="metric-label">Yield Ceiling</span>
-                <span className="metric-value font-mono">Up to 45%</span>
-                <span className="metric-sub text-[#31C48D] font-mono">Fixed Maturity</span>
+                <span className="metric-label">{t("hero_stat_roi_label")}</span>
+                <span className="metric-value font-mono">{t("hero_stat_roi")}</span>
+                <span className="metric-sub text-[#31C48D] font-mono">{t("hero_stat_roi_sub")}</span>
               </div>
 
               <div className="metric">
-                <span className="metric-label">Execution Latency</span>
-                <span className="metric-value font-mono">&lt; 12ms</span>
-                <span className="metric-sub font-mono">London / Tokyo</span>
+                <span className="metric-label">{t("hero_stat_speed_label")}</span>
+                <span className="metric-value font-mono">{t("hero_stat_speed")}</span>
+                <span className="metric-sub font-mono">{t("hero_stat_speed_sub")}</span>
               </div>
             </div>
           </div>
@@ -296,7 +293,7 @@ export default function HomePage() {
         <div className="flex gap-4 items-center whitespace-nowrap overflow-x-auto scrollbar-none px-6">
           <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-[#7D8998] shrink-0 pr-4 border-r border-white/10 font-mono">
             <span className="w-2 h-2 rounded-full bg-[#27C58B] animate-pulse" />
-            <span>LIVE MARKETS</span>
+            <span>{t("live_markets")}</span>
           </div>
 
           <div className="flex items-center gap-6 shrink-0">
@@ -332,13 +329,12 @@ export default function HomePage() {
       <section className="section" id="capabilities">
         <div className="container-page">
           <div className="max-w-2xl mb-14">
-            <span className="t-eyebrow mb-2 block">{t("feat_badge") || "Architecture"}</span>
+            <span className="t-eyebrow mb-2 block">{t("feat_badge")}</span>
             <h2 className="t-section mb-3">
-              {t("feat_title") || "Why and How We Stand Out"}
+              {t("feat_title")}
             </h2>
             <p className="t-body">
-              {t("feat_subtitle") ||
-                "Institutional financial engineering packaged into a seamless, high-yield digital environment."}
+              {t("feat_subtitle")}
             </p>
           </div>
 
@@ -349,16 +345,16 @@ export default function HomePage() {
                 <div className="icon-tile mb-5 text-[#4C8DFF] bg-[#172333]">
                   <Coins className="w-5 h-5" />
                 </div>
-                <h3 className="t-card mb-2 font-mono text-white">Precious Metals &amp; Bullion</h3>
+                <h3 className="t-card mb-2 font-mono text-white">{t("feat_metals_title")}</h3>
                 <p className="t-small text-[#A0AEC0] leading-relaxed mb-6">
-                  Physical gold and silver allocations vaulted in Zurich and London with spot liquidity, instant settlement, and audit guarantees.
+                  {t("feat_metals_desc")}
                 </p>
               </div>
               <Link
                 href="/markets"
                 className="inline-flex items-center gap-1.5 text-xs font-mono font-semibold text-[#4C8DFF] hover:text-[#6AA3FF]"
               >
-                <span>Spot Metals Orderbook</span>
+                <span>{t("feat_metals_link")}</span>
                 <ArrowRight className="w-3.5 h-3.5" />
               </Link>
             </div>
@@ -369,16 +365,16 @@ export default function HomePage() {
                 <div className="icon-tile mb-5 text-[#4C8DFF] bg-[#172333]">
                   <Zap className="w-5 h-5" />
                 </div>
-                <h3 className="t-card mb-2 font-mono text-white">Cryptocurrency Perpetuals</h3>
+                <h3 className="t-card mb-2 font-mono text-white">{t("feat_crypto_title")}</h3>
                 <p className="t-small text-[#A0AEC0] leading-relaxed mb-6">
-                  Sub-millisecond execution across BTC, ETH, SOL, and 120+ digital asset pairs backed by cold multi-sig custody.
+                  {t("feat_crypto_desc")}
                 </p>
               </div>
               <Link
                 href="/markets"
                 className="inline-flex items-center gap-1.5 text-xs font-mono font-semibold text-[#4C8DFF] hover:text-[#6AA3FF]"
               >
-                <span>Digital Asset Orderbooks</span>
+                <span>{t("feat_crypto_link")}</span>
                 <ArrowRight className="w-3.5 h-3.5" />
               </Link>
             </div>
@@ -389,16 +385,16 @@ export default function HomePage() {
                 <div className="icon-tile mb-5 text-[#4C8DFF] bg-[#172333]">
                   <Globe className="w-5 h-5" />
                 </div>
-                <h3 className="t-card mb-2 font-mono text-white">Global Forex Desks</h3>
+                <h3 className="t-card mb-2 font-mono text-white">{t("feat_forex_title")}</h3>
                 <p className="t-small text-[#A0AEC0] leading-relaxed mb-6">
-                  Institutional pricing across G10 and emerging currency pairs with micro-pip spreads and aggregated Tier-1 liquidity.
+                  {t("feat_forex_desc")}
                 </p>
               </div>
               <Link
                 href="/markets"
                 className="inline-flex items-center gap-1.5 text-xs font-mono font-semibold text-[#4C8DFF] hover:text-[#6AA3FF]"
               >
-                <span>G10 Currency Hub</span>
+                <span>{t("feat_forex_link")}</span>
                 <ArrowRight className="w-3.5 h-3.5" />
               </Link>
             </div>
@@ -409,16 +405,16 @@ export default function HomePage() {
                 <div className="icon-tile mb-5 text-[#4C8DFF] bg-[#172333]">
                   <Flame className="w-5 h-5" />
                 </div>
-                <h3 className="t-card mb-2 font-mono text-white">Oil, Gas &amp; Energy</h3>
+                <h3 className="t-card mb-2 font-mono text-white">{t("feat_energy_title")}</h3>
                 <p className="t-small text-[#A0AEC0] leading-relaxed mb-6">
-                  Exposure to global benchmark Brent crude, West Texas Intermediate, natural gas, and sustainable energy infrastructure yield.
+                  {t("feat_energy_desc")}
                 </p>
               </div>
               <Link
                 href="/markets"
                 className="inline-flex items-center gap-1.5 text-xs font-mono font-semibold text-[#4C8DFF] hover:text-[#6AA3FF]"
               >
-                <span>Energy Contracts</span>
+                <span>{t("feat_energy_link")}</span>
                 <ArrowRight className="w-3.5 h-3.5" />
               </Link>
             </div>
@@ -429,16 +425,16 @@ export default function HomePage() {
                 <div className="icon-tile mb-5 text-[#4C8DFF] bg-[#172333]">
                   <Building2 className="w-5 h-5" />
                 </div>
-                <h3 className="t-card mb-2 font-mono text-white">Real Estate Syndicates</h3>
+                <h3 className="t-card mb-2 font-mono text-white">{t("feat_realestate_title")}</h3>
                 <p className="t-small text-[#A0AEC0] leading-relaxed mb-6">
-                  Commercial property debt and fractional ownership of premium metropolitan developments with quarterly rent yield distributions.
+                  {t("feat_realestate_desc")}
                 </p>
               </div>
               <Link
                 href="/markets"
                 className="inline-flex items-center gap-1.5 text-xs font-mono font-semibold text-[#4C8DFF] hover:text-[#6AA3FF]"
               >
-                <span>Property Portfolios</span>
+                <span>{t("feat_realestate_link")}</span>
                 <ArrowRight className="w-3.5 h-3.5" />
               </Link>
             </div>
@@ -449,16 +445,16 @@ export default function HomePage() {
                 <div className="icon-tile mb-5 text-[#4C8DFF] bg-[#172333]">
                   <Users className="w-5 h-5" />
                 </div>
-                <h3 className="t-card mb-2 font-mono text-white">Mirror Trading Protocol</h3>
+                <h3 className="t-card mb-2 font-mono text-white">{t("feat_copy_title")}</h3>
                 <p className="t-small text-[#A0AEC0] leading-relaxed mb-6">
-                  Replicate verified master quantitative traders automatically in real-time with customizable stop-loss rules and transparent win-rates.
+                  {t("feat_copy_desc")}
                 </p>
               </div>
               <Link
                 href="/copy-trading"
                 className="inline-flex items-center gap-1.5 text-xs font-mono font-semibold text-[#4C8DFF] hover:text-[#6AA3FF]"
               >
-                <span>View Trader Leaderboard</span>
+                <span>{t("feat_copy_link")}</span>
                 <ArrowRight className="w-3.5 h-3.5" />
               </Link>
             </div>
@@ -474,13 +470,13 @@ export default function HomePage() {
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-14">
             <div className="max-w-2xl">
               <span className="t-eyebrow mb-2 block font-mono text-[#4C8DFF]">
-                STRUCTURED CAPITAL STRATEGIES
+                {t("plans_badge")}
               </span>
               <h2 className="t-section mb-3 font-mono text-white">
-                Fixed-Yield Investment Tiers
+                {t("plans_title")}
               </h2>
               <p className="t-body text-[#A0AEC0]">
-                Four distinct allocation tiers engineered for capital preservation, institutional arbitrage, and guaranteed maturity payouts.
+                {t("plans_subtitle")}
               </p>
             </div>
 
@@ -488,7 +484,7 @@ export default function HomePage() {
               href="/plans"
               className="inline-flex items-center gap-1.5 text-sm font-mono font-semibold text-[#4C8DFF] hover:text-[#6AA3FF] shrink-0"
             >
-              <span>Compare All Plan Specifications</span>
+              <span>{t("plans_compare_link")}</span>
               <ChevronRight className="w-4 h-4" />
             </Link>
           </div>
@@ -507,7 +503,7 @@ export default function HomePage() {
                   {/* Top Bar */}
                   <div className="flex items-center justify-between gap-2 mb-4">
                     <span className="text-xs font-mono font-semibold uppercase tracking-wider text-[#A0AEC0]">
-                      {plan.name}
+                      {t(plan.name)}
                     </span>
                     <span
                       className={`badge text-[10px] font-mono ${
@@ -516,7 +512,7 @@ export default function HomePage() {
                           : "bg-[#172333] text-[#A0AEC0] border border-[#263345]"
                       }`}
                     >
-                      {plan.badge}
+                      {t(plan.badge)}
                     </span>
                   </div>
 
@@ -525,27 +521,27 @@ export default function HomePage() {
                     <span className="num font-mono text-3xl sm:text-4xl font-bold text-white">
                       {plan.rate.toFixed(1)}%
                     </span>
-                    <span className="text-xs text-[#718096] font-mono">Net Fixed ROI</span>
+                    <span className="text-xs text-[#718096] font-mono">{t("plans_net_roi")}</span>
                   </div>
 
                   {/* Conditions List */}
                   <div className="inset p-3.5 mb-6 text-xs flex flex-col gap-2 bg-[#0D131C] border border-[#263345] rounded">
                     <div className="flex justify-between">
-                      <span className="text-[#718096]">Min Entry:</span>
+                      <span className="text-[#718096]">{t("plans_min")}</span>
                       <span className="num font-mono font-semibold text-white">
                         ${plan.minDeposit.toLocaleString()}
                       </span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-[#718096]">Max Entry:</span>
+                      <span className="text-[#718096]">{t("plans_max")}</span>
                       <span className="num font-mono font-semibold text-white">
-                        {plan.isUnlimited ? "Unlimited" : `$${plan.maxDeposit.toLocaleString()}`}
+                        {plan.isUnlimited ? t("plans_unlimited") : `$${plan.maxDeposit.toLocaleString()}`}
                       </span>
                     </div>
                     <div className="flex justify-between border-t border-[#263345] pt-2">
-                      <span className="text-[#718096]">Cycle Duration:</span>
+                      <span className="text-[#718096]">{t("plans_duration")}</span>
                       <span className="num font-mono font-semibold text-[#4C8DFF]">
-                        {plan.durationDays} Days
+                        {plan.durationDays} {t("plans_days")}
                       </span>
                     </div>
                   </div>
@@ -555,7 +551,7 @@ export default function HomePage() {
                     {plan.features.map((feat, idx) => (
                       <li key={idx} className="flex items-start gap-2">
                         <CheckCircle2 className="w-3.5 h-3.5 text-[#31C48D] shrink-0 mt-0.5" />
-                        <span>{feat}</span>
+                        <span>{t(feat)}</span>
                       </li>
                     ))}
                   </ul>
@@ -567,7 +563,7 @@ export default function HomePage() {
                     plan.popular ? "btn-primary" : "btn-secondary"
                   }`}
                 >
-                  <span>Select {plan.name.split(" ")[0]}</span>
+                  <span>{t(`Select ${plan.name.split(" ")[0]}`)}</span>
                   <ArrowRight className="w-3.5 h-3.5 ml-1" />
                 </Link>
               </div>
@@ -583,12 +579,12 @@ export default function HomePage() {
         <div className="container-page">
           <div className="panel max-w-4xl mx-auto p-7 sm:p-10 lg:p-12 bg-[#111A26] border border-[#263345]">
             <div className="max-w-xl mx-auto text-center mb-10">
-              <span className="t-eyebrow mb-2 block font-mono text-[#4C8DFF]">SIMULATOR</span>
+              <span className="t-eyebrow mb-2 block font-mono text-[#4C8DFF]">{t("calc_badge")}</span>
               <h2 className="t-section mb-3 font-mono text-white">
-                Project Your Investment Yield
+                {t("calc_title")}
               </h2>
               <p className="t-small text-[#A0AEC0]">
-                Select your preferred structured tier and principal amount to simulate anticipated maturity settlement and returns.
+                {t("calc_subtitle")}
               </p>
             </div>
 
@@ -612,10 +608,10 @@ export default function HomePage() {
                     }`}
                   >
                     <span className="block text-xs font-mono font-semibold text-white">
-                      {p.name.split(" ")[0]}
+                      {t(p.name)}
                     </span>
                     <span className="num font-mono text-[11px] text-[#31C48D] mt-0.5 block font-medium">
-                      +{p.rate}% Net ROI
+                      +{p.rate}% {t("plans_net_roi")}
                     </span>
                   </button>
                 );
@@ -629,7 +625,7 @@ export default function HomePage() {
                   htmlFor={calcAmountId}
                   className="text-xs font-mono uppercase tracking-wider text-[#A0AEC0]"
                 >
-                  Investment Capital (USD)
+                  {t("calc_capital")}
                 </label>
                 <span className="num font-mono text-xl sm:text-2xl font-bold text-white bg-[#0D131C] px-3 py-1 rounded border border-[#263345]">
                   ${calcAmount.toLocaleString()}
@@ -646,7 +642,7 @@ export default function HomePage() {
                 onChange={(e) => setCalcAmount(Number(e.target.value))}
                 className="range"
                 style={{
-                  ["--fill" as any]: `${
+                  ["--fill" as string]: `${
                     ((calcAmount - calcPlan.minDeposit) /
                       (calcPlan.maxDeposit - calcPlan.minDeposit)) *
                     100
@@ -655,9 +651,11 @@ export default function HomePage() {
               />
 
               <div className="flex justify-between text-xs text-[#718096] mt-2 num font-mono">
-                <span>Min: ${calcPlan.minDeposit.toLocaleString()}</span>
+                <span>{t(`Min: $${calcPlan.minDeposit.toLocaleString()}`)}</span>
                 <span>
-                  {calcPlan.isUnlimited ? "Unlimited ($5,000+ Permitted)" : `Max: $${calcPlan.maxDeposit.toLocaleString()}`}
+                  {calcPlan.isUnlimited
+                    ? t("Unlimited ($5,000+ Permitted)")
+                    : t(`Max: $${calcPlan.maxDeposit.toLocaleString()}`)}
                 </span>
               </div>
             </div>
@@ -665,28 +663,28 @@ export default function HomePage() {
             {/* Results Grid */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-5 sm:p-6 rounded-lg bg-[#0D131C] border border-[#263345] mb-8">
               <div className="metric">
-                <span className="metric-label">{t("calc_daily_profit") || "Daily Return"}</span>
+                <span className="metric-label">{t("calc_daily_profit")}</span>
                 <span className="num font-mono text-xl sm:text-2xl font-bold text-[#31C48D]">
                   +${dailyProfit.toFixed(2)}
                 </span>
               </div>
 
               <div className="metric">
-                <span className="metric-label">{t("calc_duration") || "Duration"}</span>
+                <span className="metric-label">{t("calc_duration")}</span>
                 <span className="num font-mono text-xl sm:text-2xl font-bold text-white">
-                  {calcPlan.durationDays} Days
+                  {calcPlan.durationDays} {t("plans_days")}
                 </span>
               </div>
 
               <div className="metric">
-                <span className="metric-label">{t("calc_net_profit") || "Net Yield"}</span>
+                <span className="metric-label">{t("calc_net_profit")}</span>
                 <span className="num font-mono text-xl sm:text-2xl font-bold text-[#4C8DFF]">
                   +{netPercentage}%
                 </span>
               </div>
 
               <div className="metric">
-                <span className="metric-label">{t("calc_total_payout") || "Total Settlement"}</span>
+                <span className="metric-label">{t("calc_total_payout")}</span>
                 <span className="num font-mono text-xl sm:text-2xl font-bold text-white">
                   ${totalReturn.toFixed(2)}
                 </span>
@@ -699,7 +697,7 @@ export default function HomePage() {
                 href="/register"
                 className="btn btn-primary btn-lg px-8 font-semibold shadow-md"
               >
-                <span>{t("calc_cta") || "Proceed to Fund With This Allocation"}</span>
+                <span>{t("calc_cta")}</span>
                 <ArrowRight className="w-4 h-4 ml-1.5" />
               </Link>
             </div>
@@ -714,13 +712,12 @@ export default function HomePage() {
         <div className="container-page">
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-14">
             <div className="max-w-2xl">
-              <span className="t-eyebrow mb-2 block">{t("copy_badge") || "Mirror Protocol"}</span>
+              <span className="t-eyebrow mb-2 block">{t("copy_badge")}</span>
               <h2 className="t-section mb-3">
-                {t("copy_title") || "Mirror Verified Pros. Zero Manual Overhead."}
+                {t("copy_title")}
               </h2>
               <p className="t-body">
-                {t("copy_subtitle") ||
-                  "Follow elite quantitative traders with verified on-chain track records. Replicate trades automatically with customized stop-loss rules."}
+                {t("copy_subtitle")}
               </p>
             </div>
 
@@ -728,7 +725,7 @@ export default function HomePage() {
               href="/copy-trading"
               className="inline-flex items-center gap-1.5 text-sm font-semibold text-[#4388F5] hover:text-[#5A9AFF] shrink-0"
             >
-              <span>Explore All Verified Masters</span>
+              <span>{t("copy_explore_all")}</span>
               <ChevronRight className="w-4 h-4" />
             </Link>
           </div>
@@ -748,14 +745,14 @@ export default function HomePage() {
                       </div>
                     </div>
                     <span className="badge badge-accent text-[11px]">
-                      {trader.badge}
+                      {t(trader.badge)}
                     </span>
                   </div>
 
                   <div className="grid grid-cols-2 gap-3 p-3.5 rounded-md bg-[#0B0F14] border border-white/10 mb-5">
                     <div>
                       <span className="text-[10px] text-[#7D8998] uppercase font-semibold block">
-                        30D Win Rate
+                        {t("copy_win_rate")}
                       </span>
                       <span className="num text-base font-bold text-[#27C58B]">
                         {trader.winRate}
@@ -763,7 +760,7 @@ export default function HomePage() {
                     </div>
                     <div>
                       <span className="text-[10px] text-[#7D8998] uppercase font-semibold block">
-                        30D Net ROI
+                        {t("copy_return")}
                       </span>
                       <span className="num text-base font-bold text-[#4388F5]">
                         {trader.monthlyRoi}
@@ -773,10 +770,11 @@ export default function HomePage() {
 
                   <div className="flex items-center justify-between text-xs text-[#A6B0BE] mb-6">
                     <span className="truncate pr-2">
-                      Strategy: <strong className="text-white font-medium">{trader.strategy}</strong>
+                      {t("copy_strategy_label")}{" "}
+                      <strong className="text-white font-medium">{t(trader.strategy)}</strong>
                     </span>
                     <span className="num shrink-0 text-[#7D8998]">
-                      {trader.copiers.toLocaleString()} Copiers
+                      {trader.copiers.toLocaleString()} {t("copy_copiers")}
                     </span>
                   </div>
                 </div>
@@ -785,7 +783,7 @@ export default function HomePage() {
                   href="/register"
                   className="btn btn-secondary btn-block text-xs font-semibold"
                 >
-                  <span>Mirror Strategy</span>
+                  <span>{t("copy_mirror_btn")}</span>
                   <ArrowRight className="w-3.5 h-3.5 ml-1" />
                 </Link>
               </div>
@@ -800,13 +798,12 @@ export default function HomePage() {
       <section className="section" id="security">
         <div className="container-page">
           <div className="max-w-2xl mb-14">
-            <span className="t-eyebrow mb-2 block">{t("sec_badge") || "Governance"}</span>
+            <span className="t-eyebrow mb-2 block">{t("sec_badge")}</span>
             <h2 className="t-section mb-3">
-              {t("sec_title") || "Regulated, Compliant, Trusted."}
+              {t("sec_title")}
             </h2>
             <p className="t-body">
-              {t("sec_subtitle") ||
-                "Multi-layer cryptography, rigorous custody audits, and redundant institutional security safeguards."}
+              {t("sec_subtitle")}
             </p>
           </div>
 
@@ -815,10 +812,9 @@ export default function HomePage() {
               <div className="icon-tile mb-5 text-[#4388F5]">
                 <Lock className="w-5 h-5" />
               </div>
-              <h3 className="t-card mb-2">{t("sec_card1_title") || "Military AES-256 Storage"}</h3>
+              <h3 className="t-card mb-2">{t("sec_card1_title")}</h3>
               <p className="t-small text-[#A6B0BE] leading-relaxed">
-                {t("sec_card1_desc") ||
-                  "98% of digital client reserves are held in geographically distributed, air-gapped cold vaults."}
+                {t("sec_card1_desc")}
               </p>
             </div>
 
@@ -826,10 +822,9 @@ export default function HomePage() {
               <div className="icon-tile mb-5 text-[#4388F5]">
                 <Zap className="w-5 h-5" />
               </div>
-              <h3 className="t-card mb-2">{t("sec_card2_title") || "Instant Automated Clearings"}</h3>
+              <h3 className="t-card mb-2">{t("sec_card2_title")}</h3>
               <p className="t-small text-[#A6B0BE] leading-relaxed">
-                {t("sec_card2_desc") ||
-                  "Withdrawals are audited and dispatched automatically across our dedicated nodes with zero manual delays."}
+                {t("sec_card2_desc")}
               </p>
             </div>
 
@@ -837,26 +832,25 @@ export default function HomePage() {
               <div className="icon-tile mb-5 text-[#4388F5]">
                 <Headphones className="w-5 h-5" />
               </div>
-              <h3 className="t-card mb-2">{t("sec_card3_title") || "24/7 Concierge Support"}</h3>
+              <h3 className="t-card mb-2">{t("sec_card3_title")}</h3>
               <p className="t-small text-[#A6B0BE] leading-relaxed">
-                {t("sec_card3_desc") ||
-                  "Personalized portfolio assistance and round-the-clock priority ticketing available 24/7/365."}
+                {t("sec_card3_desc")}
               </p>
             </div>
           </div>
 
           <div className="panel p-6 sm:p-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 bg-[#0E141B]">
             <div>
-              <h4 className="t-title mb-1 text-white">Full Custodial Segregation Standards</h4>
+              <h4 className="t-title mb-1 text-white">{t("sec_segregation_title")}</h4>
               <p className="t-small text-[#A6B0BE]">
-                Client capital is never co-mingled with platform operational reserves.
+                {t("sec_segregation_desc")}
               </p>
             </div>
             <Link
               href="/security"
               className="btn btn-secondary btn-sm shrink-0 font-semibold"
             >
-              <span>Review Custody Documentation</span>
+              <span>{t("sec_segregation_btn")}</span>
               <ChevronRight className="w-4 h-4 ml-0.5" />
             </Link>
           </div>
@@ -869,10 +863,10 @@ export default function HomePage() {
       <section className="section bg-[#0E141B] border-t border-white/5" id="faq">
         <div className="container-page max-w-4xl">
           <div className="max-w-2xl mb-12">
-            <span className="t-eyebrow mb-2 block">Knowledge Base</span>
-            <h2 className="t-section mb-3">Frequently Asked Questions</h2>
+            <span className="t-eyebrow mb-2 block">{t("faq_badge")}</span>
+            <h2 className="t-section mb-3">{t("faq_title")}</h2>
             <p className="t-body">
-              Clear answers regarding institutional execution, account tiers, and capital preservation.
+              {t("faq_subtitle")}
             </p>
           </div>
 
@@ -887,12 +881,12 @@ export default function HomePage() {
                     aria-expanded={isOpen}
                     className="accordion-trigger"
                   >
-                    <span>{item.q}</span>
+                    <span>{t(item.q)}</span>
                     <Plus className="w-4 h-4 shrink-0 transition-transform duration-200" />
                   </button>
                   {isOpen && (
                     <div className="accordion-panel animate-rise">
-                      <p>{item.a}</p>
+                      <p>{t(item.a)}</p>
                     </div>
                   )}
                 </div>
@@ -909,24 +903,24 @@ export default function HomePage() {
         <div className="container-page text-center">
           <div className="panel max-w-3xl mx-auto p-8 sm:p-12 lg:p-14 bg-gradient-to-b from-[#111821] to-[#0D131A] border-white/10">
             <h2 className="t-section mb-4 font-semibold text-white">
-              Ready to Allocate Capital With Institutional Rigor?
+              {t("cta_title")}
             </h2>
             <p className="t-body max-w-xl mx-auto mb-8 text-[#A6B0BE]">
-              Open your multi-currency account in under two minutes. Access automated compounding yields and deep market liquidity.
+              {t("cta_subtitle")}
             </p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
               <Link
                 href="/register"
                 className="btn btn-primary btn-lg w-full sm:w-auto font-semibold shadow-md"
               >
-                <span>Open Protected Account</span>
+                <span>{t("cta_primary")}</span>
                 <ArrowRight className="w-4 h-4 ml-1.5" />
               </Link>
               <Link
                 href="/plans"
                 className="btn btn-secondary btn-lg w-full sm:w-auto font-semibold"
               >
-                <span>Review Terms &amp; Comparison</span>
+                <span>{t("cta_secondary")}</span>
               </Link>
             </div>
           </div>

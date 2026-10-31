@@ -15,6 +15,7 @@ interface UserProfile {
   country?: string;
   city?: string;
   address?: string;
+  preferred_language?: string;
   is_admin: boolean;
   kyc_status: string;
   created_at: string;
@@ -171,11 +172,14 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         if (attempt > 1) {
           onStatus?.(`Connecting to server... Attempt ${attempt}/${maxAttempts}`);
         }
+        const preferredLanguage =
+          typeof window !== "undefined" ? localStorage.getItem("horizon_preferred_lang") || "en" : "en";
         await api.post("/auth/register", {
           email: cleanEmail,
           password,
           full_name: fullName.trim(),
           referred_by_code: referralCode?.trim() || undefined,
+          preferred_language: preferredLanguage,
         });
         return;
       } catch (error: unknown) {

@@ -30,8 +30,9 @@ class User(Base):
     eth_wallet = Column(String(100), nullable=True)
     sol_wallet = Column(String(100), nullable=True)
 
-    # Account Status
+    # Account Status & Localization
     email_verified = Column(Boolean, default=False)
+    preferred_language = Column(String(10), default="en", nullable=True)
     is_active = Column(Boolean, default=True)
     is_admin = Column(Boolean, default=False)
     is_suspended = Column(Boolean, default=False)

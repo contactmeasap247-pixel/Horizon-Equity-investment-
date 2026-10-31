@@ -1038,6 +1038,7 @@ class AdminService:
                     str(inv.amount),
                     str(inv.expected_return),
                     inv.currency,
+                    lang=getattr(mat_user, "preferred_language", "en") or "en",
                 )
 
                 # Check and unlock welcome bonus
@@ -1055,6 +1056,7 @@ class AdminService:
                         mat_user.full_name,
                         bonus_amount=f"{float(bonus.amount):.2f}",
                         plan_name=plan.name,
+                        lang=getattr(mat_user, "preferred_language", "en") or "en",
                     )
 
             cur = inv.currency.upper()
@@ -1668,7 +1670,12 @@ class AdminService:
             dep_user = user_res.scalars().first()
             if dep_user:
                 email_service.send_deposit_confirmed_email(
-                    dep_user.email, dep_user.full_name, str(deposit.amount), deposit.currency, tx_ref
+                    dep_user.email,
+                    dep_user.full_name,
+                    str(deposit.amount),
+                    deposit.currency,
+                    tx_ref,
+                    lang=getattr(dep_user, "preferred_language", "en") or "en",
                 )
 
         elif status_clean == "rejected":
@@ -1686,7 +1693,12 @@ class AdminService:
             dep_user = user_res.scalars().first()
             if dep_user:
                 email_service.send_deposit_rejected_email(
-                    dep_user.email, dep_user.full_name, str(deposit.amount), deposit.currency, deposit.rejection_reason
+                    dep_user.email,
+                    dep_user.full_name,
+                    str(deposit.amount),
+                    deposit.currency,
+                    deposit.rejection_reason,
+                    lang=getattr(dep_user, "preferred_language", "en") or "en",
                 )
 
         db.add(deposit)
@@ -1784,6 +1796,7 @@ class AdminService:
                     withdrawal.currency,
                     withdrawal.wallet_address,
                     withdrawal.transaction_hash,
+                    lang=getattr(wd_user, "preferred_language", "en") or "en",
                 )
 
         elif status_clean == "rejected":
@@ -1825,6 +1838,7 @@ class AdminService:
                     withdrawal.currency,
                     ref_tx,
                     reason,
+                    lang=getattr(wd_user, "preferred_language", "en") or "en",
                 )
 
         db.add(withdrawal)

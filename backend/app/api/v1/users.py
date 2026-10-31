@@ -50,7 +50,7 @@ async def update_profile(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
-    """Update personal details and cryptocurrency withdrawal wallet addresses in the user profile."""
+    """Update personal details, preferred language, and cryptocurrency withdrawal wallet addresses."""
     for field, value in user_update.model_dump(exclude_unset=True).items():
         setattr(current_user, field, value)
     
@@ -332,13 +332,14 @@ async def get_registration_bonus_status(
             await db.commit()
             await db.refresh(bonus)
 
-            # Send bonus unlocked email notification
+            # Send bonus unlocked email notification in user's saved language
             from app.services.email_service import email_service
             email_service.send_bonus_unlocked_email(
                 current_user.email,
                 current_user.full_name,
                 bonus_amount=f"{float(bonus.amount):.2f}",
                 plan_name="Qualifying Investment Tier",
+                lang=getattr(current_user, "preferred_language", "en") or "en",
             )
 
     return {
@@ -355,4 +356,3 @@ async def get_registration_bonus_status(
             "qualifying_plan": "Silver Starter Tier (Min $100, 2-day duration)",
         },
     }
-

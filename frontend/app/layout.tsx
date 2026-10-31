@@ -7,7 +7,7 @@ import ServerKeepAlive from "@/app/components/ServerKeepAlive";
 export const metadata: Metadata = {
   metadataBase: new URL(
     process.env.NEXT_PUBLIC_SITE_URL ||
-    (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "https://horizon-equity-investment.vercel.app")
+    (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "https://www.horizon-equity.net")
   ),
   title: "Horizon Equity | Premium Multi-Asset Investment Platform",
   description:

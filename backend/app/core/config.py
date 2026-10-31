@@ -37,17 +37,50 @@ class Settings(BaseSettings):
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
 
     # CORS & Deployment
-    ALLOWED_ORIGINS: str = "http://localhost:3000,http://localhost:8000,http://localhost:80"
-    VERCEL_FRONTEND_URL: Optional[str] = None
+    ALLOWED_ORIGINS: str = (
+        "https://www.horizon-equity.net,"
+        "https://horizon-equity.net,"
+        "https://horizon-equity-investment.vercel.app,"
+        "http://localhost:3000,"
+        "http://localhost:8000,"
+        "http://localhost:80"
+    )
+    CUSTOM_DOMAIN: Optional[str] = "horizon-equity.net"
+    VERCEL_FRONTEND_URL: Optional[str] = "https://horizon-equity-investment.vercel.app"
     RENDER_API_KEY: Optional[str] = None
 
     @property
     def cors_origins(self) -> List[str]:
-        origins = [origin.strip() for origin in self.ALLOWED_ORIGINS.split(",") if origin.strip()]
+        base_origins = [
+            "https://www.horizon-equity.net",
+            "https://horizon-equity.net",
+            "https://horizon-equity-investment.vercel.app",
+            "http://localhost:3000",
+            "http://localhost:8000",
+            "http://localhost:80",
+            "http://127.0.0.1:3000",
+            "http://127.0.0.1:8000",
+        ]
+        origins: List[str] = []
+        for raw in self.ALLOWED_ORIGINS.split(","):
+            cleaned = raw.strip().rstrip("/")
+            if cleaned and cleaned not in origins:
+                origins.append(cleaned)
+        for base in base_origins:
+            if base not in origins:
+                origins.append(base)
         if self.VERCEL_FRONTEND_URL and self.VERCEL_FRONTEND_URL.strip():
             vercel_clean = self.VERCEL_FRONTEND_URL.strip().rstrip("/")
             if vercel_clean not in origins:
                 origins.append(vercel_clean)
+        if self.CUSTOM_DOMAIN and self.CUSTOM_DOMAIN.strip():
+            cd = self.CUSTOM_DOMAIN.strip().lower().replace("https://", "").replace("http://", "").rstrip("/")
+            apex = f"https://{cd}"
+            www = f"https://www.{cd}"
+            if apex not in origins:
+                origins.append(apex)
+            if www not in origins:
+                origins.append(www)
         return origins
 
     # Admin

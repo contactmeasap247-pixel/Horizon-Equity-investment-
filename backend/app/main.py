@@ -8,6 +8,7 @@ from contextlib import asynccontextmanager
 import asyncio
 import os
 import uvicorn
+from sqlalchemy import text
 
 from app.core.config import settings
 from app.core.database import engine, Base, async_session
@@ -25,7 +26,6 @@ async def _self_keepalive_loop():
     and Render's 15-minute container sleep window.
     """
     import httpx
-    from sqlalchemy import text
 
     external_url = (
         os.getenv("RENDER_EXTERNAL_URL")
@@ -74,6 +74,11 @@ async def lifespan(app: FastAPI):
     try:
         async with engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
+            # Safe non-breaking schema evolution for i18n preferred_language
+            try:
+                await conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS preferred_language VARCHAR(10) DEFAULT 'en';"))
+            except Exception:
+                pass
         print("[OK] Database tables verified/connected")
     except Exception as e:
         print(f"[WARN] Database schema verification deferred: {e}")
@@ -135,7 +140,7 @@ app.add_middleware(LoggingMiddleware)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins,
-    allow_origin_regex=r"^https://.*\.vercel\.app$",
+    allow_origin_regex=r"^https://([a-zA-Z0-9-]+\.)*(vercel\.app|horizon-equity\.net)$",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

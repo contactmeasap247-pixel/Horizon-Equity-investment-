@@ -78,6 +78,7 @@ class AuthService:
         referral_code = self._generate_referral_code()
         hashed = hash_password(user_in.password)
 
+        preferred_lang = getattr(user_in, "preferred_language", "en") or "en"
         new_user = User(
             email=user_in.email,
             password_hash=hashed,
@@ -86,6 +87,7 @@ class AuthService:
             country=user_in.country,
             city=user_in.city,
             address=user_in.address,
+            preferred_language=preferred_lang,
             btc_wallet=user_in.btc_wallet,
             usdt_wallet=user_in.usdt_wallet,
             eth_wallet=user_in.eth_wallet,
@@ -160,6 +162,7 @@ class AuthService:
                 "email": new_user.email,
                 "full_name": new_user.full_name,
                 "referred_by": str(referred_by_id) if referred_by_id else None,
+                "preferred_language": preferred_lang,
                 "bonus_credited": "10.00",
             },
         )
@@ -177,9 +180,13 @@ class AuthService:
         )
         db.add(auth_token)
 
-        # Dispatch automated registration emails via Brevo
-        email_service.send_welcome_bonus_email(new_user.email, new_user.full_name, bonus_amount="10.00")
-        email_service.send_verification_email(new_user.email, new_user.full_name, raw_verification_token, expires_hours=24)
+        # Dispatch automated registration emails via Brevo in user's preferred language
+        email_service.send_welcome_bonus_email(
+            new_user.email, new_user.full_name, bonus_amount="10.00", lang=new_user.preferred_language
+        )
+        email_service.send_verification_email(
+            new_user.email, new_user.full_name, raw_verification_token, expires_hours=24, lang=new_user.preferred_language
+        )
 
         await db.commit()
         await db.refresh(new_user)
@@ -427,11 +434,13 @@ class AuthService:
         )
         db.add(audit)
 
-        # Dispatch confirmation email via Brevo
+        # Dispatch confirmation email via Brevo in user's saved language
         bonus_res = await db.execute(select(RegistrationBonus).filter(RegistrationBonus.user_id == user.id))
         bonus_rec = bonus_res.scalars().first()
         bonus_amt = f"{bonus_rec.amount:.2f}" if bonus_rec else "10.00"
-        email_service.send_email_verified_confirmation(user.email, user.full_name, bonus_amount=bonus_amt)
+        email_service.send_email_verified_confirmation(
+            user.email, user.full_name, bonus_amount=bonus_amt, lang=user.preferred_language
+        )
 
         await db.commit()
         return True
@@ -491,7 +500,9 @@ class AuthService:
         )
         db.add(new_auth_token)
 
-        email_service.send_verification_email(user.email, user.full_name, raw_verification_token, expires_hours=24)
+        email_service.send_verification_email(
+            user.email, user.full_name, raw_verification_token, expires_hours=24, lang=user.preferred_language
+        )
         await db.commit()
         return True
 
@@ -529,7 +540,9 @@ class AuthService:
         )
         db.add(auth_token)
 
-        email_service.send_password_reset_email(user.email, user.full_name, raw_reset_token, expires_minutes=60)
+        email_service.send_password_reset_email(
+            user.email, user.full_name, raw_reset_token, expires_minutes=60, lang=user.preferred_language
+        )
         await db.commit()
         return True
 
@@ -610,9 +623,13 @@ class AuthService:
         )
         db.add(audit)
 
-        # Dispatch security alert email
+        # Dispatch security alert email in user's saved language
         email_service.send_security_alert_email(
-            user.email, user.full_name, "Account Password Reset Completed", ip_address="Authorized Session"
+            user.email,
+            user.full_name,
+            "Account Password Reset Completed",
+            ip_address="Authorized Session",
+            lang=user.preferred_language,
         )
 
         await db.commit()
