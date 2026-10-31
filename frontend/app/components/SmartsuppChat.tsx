@@ -17,8 +17,12 @@ declare global {
   }
 }
 
+const DEFAULT_SMARTSUPP_KEY = "b7abf01b987c7f81662dcb7827e213ae72a6133d";
+
 export default function SmartsuppChat() {
-  const smartsuppKey = process.env.NEXT_PUBLIC_SMARTSUPP_KEY;
+  const envKey = process.env.NEXT_PUBLIC_SMARTSUPP_KEY;
+  const smartsuppKey =
+    envKey && envKey !== "your_smartsupp_key_here" ? envKey : DEFAULT_SMARTSUPP_KEY;
   const user = useAuthStore((state) => state.user);
 
   // Sync authenticated user identity with Smartsupp
@@ -36,28 +40,34 @@ export default function SmartsuppChat() {
     }
   }, [user]);
 
-  // If the key is not configured or is the default placeholder, do not render script
-  if (!smartsuppKey || smartsuppKey === "your_smartsupp_key_here") {
+  if (!smartsuppKey) {
     return null;
   }
 
   return (
-    <Script
-      id="smartsupp-chat-loader"
-      strategy="afterInteractive"
-      dangerouslySetInnerHTML={{
-        __html: `
-          var _smartsupp = _smartsupp || {};
-          _smartsupp.key = '${smartsuppKey}';
-          window.smartsupp||(function(d) {
-            var s,c,o=smartsupp=function(){ o._.push(arguments)};o._=[];
-            s=d.getElementsByTagName('script')[0];c=d.createElement('script');
-            c.type='text/javascript';c.charset='utf-8';c.async=true;
-            c.src='https://www.smartsuppchat.com/loader.js?';s.parentNode.insertBefore(c,s);
-          })(document);
-        `,
-      }}
-    />
+    <>
+      <Script
+        id="smartsupp-chat-loader"
+        strategy="afterInteractive"
+        dangerouslySetInnerHTML={{
+          __html: `
+            var _smartsupp = _smartsupp || {};
+            _smartsupp.key = '${smartsuppKey}';
+            window.smartsupp||(function(d) {
+              var s,c,o=smartsupp=function(){ o._.push(arguments)};o._=[];
+              s=d.getElementsByTagName('script')[0];c=d.createElement('script');
+              c.type='text/javascript';c.charset='utf-8';c.async=true;
+              c.src='https://www.smartsuppchat.com/loader.js?';s.parentNode.insertBefore(c,s);
+            })(document);
+          `,
+        }}
+      />
+      <noscript>
+        Powered by{" "}
+        <a href="https://www.smartsupp.com" target="_blank" rel="noopener noreferrer">
+          Smartsupp
+        </a>
+      </noscript>
+    </>
   );
 }
-
