@@ -6,6 +6,14 @@ const nextConfig: NextConfig = {
   experimental: {
     webpackBuildWorker: false,
   },
+  async rewrites() {
+    return [
+      {
+        source: "/auth/:path*",
+        destination: "/:path*",
+      },
+    ];
+  },
   async headers() {
     return [
       {

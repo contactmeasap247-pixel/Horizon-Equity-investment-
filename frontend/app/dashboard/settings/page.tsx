@@ -37,6 +37,10 @@ export default function SettingsPage() {
   const [emailSuccess, setEmailSuccess] = useState("");
   const [emailError, setEmailError] = useState("");
 
+  // Email Verification States
+  const [verifyingSending, setVerifyingSending] = useState(false);
+  const [verifyStatusMessage, setVerifyStatusMessage] = useState<string | null>(null);
+
   // Password Change States
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -98,6 +102,23 @@ export default function SettingsPage() {
       setEmailError(err.response?.data?.detail || "Failed to update email address.");
     } finally {
       setEmailSaving(false);
+    }
+  };
+
+  const handleSendVerificationEmail = async () => {
+    if (!user?.email || verifyingSending) return;
+    setVerifyingSending(true);
+    setVerifyStatusMessage(null);
+    try {
+      await api.post("/auth/resend-verification", { email: user.email });
+      setVerifyStatusMessage("Verification link sent! Please check your inbox (and spam folder).");
+      setTimeout(() => setVerifyStatusMessage(null), 6000);
+    } catch (err: any) {
+      setVerifyStatusMessage(
+        err.response?.data?.detail || "Could not dispatch verification email. Please try again shortly."
+      );
+    } finally {
+      setVerifyingSending(false);
     }
   };
 
@@ -280,10 +301,49 @@ export default function SettingsPage() {
               </h3>
             </div>
 
-            <div className="p-3 rounded bg-[#0B0F14] border border-white/10 flex justify-between items-center text-xs">
-              <span className="text-[#7D8998]">Current Email:</span>
-              <span className="font-mono font-bold text-white">{user?.email}</span>
+            <div className="p-3.5 rounded bg-[#0B0F14] border border-white/10 flex flex-col sm:flex-row justify-between sm:items-center gap-2.5 text-xs">
+              <div className="flex items-center gap-2">
+                <span className="text-[#7D8998]">Current Email:</span>
+                <span className="font-mono font-bold text-white">{user?.email}</span>
+              </div>
+              <div className="flex items-center gap-2 flex-wrap">
+                {user?.email_verified ? (
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded text-[11px] font-medium bg-[#10B981]/15 text-[#10B981] border border-[#10B981]/30">
+                    <ShieldCheck className="w-3.5 h-3.5" />
+                    Verified
+                  </span>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium bg-[#F59E0B]/15 text-[#F59E0B] border border-[#F59E0B]/30">
+                      <ShieldAlert className="w-3 h-3" />
+                      Not Verified (Optional)
+                    </span>
+                    <button
+                      type="button"
+                      onClick={handleSendVerificationEmail}
+                      disabled={verifyingSending}
+                      className="btn btn-outline text-[11px] px-2.5 py-1 h-auto"
+                    >
+                      {verifyingSending ? (
+                        <>
+                          <Loader2 className="w-3 h-3 animate-spin mr-1" />
+                          Sending...
+                        </>
+                      ) : (
+                        "Verify Email Address"
+                      )}
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
+
+            {verifyStatusMessage && (
+              <div className="p-3 rounded bg-[#4388F5]/10 border border-[#4388F5]/30 text-xs text-[#5A9AFF] flex items-center gap-2">
+                <Check className="h-4 w-4 shrink-0" />
+                <span>{verifyStatusMessage}</span>
+              </div>
+            )}
 
             {emailSuccess && (
               <div className="p-3 rounded bg-[#27C58B]/10 border border-[#27C58B]/30 text-xs text-[#27C58B] flex items-center gap-2">

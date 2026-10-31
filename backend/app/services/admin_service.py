@@ -1454,14 +1454,16 @@ class AdminService:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Email template not found.")
 
         # Default sample data for preview variables
+        base_frontend_url = email_service._get_frontend_url()
         vars_dict = {
             "user_name": "Valued Investor",
             "amount": "1,500.00",
             "currency": "USDT",
             "reference": "TEST-TX-78945",
             "date": datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC"),
-            "login_url": "https://horizonequity.io/login",
-            "support_email": "support@horizonequity.io",
+            "login_url": f"{base_frontend_url}/auth/login",
+            "dashboard_url": f"{base_frontend_url}/dashboard",
+            "support_email": getattr(settings, "SMTP_FROM", "support@horizon-equity.net"),
             "plan_name": "Apex Yield Tier",
             "expected_return": "1,725.00",
             "maturity_date": (datetime.utcnow() + timedelta(days=30)).strftime("%Y-%m-%d"),
@@ -1484,18 +1486,38 @@ class AdminService:
             html_body = html_body.replace(f"{{{{{var_name}}}}}", str(var_val))
             text_body = text_body.replace(f"{{{{{var_name}}}}}", str(var_val))
 
-        # Send via email service
-        email_service._send_email(
+        test_subject = f"[TEST PREVIEW] {subject}"
+        # Send via email service and record audit log
+        success, msg_id, err_msg = await asyncio.to_thread(
+            email_service._send_email_sync,
             to_email=recipient_email,
-            subject=f"[TEST PREVIEW] {subject}",
+            subject=test_subject,
             html_content=html_body,
             text_content=text_body,
+            template_key=template_key,
         )
+
+        status_str = "sent" if success else "failed"
+        await email_service.record_email_log(
+            recipient=recipient_email,
+            subject=test_subject,
+            template_key=template_key,
+            status=status_str,
+            provider_message_id=msg_id,
+            error_message=err_msg,
+        )
+
+        if not success:
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail=f"Email delivery failed: {err_msg or 'Brevo relay rejection'}",
+            )
 
         return {
             "status": "dispatched",
             "recipient": recipient_email,
-            "subject": subject,
+            "subject": test_subject,
+            "provider_message_id": msg_id,
             "timestamp": datetime.utcnow().isoformat(),
         }
 

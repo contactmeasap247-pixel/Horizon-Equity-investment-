@@ -18,6 +18,7 @@ interface UserProfile {
   preferred_language?: string;
   is_admin: boolean;
   kyc_status: string;
+  email_verified?: boolean;
   created_at: string;
 }
 

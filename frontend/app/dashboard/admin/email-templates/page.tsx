@@ -126,6 +126,7 @@ export default function AdminEmailManagementPage() {
   const [logStatusFilter, setLogStatusFilter] = useState("all");
   const [logSearchQuery, setLogSearchQuery] = useState("");
   const [isLoadingLogs, setIsLoadingLogs] = useState(false);
+  const [selectedLogDetail, setSelectedLogDetail] = useState<EmailLogItem | null>(null);
 
   const [feedback, setFeedback] = useState<{ type: "success" | "error"; msg: string } | null>(null);
 
@@ -1201,7 +1202,12 @@ export default function AdminEmailManagementPage() {
                     </tr>
                   ) : (
                     logs.map((l) => (
-                      <tr key={l.id} className="hover:bg-white/[0.02] transition-colors">
+                      <tr
+                        key={l.id}
+                        onClick={() => setSelectedLogDetail(l)}
+                        className="hover:bg-white/[0.04] transition-colors cursor-pointer"
+                        title="Click to inspect full audit details"
+                      >
                         <td className="p-3.5 font-mono text-white">{l.recipient}</td>
                         <td className="p-3.5 text-white max-w-xs truncate">{l.subject}</td>
                         <td className="p-3.5">
@@ -1235,6 +1241,97 @@ export default function AdminEmailManagementPage() {
                   )}
                 </tbody>
               </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* MODAL: LOG DETAILS INSPECTOR */}
+      {/* ========================================================================= */}
+      {selectedLogDetail && (
+        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="w-full max-w-lg bg-[#111821] border border-white/10 rounded-2xl p-6 space-y-4 shadow-2xl">
+            <div className="flex items-center justify-between pb-3 border-b border-white/10">
+              <div className="flex items-center gap-2">
+                <Mail className="h-5 w-5 text-[#4388F5]" />
+                <h3 className="text-sm font-bold text-white">Email Delivery Audit Details</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedLogDetail(null)}
+                className="text-[#7D8998] hover:text-white"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="space-y-3 text-xs">
+              <div className="flex justify-between items-center p-3 rounded-lg bg-[#0B0F14] border border-white/5">
+                <span className="text-[#7D8998]">Recipient:</span>
+                <span className="font-mono font-bold text-white select-all">{selectedLogDetail.recipient}</span>
+              </div>
+
+              <div className="flex justify-between items-center p-3 rounded-lg bg-[#0B0F14] border border-white/5">
+                <span className="text-[#7D8998]">Subject:</span>
+                <span className="font-medium text-white max-w-xs truncate">{selectedLogDetail.subject}</span>
+              </div>
+
+              <div className="flex justify-between items-center p-3 rounded-lg bg-[#0B0F14] border border-white/5">
+                <span className="text-[#7D8998]">Template Key:</span>
+                <span className="font-mono text-[#94A3B8]">{selectedLogDetail.template_key || "custom"}</span>
+              </div>
+
+              <div className="flex justify-between items-center p-3 rounded-lg bg-[#0B0F14] border border-white/5">
+                <span className="text-[#7D8998]">Delivery Status:</span>
+                <span
+                  className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
+                    selectedLogDetail.status === "delivered"
+                      ? "bg-[#27C58B]/20 text-[#27C58B] border border-[#27C58B]/30"
+                      : selectedLogDetail.status === "opened"
+                      ? "bg-[#4388F5]/20 text-[#4388F5] border border-[#4388F5]/30"
+                      : selectedLogDetail.status === "sent"
+                      ? "bg-amber-400/20 text-amber-400 border border-amber-400/30"
+                      : "bg-[#F06464]/20 text-[#F06464] border border-[#F06464]/30"
+                  }`}
+                >
+                  {selectedLogDetail.status}
+                </span>
+              </div>
+
+              <div className="p-3 rounded-lg bg-[#0B0F14] border border-white/5 space-y-1">
+                <span className="text-[#7D8998] block">Provider Message ID (Brevo):</span>
+                <span className="font-mono text-white text-[11px] break-all select-all block">
+                  {selectedLogDetail.provider_message_id || "None / Local dev"}
+                </span>
+              </div>
+
+              {selectedLogDetail.error_message && (
+                <div className="p-3 rounded-lg bg-[#F06464]/10 border border-[#F06464]/30 space-y-1">
+                  <span className="text-[#F06464] font-semibold block flex items-center gap-1.5">
+                    <AlertCircle className="w-3.5 h-3.5" />
+                    Delivery Failure / Error Message:
+                  </span>
+                  <p className="text-white font-mono text-[11px] break-all leading-relaxed">
+                    {selectedLogDetail.error_message}
+                  </p>
+                </div>
+              )}
+
+              <div className="flex justify-between items-center p-3 rounded-lg bg-[#0B0F14] border border-white/5">
+                <span className="text-[#7D8998]">Logged At:</span>
+                <span className="text-[#A6B0BE]">{new Date(selectedLogDetail.created_at).toLocaleString()}</span>
+              </div>
+            </div>
+
+            <div className="pt-2 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setSelectedLogDetail(null)}
+                className="btn btn-secondary btn-sm"
+              >
+                Close Details
+              </button>
             </div>
           </div>
         </div>

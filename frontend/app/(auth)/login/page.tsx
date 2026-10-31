@@ -131,8 +131,14 @@ export default function LoginPage() {
 
           {/* Password */}
           <div className="field">
-            <div className="field-label">
+            <div className="field-label flex justify-between items-center">
               <label htmlFor="login-password">{t("auth_password")}</label>
+              <Link
+                href="/forgot-password"
+                className="text-[11px] font-medium text-[#4388F5] hover:text-[#5A9AFF] transition-colors"
+              >
+                {t("auth_forgot_password")}
+              </Link>
             </div>
             <div className="control">
               <span className="control-icon" aria-hidden="true">

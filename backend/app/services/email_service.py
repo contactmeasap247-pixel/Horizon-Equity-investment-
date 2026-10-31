@@ -25,11 +25,11 @@ class EmailService:
     def _get_frontend_url() -> str:
         """Resolve secure frontend base URL for verification and action links."""
         custom_domain = (getattr(settings, "CUSTOM_DOMAIN", "") or "").strip().lower().replace("https://", "").replace("http://", "").rstrip("/")
-        if custom_domain and not settings.DEBUG:
-            return f"https://www.{custom_domain}"
+        if custom_domain:
+            return f"https://{custom_domain}"
         url = (getattr(settings, "VERCEL_FRONTEND_URL", "") or "").strip()
         if not url:
-            return "http://localhost:3000" if settings.DEBUG else "https://www.horizon-equity.net"
+            return "http://localhost:3000" if settings.DEBUG else "https://horizon-equity.net"
         url = url.rstrip("/")
         if url.startswith("http://") and "localhost" not in url and "127.0.0.1" not in url:
             url = "https://" + url[7:]
@@ -235,6 +235,49 @@ class EmailService:
             error_message=err_msg,
         )
         return success
+
+    async def send_email(
+        self,
+        to_email: str,
+        subject: str,
+        html_content: str,
+        text_content: Optional[str] = None,
+        template_key: Optional[str] = None,
+    ) -> bool:
+        """Directly dispatch email and record audit log."""
+        success, msg_id, err_msg = await asyncio.to_thread(
+            self._send_email_sync,
+            to_email=to_email,
+            subject=subject,
+            html_content=html_content,
+            text_content=text_content or "",
+            template_key=template_key,
+        )
+        status_str = "sent" if success else "failed"
+        await self.record_email_log(
+            recipient=to_email,
+            subject=subject,
+            template_key=template_key or "custom",
+            status=status_str,
+            provider_message_id=msg_id,
+            error_message=err_msg,
+        )
+        return success
+
+    def _send_email(
+        self,
+        to_email: str,
+        subject: str,
+        html_content: str,
+        text_content: Optional[str] = None,
+    ) -> Tuple[bool, Optional[str], Optional[str]]:
+        """Synchronous wrapper for _send_email_sync for backwards compatibility."""
+        return self._send_email_sync(
+            to_email=to_email,
+            subject=subject,
+            html_content=html_content,
+            text_content=text_content or "",
+        )
 
     def dispatch_background(
         self,

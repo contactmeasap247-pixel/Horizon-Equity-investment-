@@ -122,6 +122,12 @@ def deploy():
         {"key": "PYTHON_VERSION", "value": "3.11.9"},
         {"key": "ADMIN_EMAIL", "value": admin_email},
         {"key": "ADMIN_PASSWORD", "value": admin_password},
+        {"key": "SMTP_HOST", "value": get_env("SMTP_HOST", "smtp-relay.brevo.com")},
+        {"key": "SMTP_PORT", "value": get_env("SMTP_PORT", "587")},
+        {"key": "SMTP_USER", "value": get_env("SMTP_USER", "")},
+        {"key": "SMTP_PASSWORD", "value": get_env("SMTP_PASSWORD", "")},
+        {"key": "SMTP_FROM", "value": get_env("SMTP_FROM", "noreply@horizonequity.net")},
+        {"key": "SMTP_FROM_NAME", "value": get_env("SMTP_FROM_NAME", "Horizon Equity")},
         {"key": "UPLOAD_DIR", "value": "./uploads"},
     ]
 

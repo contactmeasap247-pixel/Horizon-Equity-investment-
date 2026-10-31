@@ -46,6 +46,7 @@ class UserUpdate(BaseModel):
 class UserResponse(UserBase):
     """Detailed schema representing a user returned in API responses."""
     id: UUID
+    email_verified: bool = False
     is_active: bool
     is_admin: bool
     is_suspended: bool

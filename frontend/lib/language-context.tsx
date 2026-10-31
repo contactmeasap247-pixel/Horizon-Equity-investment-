@@ -21,6 +21,25 @@ interface LanguageContextType {
 const STORAGE_KEY = "horizon_preferred_lang";
 const EXPLICIT_SESSION_KEY = "horizon_explicit_lang";
 
+const KEY_ALIASES: Record<string, string[]> = {
+  auth_back_home: ["nav_back_home"],
+  auth_login_title: ["auth_signin_title"],
+  auth_login_sub: ["auth_signin_subtitle"],
+  auth_email: ["auth_email_label", "auth_email_req_label"],
+  auth_password: ["auth_password_label"],
+  auth_password_min: ["auth_password_req_label"],
+  auth_sign_in_btn: ["auth_signin_btn"],
+  auth_signing_in: ["auth_authenticating"],
+  auth_no_account: ["auth_no_account"],
+  auth_open_account: ["nav_open_account", "auth_register_title"],
+  auth_register_title: ["auth_register_title"],
+  auth_register_sub: ["auth_register_subtitle"],
+  auth_full_name: ["auth_fullname_label"],
+  auth_referral: ["auth_referral_label"],
+  auth_agree_terms: ["auth_terms_prefix"],
+  auth_complete_reg: ["auth_register_btn"],
+};
+
 function isValidLang(code: unknown): code is LanguageCode {
   return typeof code === "string" && Object.prototype.hasOwnProperty.call(translations, code);
 }
@@ -261,12 +280,37 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
       const dictHit = translations[lang]?.[keyOrPhrase];
       if (dictHit) return dictHit;
 
+      const aliases = KEY_ALIASES[keyOrPhrase];
+      if (aliases) {
+        for (const alias of aliases) {
+          const aliasHit = translations[lang]?.[alias];
+          if (aliasHit) return aliasHit;
+        }
+      }
+
       const enHit = translations.en[keyOrPhrase];
       if (enHit) {
         return lang === "en" ? enHit : translatePhrase(enHit, lang);
       }
 
-      return lang === "en" ? keyOrPhrase : translatePhrase(keyOrPhrase, lang);
+      if (aliases) {
+        for (const alias of aliases) {
+          const enAliasHit = translations.en[alias];
+          if (enAliasHit) {
+            return lang === "en" ? enAliasHit : translatePhrase(enAliasHit, lang);
+          }
+        }
+      }
+
+      if (!keyOrPhrase.includes("_")) {
+        return lang === "en" ? keyOrPhrase : translatePhrase(keyOrPhrase, lang);
+      }
+
+      const humanized = keyOrPhrase
+        .replace(/^(auth|nav|dash|admin|settings|footer)_/, "")
+        .replace(/_/g, " ")
+        .replace(/\b\w/g, (c) => c.toUpperCase());
+      return lang === "en" ? humanized : translatePhrase(humanized, lang);
     },
     [lang]
   );
