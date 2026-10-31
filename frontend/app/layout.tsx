@@ -3,6 +3,7 @@ import "./globals.css";
 import { LanguageProvider } from "@/lib/language-context";
 import NavigationProgress from "@/app/components/NavigationProgress";
 import ServerKeepAlive from "@/app/components/ServerKeepAlive";
+import SmartsuppChat from "@/app/components/SmartsuppChat";
 
 export const metadata: Metadata = {
   metadataBase: new URL(
@@ -36,6 +37,7 @@ export default function RootLayout({
       <body className="min-h-screen bg-canvas text-text selection:bg-accent/25 selection:text-text antialiased">
         <ServerKeepAlive />
         <NavigationProgress />
+        <SmartsuppChat />
         <LanguageProvider>{children}</LanguageProvider>
       </body>
     </html>
