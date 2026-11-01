@@ -89,7 +89,7 @@ class Settings(BaseSettings):
 
     # Email (Brevo SMTP & API)
     SMTP_HOST: str = "smtp-relay.brevo.com"
-    SMTP_PORT: int = 587
+    SMTP_PORT: int = 465
     SMTP_USER: str = ""
     SMTP_PASSWORD: str = "stub-password"
     SMTP_FROM: str = "noreply@horizonequity.com"

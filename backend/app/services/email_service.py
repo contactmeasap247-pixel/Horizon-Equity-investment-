@@ -139,7 +139,7 @@ class EmailService:
         smtp_user = (getattr(settings, "SMTP_USER", "") or "").strip()
         smtp_pass = (getattr(settings, "SMTP_PASSWORD", "") or "").strip()
         smtp_host = (getattr(settings, "SMTP_HOST", "smtp-relay.brevo.com") or "smtp-relay.brevo.com").strip()
-        configured_port = int(getattr(settings, "SMTP_PORT", 587))
+        configured_port = int(getattr(settings, "SMTP_PORT", 465))
 
         if smtp_pass and smtp_pass != "stub-password" and smtp_user:
             msg = MIMEMultipart("alternative")
@@ -154,9 +154,9 @@ class EmailService:
             msg.attach(part1)
             msg.attach(part2)
 
-            # Ports to try: configured port first, then fallback alternatives
+            # Ports to try: configured port first, then alternatives (465 SSL direct is fastest & most reliable on cloud hosts)
             ports_to_try = [configured_port]
-            for p in [587, 465, 2525]:
+            for p in [465, 587, 2525]:
                 if p not in ports_to_try:
                     ports_to_try.append(p)
 
@@ -165,11 +165,11 @@ class EmailService:
                 try:
                     logger.info(f"Attempting Brevo SMTP connection to {smtp_host}:{port}...")
                     if port == 465:
-                        with smtplib.SMTP_SSL(smtp_host, 465, timeout=25) as server:
+                        with smtplib.SMTP_SSL(smtp_host, 465, timeout=12) as server:
                             server.login(smtp_user, smtp_pass)
                             server.sendmail(sender_email, to_email, msg.as_string())
                     else:
-                        with smtplib.SMTP(smtp_host, port, timeout=25) as server:
+                        with smtplib.SMTP(smtp_host, port, timeout=12) as server:
                             server.starttls()
                             server.login(smtp_user, smtp_pass)
                             server.sendmail(sender_email, to_email, msg.as_string())
