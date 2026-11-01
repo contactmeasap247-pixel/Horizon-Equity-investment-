@@ -6,6 +6,7 @@
 import uuid
 import logging
 import smtplib
+import socket
 import asyncio
 from datetime import datetime
 from email.mime.text import MIMEText
@@ -16,6 +17,53 @@ from app.core.config import settings
 from app.services.email_translations import build_localized_email
 
 logger = logging.getLogger("horizon.email")
+
+
+def _classify_brevo_api_error(status_code: int, response_text: str, sender_email: str, to_email: str) -> str:
+    """Classify Brevo REST API error responses into diagnostic messages."""
+    text_lower = response_text.lower()
+    if status_code == 401 or "unauthorized" in text_lower or "key not found" in text_lower:
+        return "Brevo Authentication Failure: The configured Brevo API key is invalid or unauthorized."
+    elif status_code == 400:
+        if "sender" in text_lower:
+            return f"Brevo Configuration Error: Sender address '{sender_email}' is invalid or not verified in Brevo."
+        elif "recipient" in text_lower or "to" in text_lower:
+            return f"Invalid Recipient: The destination address '{to_email}' format was rejected by Brevo."
+        elif "htmlcontent" in text_lower or "subject" in text_lower:
+            return f"Invalid Request Payload: {response_text}"
+        return f"Brevo Validation Error (400): {response_text}"
+    elif status_code == 402 or "payment_required" in text_lower or "credits" in text_lower:
+        return "Brevo Quota Exceeded: Your Brevo account credits or daily sending quota are exhausted."
+    elif status_code == 403:
+        return "Brevo Access Denied (403): Account suspended, IP restricted, or unverified sender domain."
+    elif status_code == 429 or "rate_limit" in text_lower:
+        return "Brevo Rate Limit Exceeded: Too many requests sent to Brevo API. Please wait a moment."
+    elif status_code >= 500:
+        return f"Brevo Service Unavailable ({status_code}): Brevo servers are temporarily unreachable."
+    return f"Brevo API error ({status_code}): {response_text}"
+
+
+def _classify_smtp_error(exc: Exception, sender_email: str, to_email: str, host: str, port: int) -> str:
+    """Classify SMTP protocol and network errors into actionable diagnostics."""
+    if isinstance(exc, smtplib.SMTPAuthenticationError):
+        return f"Brevo SMTP Authentication Failure: The SMTP credentials were rejected by {host}."
+    elif isinstance(exc, smtplib.SMTPSenderRefused):
+        return f"Brevo Sender Refused: The sender address '{sender_email}' is not authorized or verified in your Brevo account."
+    elif isinstance(exc, smtplib.SMTPRecipientsRefused):
+        return f"Brevo Recipient Refused: Destination email '{to_email}' was rejected by Brevo."
+    elif isinstance(exc, smtplib.SMTPDataError):
+        return f"Brevo Data Rejected: Message data was rejected by Brevo SMTP ({exc})."
+    elif isinstance(exc, (TimeoutError, socket.timeout)) or "timed out" in str(exc).lower():
+        return f"Brevo SMTP Network Timeout: Connection to {host}:{port} timed out (latency or host port restriction)."
+    elif isinstance(exc, ConnectionRefusedError):
+        return f"Brevo SMTP Connection Refused: Unable to connect to {host}:{port}."
+    elif isinstance(exc, smtplib.SMTPConnectError):
+        return f"Brevo SMTP Connection Error on {host}:{port}: {exc}"
+    elif isinstance(exc, smtplib.SMTPResponseException):
+        code = getattr(exc, "smtp_code", None)
+        msg = getattr(exc, "smtp_error", str(exc))
+        return f"Brevo SMTP Server Error ({code}): {msg}"
+    return f"Brevo SMTP Error on {host}:{port}: {exc}"
 
 
 class EmailService:
@@ -53,8 +101,9 @@ class EmailService:
         sender_email = getattr(settings, "SMTP_FROM", "noreply@horizonequity.net")
 
         # 1. Attempt Brevo REST API (HTTPS - bypasses any outbound SMTP port restrictions)
-        brevo_key = getattr(settings, "BREVO_API_KEY", "") or ""
-        if brevo_key.strip() and brevo_key.strip() != "stub-brevo-key":
+        brevo_key = (getattr(settings, "BREVO_API_KEY", "") or "").strip()
+        api_err_msg = None
+        if brevo_key and brevo_key != "stub-brevo-key":
             try:
                 import httpx
                 payload = {
@@ -66,10 +115,10 @@ class EmailService:
                 }
                 headers = {
                     "accept": "application/json",
-                    "api-key": brevo_key.strip(),
+                    "api-key": brevo_key,
                     "content-type": "application/json",
                 }
-                with httpx.Client(timeout=12.0) as client:
+                with httpx.Client(timeout=15.0) as client:
                     resp = client.post("https://api.brevo.com/v3/smtp/email", json=payload, headers=headers)
                 if resp.status_code in (200, 201, 202):
                     msg_id = None
@@ -80,47 +129,72 @@ class EmailService:
                     logger.info(f"Email successfully dispatched to {to_email} via Brevo REST API (msgId: {msg_id})")
                     return True, msg_id, None
                 else:
-                    err_msg = f"Brevo API error ({resp.status_code}): {resp.text}"
-                    logger.error(err_msg)
+                    api_err_msg = _classify_brevo_api_error(resp.status_code, resp.text, sender_email, to_email)
+                    logger.warning(f"Brevo REST API attempt failed: {api_err_msg}")
             except Exception as e:
-                err_msg = f"Failed to send email to {to_email} via Brevo API: {e}"
-                logger.error(err_msg)
+                api_err_msg = f"Brevo REST API connection failed: {e}"
+                logger.warning(api_err_msg)
 
-        # 2. Brevo or Generic SMTP Relay
-        smtp_user = getattr(settings, "SMTP_USER", "")
-        smtp_pass = getattr(settings, "SMTP_PASSWORD", "")
-        smtp_host = getattr(settings, "SMTP_HOST", "smtp-relay.brevo.com")
-        smtp_port = getattr(settings, "SMTP_PORT", 587)
+        # 2. Brevo Multi-Port SMTP Relay (with automatic fallback ports: 587, 465 SSL, 2525)
+        smtp_user = (getattr(settings, "SMTP_USER", "") or "").strip()
+        smtp_pass = (getattr(settings, "SMTP_PASSWORD", "") or "").strip()
+        smtp_host = (getattr(settings, "SMTP_HOST", "smtp-relay.brevo.com") or "smtp-relay.brevo.com").strip()
+        configured_port = int(getattr(settings, "SMTP_PORT", 587))
 
         if smtp_pass and smtp_pass != "stub-password" and smtp_user:
-            try:
-                msg = MIMEMultipart("alternative")
-                unique_msg_id = f"<{uuid.uuid4()}@horizonequity.net>"
-                msg["Subject"] = subject
-                msg["From"] = f"{sender_name} <{sender_email}>"
-                msg["To"] = to_email
-                msg["Message-ID"] = unique_msg_id
+            msg = MIMEMultipart("alternative")
+            unique_msg_id = f"<{uuid.uuid4()}@horizonequity.net>"
+            msg["Subject"] = subject
+            msg["From"] = f"{sender_name} <{sender_email}>"
+            msg["To"] = to_email
+            msg["Message-ID"] = unique_msg_id
 
-                part1 = MIMEText(text_content or "", "plain", "utf-8")
-                part2 = MIMEText(html_content or "", "html", "utf-8")
-                msg.attach(part1)
-                msg.attach(part2)
+            part1 = MIMEText(text_content or "", "plain", "utf-8")
+            part2 = MIMEText(html_content or "", "html", "utf-8")
+            msg.attach(part1)
+            msg.attach(part2)
 
-                with smtplib.SMTP(smtp_host, smtp_port, timeout=15) as server:
-                    server.starttls()
-                    server.login(smtp_user, smtp_pass)
-                    server.sendmail(sender_email, to_email, msg.as_string())
+            # Ports to try: configured port first, then fallback alternatives
+            ports_to_try = [configured_port]
+            for p in [587, 465, 2525]:
+                if p not in ports_to_try:
+                    ports_to_try.append(p)
 
-                logger.info(f"Email successfully dispatched to {to_email} via Brevo SMTP ({smtp_host})")
-                return True, unique_msg_id, None
-            except Exception as e:
-                err_msg = f"Failed to send email to {to_email} via SMTP: {e}"
-                logger.error(err_msg)
-                return False, None, err_msg
+            last_smtp_err = None
+            for port in ports_to_try:
+                try:
+                    logger.info(f"Attempting Brevo SMTP connection to {smtp_host}:{port}...")
+                    if port == 465:
+                        with smtplib.SMTP_SSL(smtp_host, 465, timeout=25) as server:
+                            server.login(smtp_user, smtp_pass)
+                            server.sendmail(sender_email, to_email, msg.as_string())
+                    else:
+                        with smtplib.SMTP(smtp_host, port, timeout=25) as server:
+                            server.starttls()
+                            server.login(smtp_user, smtp_pass)
+                            server.sendmail(sender_email, to_email, msg.as_string())
 
-        # 3. Fallback mock / stub for local dev
-        logger.info(f"[MOCK / DEV EMAIL] To: {to_email} | Subject: {subject}")
-        return True, f"<mock-{uuid.uuid4()}@local>", None
+                    logger.info(f"Email successfully dispatched to {to_email} via Brevo SMTP ({smtp_host}:{port})")
+                    return True, unique_msg_id, None
+                except Exception as e:
+                    last_smtp_err = _classify_smtp_error(e, sender_email, to_email, smtp_host, port)
+                    logger.warning(f"SMTP attempt on port {port} failed: {last_smtp_err}")
+                    continue
+
+            # If all SMTP ports failed, return classified error
+            final_err = last_smtp_err or api_err_msg or "Brevo SMTP relay connection failed on all available ports."
+            return False, None, final_err
+
+        # If Brevo REST API failed and no SMTP was configured
+        if api_err_msg:
+            return False, None, api_err_msg
+
+        # 3. Fallback mock / stub for local dev only
+        if settings.DEBUG:
+            logger.info(f"[MOCK / DEV EMAIL] To: {to_email} | Subject: {subject}")
+            return True, f"<mock-{uuid.uuid4()}@local>", None
+
+        return False, None, "Brevo configuration missing: Neither BREVO_API_KEY nor SMTP credentials (SMTP_USER/SMTP_PASSWORD) are set in production environment."
 
     @staticmethod
     async def record_email_log(

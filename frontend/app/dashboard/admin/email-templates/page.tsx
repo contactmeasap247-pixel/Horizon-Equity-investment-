@@ -266,7 +266,7 @@ export default function AdminEmailManagementPage() {
 
   const handleTestSend = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!currentTemplate || !testRecipient.trim()) return;
+    if (!currentTemplate || !testRecipient.trim() || isSendingTest) return;
     setIsSendingTest(true);
     try {
       const res = await api.post(`/admin/email-templates/${currentTemplate.key}/test-send`, {
@@ -274,10 +274,14 @@ export default function AdminEmailManagementPage() {
       });
       setFeedback({
         type: "success",
-        msg: `Test preview successfully dispatched to ${res.data.recipient} via Brevo.`,
+        msg: `Test preview successfully dispatched to ${res.data.recipient} via Brevo. Delivery log recorded.`,
       });
       setTestModalOpen(false);
       setTestRecipient("");
+      // If currently on or switching to logs tab, refresh delivery logs
+      if (activeMainTab === "logs") {
+        fetchLogs();
+      }
     } catch (err: unknown) {
       const e = err as { response?: { data?: { detail?: string } } };
       setFeedback({ type: "error", msg: e.response?.data?.detail || "Failed to dispatch test email." });

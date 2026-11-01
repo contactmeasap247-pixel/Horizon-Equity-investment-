@@ -32,6 +32,7 @@ from app.services.notification_service import notification_service
 from app.services.transaction_service import transaction_service
 from app.services.email_service import email_service
 from app.middleware.maintenance import invalidate_maintenance_cache
+from app.core.config import settings
 import asyncio
 
 
