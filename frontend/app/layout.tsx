@@ -1,9 +1,16 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { LanguageProvider } from "@/lib/language-context";
 import NavigationProgress from "@/app/components/NavigationProgress";
 import ServerKeepAlive from "@/app/components/ServerKeepAlive";
 import SmartsuppChat from "@/app/components/SmartsuppChat";
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 5,
+  viewportFit: "cover",
+};
 
 export const metadata: Metadata = {
   metadataBase: new URL(

@@ -7,9 +7,11 @@ import {
   ChevronRight,
   Filter,
   FileSpreadsheet,
+  ReceiptText,
 } from "lucide-react";
 import { api } from "@/lib/api";
 import { toNum, formatCrypto } from "@/lib/format";
+import ReceiptModal from "@/app/components/ReceiptModal";
 
 interface TransactionItem {
   id: string;
@@ -26,6 +28,7 @@ interface TransactionItem {
 export default function TransactionsPage() {
   const [transactions, setTransactions] = useState<TransactionItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [selectedReceiptTxId, setSelectedReceiptTxId] = useState<string | null>(null);
 
   // Filtering & Pagination states
   const [selectedType, setSelectedType] = useState("");
@@ -153,12 +156,13 @@ export default function TransactionsPage() {
                     <th>Asset</th>
                     <th>Description</th>
                     <th>Status</th>
+                    <th className="text-right">Receipt</th>
                   </tr>
                 </thead>
                 <tbody>
                   {transactions.length === 0 ? (
                     <tr>
-                      <td colSpan={7} className="text-center py-12 text-text-muted text-xs">
+                      <td colSpan={8} className="text-center py-12 text-text-muted text-xs">
                         <FileSpreadsheet className="w-8 h-8 text-text-faint mx-auto mb-2" />
                         No matching transaction logs found for the applied filter parameters.
                       </td>
@@ -210,6 +214,17 @@ export default function TransactionsPage() {
                               {tx.status}
                             </span>
                           </td>
+                          <td className="text-right">
+                            <button
+                              type="button"
+                              onClick={() => setSelectedReceiptTxId(tx.id)}
+                              className="btn btn-secondary btn-sm px-2.5 py-1 text-[11px] font-mono inline-flex items-center gap-1.5 text-[#C5A059] hover:text-white"
+                              title="View Official Receipt"
+                            >
+                              <ReceiptText className="w-3.5 h-3.5 text-[#C5A059]" />
+                              <span>Receipt</span>
+                            </button>
+                          </td>
                         </tr>
                       );
                     })
@@ -245,6 +260,13 @@ export default function TransactionsPage() {
           </div>
         )}
       </div>
+
+      {/* Official Transaction Receipt Modal */}
+      <ReceiptModal
+        transactionId={selectedReceiptTxId}
+        isOpen={!!selectedReceiptTxId}
+        onClose={() => setSelectedReceiptTxId(null)}
+      />
     </div>
   );
 }

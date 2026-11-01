@@ -18,8 +18,10 @@ import {
   Share2,
   Repeat,
   Sliders,
+  ReceiptText,
 } from "lucide-react";
 import { api } from "@/lib/api";
+import ReceiptModal from "@/app/components/ReceiptModal";
 
 interface TransactionItem {
   id: string;
@@ -52,6 +54,7 @@ export default function AdminTransactionsPage() {
 
   // Selected Transaction Modal
   const [selectedTx, setSelectedTx] = useState<TransactionItem | null>(null);
+  const [receiptTxId, setReceiptTxId] = useState<string | null>(null);
 
   const fetchTransactions = useCallback(async () => {
     setIsLoading(true);
@@ -255,7 +258,16 @@ export default function AdminTransactionsPage() {
                     <td className="p-3.5 text-[#7D8998] font-mono text-[11px]">
                       {new Date(tx.created_at).toLocaleString()}
                     </td>
-                    <td className="p-3.5 text-right">
+                    <td className="p-3.5 text-right space-x-2 whitespace-nowrap">
+                      <button
+                        type="button"
+                        onClick={() => setReceiptTxId(tx.id)}
+                        className="px-2.5 py-1 rounded bg-[#C5A059]/10 hover:bg-[#C5A059] hover:text-[#0B1528] text-[#C5A059] transition-all font-medium text-[11px] inline-flex items-center gap-1"
+                        title="View Official Receipt"
+                      >
+                        <ReceiptText className="h-3 w-3" />
+                        <span>Receipt</span>
+                      </button>
                       <button
                         type="button"
                         onClick={() => setSelectedTx(tx)}
@@ -350,7 +362,20 @@ export default function AdminTransactionsPage() {
               </div>
             )}
 
-            <div className="flex justify-end pt-3 border-t border-white/10">
+            <div className="flex items-center justify-between pt-3 border-t border-white/10">
+              <button
+                type="button"
+                onClick={() => {
+                  const id = selectedTx.id;
+                  setSelectedTx(null);
+                  setReceiptTxId(id);
+                }}
+                className="px-3 py-1.5 rounded-lg bg-[#C5A059]/10 hover:bg-[#C5A059] hover:text-[#0B1528] text-[#C5A059] transition-all font-medium text-xs inline-flex items-center gap-1.5"
+              >
+                <ReceiptText className="w-3.5 h-3.5" />
+                <span>View Official Receipt</span>
+              </button>
+
               <button
                 type="button"
                 onClick={() => setSelectedTx(null)}
@@ -362,6 +387,13 @@ export default function AdminTransactionsPage() {
           </div>
         </div>
       )}
+
+      {/* Official Transaction Receipt Modal */}
+      <ReceiptModal
+        transactionId={receiptTxId}
+        isOpen={!!receiptTxId}
+        onClose={() => setReceiptTxId(null)}
+      />
     </div>
   );
 }
