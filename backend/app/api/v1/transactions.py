@@ -19,19 +19,23 @@ router = APIRouter()
 
 @router.get("", response_model=List[TransactionResponse])
 async def get_user_transactions(
-    type: Optional[str] = Query(None, description="Filter by type: deposit, withdrawal, investment, return, referral_bonus, adjustment"),
+    type: Optional[str] = Query(None, description="Filter by type: deposit, withdrawal, investment, return, referral, bonus, adjustment, loan"),
     status: Optional[str] = Query(None, description="Filter by status: pending, processing, completed, failed, cancelled"),
+    search: Optional[str] = Query(None, description="Search by transaction reference, currency, or description"),
+    order: Optional[str] = Query("desc", description="Sort order: desc (newest first) or asc (oldest first)"),
     skip: int = Query(0, ge=0, description="Offset for pagination"),
     limit: int = Query(50, ge=1, le=100, description="Page limit for pagination"),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
-    """Retrieve the transaction history of the authenticated user with filtering and pagination."""
+    """Retrieve the unified transaction history of the authenticated user with filtering, searching, and pagination."""
     return await transaction_service.get_user_transactions(
         db,
         user_id=current_user.id,
         type_filter=type,
         status_filter=status,
+        search_query=search,
+        order=order,
         skip=skip,
         limit=limit,
     )

@@ -216,6 +216,26 @@ class InvestmentService:
             )
             db.add(commission)
 
+            # Record pending transaction in ledger for the referrer
+            ref_tx = Transaction(
+                user_id=user.referred_by,
+                type="referral_bonus",
+                subtype="affiliate_commission",
+                amount=commission_amount,
+                fee=Decimal("0.0"),
+                currency=currency,
+                status="pending",
+                reference=f"REF-{commission.id.hex[:10].upper()}",
+                description=f"Affiliate commission (Level 1) for referral investment in {plan.name}",
+                metadata_={
+                    "referral_commission_id": str(commission.id),
+                    "investment_id": str(new_investment.id),
+                    "referred_user_id": str(user.id),
+                    "plan_name": plan.name,
+                },
+            )
+            db.add(ref_tx)
+
         await db.commit()
         await db.refresh(new_investment)
 

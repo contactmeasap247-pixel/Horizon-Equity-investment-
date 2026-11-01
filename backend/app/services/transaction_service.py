@@ -186,43 +186,105 @@ class TransactionService:
     """Business logic for reading, writing, and filtering financial transactions."""
 
     @staticmethod
+    def _apply_type_filter(query, type_filter: str):
+        """Map filter keys to corresponding ledger types."""
+        tf = type_filter.lower().strip()
+        if tf in ("investment", "investments"):
+            return query.filter(Transaction.type.in_(["investment", "reinvestment", "investment_mature"]))
+        elif tf in ("return", "returns", "yield", "yield_return"):
+            return query.filter(Transaction.type.in_(["return", "daily_yield"]))
+        elif tf in ("referral", "referral_bonus", "referrals", "commission"):
+            return query.filter(Transaction.type.in_(["referral_bonus", "referral", "referral_commission"]))
+        elif tf in ("bonus", "registration_bonus", "bonuses", "promotional"):
+            return query.filter(Transaction.type.in_(["registration_bonus", "bonus", "promotional_credit"]))
+        elif tf in ("adjustment", "adjustments"):
+            return query.filter(Transaction.type.in_(["adjustment", "admin_credit", "admin_debit"]))
+        elif tf in ("loan", "loans"):
+            return query.filter(Transaction.type.in_(["loan_disbursement", "loan_repayment", "loan"]))
+        elif tf in ("deposit", "deposits"):
+            return query.filter(Transaction.type == "deposit")
+        elif tf in ("withdrawal", "withdrawals"):
+            return query.filter(Transaction.type == "withdrawal")
+        else:
+            return query.filter(Transaction.type == tf)
+
+    @classmethod
     async def get_user_transactions(
+        cls,
         db: AsyncSession,
         user_id: uuid.UUID,
         type_filter: Optional[str] = None,
         status_filter: Optional[str] = None,
+        search_query: Optional[str] = None,
+        order: Optional[str] = "desc",
         skip: int = 0,
         limit: int = 50,
     ) -> List[Transaction]:
-        """Fetch transaction logs for a user with pagination and optional filters."""
+        """Fetch unified transaction ledger for a user with flexible filtering, search, and pagination."""
         query = select(Transaction).filter(Transaction.user_id == user_id)
 
-        if type_filter:
-            query = query.filter(Transaction.type == type_filter.lower())
-        if status_filter:
-            query = query.filter(Transaction.status == status_filter.lower())
+        if search_query and search_query.strip():
+            s = f"%{search_query.strip()}%"
+            query = query.filter(
+                or_(
+                    Transaction.reference.ilike(s),
+                    Transaction.description.ilike(s),
+                    Transaction.currency.ilike(s),
+                )
+            )
 
-        query = query.order_by(Transaction.created_at.desc()).offset(skip).limit(limit)
+        if type_filter and type_filter.strip():
+            query = cls._apply_type_filter(query, type_filter)
+
+        if status_filter and status_filter.strip():
+            query = query.filter(Transaction.status == status_filter.lower().strip())
+
+        # Sorting: newest first (desc) or oldest first (asc)
+        if (order or "").lower().strip() == "asc":
+            query = query.order_by(Transaction.created_at.asc())
+        else:
+            query = query.order_by(Transaction.created_at.desc())
+
+        query = query.offset(skip).limit(limit)
         result = await db.execute(query)
         return list(result.scalars().all())
 
-    @staticmethod
+    @classmethod
     async def get_all_transactions(
+        cls,
         db: AsyncSession,
         type_filter: Optional[str] = None,
         status_filter: Optional[str] = None,
+        search_query: Optional[str] = None,
+        order: Optional[str] = "desc",
         skip: int = 0,
         limit: int = 100,
     ) -> List[Transaction]:
         """Fetch all transaction logs in the system for administrative view."""
         query = select(Transaction)
 
-        if type_filter:
-            query = query.filter(Transaction.type == type_filter.lower())
-        if status_filter:
-            query = query.filter(Transaction.status == status_filter.lower())
+        if search_query and search_query.strip():
+            s = f"%{search_query.strip()}%"
+            query = query.filter(
+                or_(
+                    Transaction.reference.ilike(s),
+                    Transaction.description.ilike(s),
+                    Transaction.currency.ilike(s),
+                )
+            )
 
-        query = query.order_by(Transaction.created_at.desc()).offset(skip).limit(limit)
+        if type_filter and type_filter.strip():
+            query = cls._apply_type_filter(query, type_filter)
+
+        if status_filter and status_filter.strip():
+            query = query.filter(Transaction.status == status_filter.lower().strip())
+
+        if (order or "").lower().strip() == "asc":
+            query = query.order_by(Transaction.created_at.asc())
+        else:
+            query = query.order_by(Transaction.created_at.desc())
+
+        query = query.offset(skip).limit(limit)
         result = await db.execute(query)
         return list(result.scalars().all())
 

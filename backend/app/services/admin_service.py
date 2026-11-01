@@ -1095,54 +1095,97 @@ class AdminService:
         offset: int = 0,
     ) -> Dict[str, Any]:
         """Comprehensive search and audit over entire platform financial transaction history."""
-        query = select(Transaction, User).join(User, Transaction.user_id == User.id)
+        query = (
+            select(
+                Transaction.id,
+                Transaction.type,
+                Transaction.subtype,
+                Transaction.amount,
+                Transaction.fee,
+                Transaction.currency,
+                Transaction.status,
+                Transaction.reference,
+                Transaction.description,
+                Transaction.created_at,
+                User.id.label("user_id"),
+                User.full_name.label("user_name"),
+                User.email.label("user_email"),
+            )
+            .join(User, Transaction.user_id == User.id)
+        )
+
+        count_query = select(func.count(Transaction.id)).join(User, Transaction.user_id == User.id)
 
         if search:
             s = f"%{search.strip()}%"
-            query = query.filter(
-                or_(
-                    Transaction.reference.ilike(s),
-                    Transaction.description.ilike(s),
-                    User.email.ilike(s),
-                    User.full_name.ilike(s),
-                )
+            filter_search = or_(
+                Transaction.reference.ilike(s),
+                Transaction.description.ilike(s),
+                User.email.ilike(s),
+                User.full_name.ilike(s),
             )
+            query = query.filter(filter_search)
+            count_query = count_query.filter(filter_search)
 
-        if type_filter:
-            query = query.filter(Transaction.type == type_filter.lower().strip())
+        if type_filter and type_filter.strip() and type_filter.lower().strip() != "all":
+            tf = type_filter.lower().strip()
+            if tf in ("investment", "investments"):
+                filter_type = Transaction.type.in_(["investment", "reinvestment", "investment_mature"])
+            elif tf in ("return", "returns", "yield", "yield_return"):
+                filter_type = Transaction.type.in_(["return", "daily_yield"])
+            elif tf in ("referral", "referral_bonus", "referrals", "commission"):
+                filter_type = Transaction.type.in_(["referral_bonus", "referral", "referral_commission"])
+            elif tf in ("bonus", "registration_bonus", "bonuses", "promotional"):
+                filter_type = Transaction.type.in_(["registration_bonus", "bonus", "promotional_credit"])
+            elif tf in ("adjustment", "adjustments"):
+                filter_type = Transaction.type.in_(["adjustment", "admin_credit", "admin_debit"])
+            elif tf in ("loan", "loans"):
+                filter_type = Transaction.type.in_(["loan_disbursement", "loan_repayment", "loan"])
+            elif tf in ("deposit", "deposits"):
+                filter_type = (Transaction.type == "deposit")
+            elif tf in ("withdrawal", "withdrawals"):
+                filter_type = (Transaction.type == "withdrawal")
+            else:
+                filter_type = (Transaction.type == tf)
+
+            query = query.filter(filter_type)
+            count_query = count_query.filter(filter_type)
 
         if status_filter:
-            query = query.filter(Transaction.status == status_filter.lower().strip())
+            st = status_filter.lower().strip()
+            query = query.filter(Transaction.status == st)
+            count_query = count_query.filter(Transaction.status == st)
 
         if start_date:
             query = query.filter(Transaction.created_at >= start_date)
+            count_query = count_query.filter(Transaction.created_at >= start_date)
 
         if end_date:
             query = query.filter(Transaction.created_at <= end_date)
+            count_query = count_query.filter(Transaction.created_at <= end_date)
 
         # Count total matching
-        count_query = select(func.count(Transaction.id)).select_from(query.subquery())
         total_count = (await db.execute(count_query)).scalar() or 0
 
         # Execute paginated
         result = await db.execute(query.order_by(Transaction.created_at.desc()).offset(offset).limit(limit))
         
         items = []
-        for tx, user in result.all():
+        for row in result.mappings().all():
             items.append({
-                "id": str(tx.id),
-                "user_id": str(user.id),
-                "user_name": user.full_name,
-                "user_email": user.email,
-                "type": tx.type,
-                "subtype": tx.subtype,
-                "amount": float(tx.amount),
-                "fee": float(tx.fee or 0.0),
-                "currency": tx.currency,
-                "status": tx.status,
-                "reference": tx.reference or f"TX-{tx.id.hex[:10].upper()}",
-                "description": tx.description,
-                "created_at": tx.created_at.isoformat() if tx.created_at else None,
+                "id": str(row["id"]),
+                "user_id": str(row["user_id"]),
+                "user_name": row["user_name"],
+                "user_email": row["user_email"],
+                "type": row["type"],
+                "subtype": row["subtype"],
+                "amount": float(row["amount"]),
+                "fee": float(row["fee"] or 0.0),
+                "currency": row["currency"],
+                "status": row["status"],
+                "reference": row["reference"] or f"TX-{row['id'].hex[:10].upper()}",
+                "description": row["description"],
+                "created_at": row["created_at"].isoformat() if row["created_at"] else None,
             })
 
         return {

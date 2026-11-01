@@ -154,19 +154,37 @@ async def check_matured_investments():
                     comm.paid_at = now
                     db.add(comm)
                     
-                    # Record referral bonus transaction
-                    ref_tx = Transaction(
-                        user_id=comm.referrer_id,
-                        type="referral_bonus",
-                        subtype="commission",
-                        amount=comm.commission_amount,
-                        fee=Decimal("0.0"),
-                        currency=comm.currency,
-                        status="completed",
-                        reference=f"REF-{comm.id.hex[:12].upper()}",
-                        description=f"Referral commission from {inv.user.full_name}'s {inv.plan.name} investment maturity",
+                    # Record or update referral bonus transaction in ledger
+                    ref_tx_check = await db.execute(
+                        select(Transaction).filter(
+                            (Transaction.reference.ilike(f"REF-{comm.id.hex[:10]}%")) |
+                            (
+                                (Transaction.user_id == comm.referrer_id) &
+                                (Transaction.type == "referral_bonus") &
+                                (Transaction.amount == comm.commission_amount) &
+                                (Transaction.status == "pending")
+                            )
+                        )
                     )
-                    db.add(ref_tx)
+                    existing_ref_tx = ref_tx_check.scalars().first()
+                    if existing_ref_tx:
+                        existing_ref_tx.status = "completed"
+                        existing_ref_tx.updated_at = now
+                        db.add(existing_ref_tx)
+                    else:
+                        ref_tx = Transaction(
+                            user_id=comm.referrer_id,
+                            type="referral_bonus",
+                            subtype="commission",
+                            amount=comm.commission_amount,
+                            fee=Decimal("0.0"),
+                            currency=comm.currency,
+                            status="completed",
+                            reference=f"REF-{comm.id.hex[:12].upper()}",
+                            description=f"Referral commission from {inv.user.full_name}'s {inv.plan.name} investment maturity",
+                            created_at=now,
+                        )
+                        db.add(ref_tx)
 
                     # Notify referrer
                     await notification_service.create_notification(

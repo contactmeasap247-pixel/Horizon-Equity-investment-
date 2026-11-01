@@ -2,7 +2,7 @@
 # HORIZON EQUITY - TRANSACTION SCHEMAS
 # ============================================
 
-from pydantic import BaseModel, Field, field_serializer
+from pydantic import BaseModel, ConfigDict, Field, field_serializer
 from typing import Optional, Dict, Any
 from datetime import datetime
 from uuid import UUID
@@ -11,29 +11,27 @@ from decimal import Decimal
 
 class TransactionResponse(BaseModel):
     """Schema representing financial records / log details."""
+    model_config = ConfigDict(from_attributes=True, populate_by_name=True)
+
     id: UUID
     user_id: UUID
     type: str
     subtype: Optional[str] = None
     amount: Decimal
-    fee: Decimal
+    fee: Optional[Decimal] = Decimal("0.0")
     currency: str
     status: str
     reference: Optional[str] = None
     description: Optional[str] = None
-    metadata_: Optional[Dict[str, Any]] = Field(None, alias="metadata")
+    metadata_: Optional[Dict[str, Any]] = Field(None, validation_alias="metadata_", serialization_alias="metadata")
     approved_by: Optional[UUID] = None
     approved_at: Optional[datetime] = None
-    created_at: datetime
-    updated_at: datetime
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
 
     @field_serializer("amount", "fee")
-    def serialize_tx_decimals(self, v: Decimal) -> float:
+    def serialize_tx_decimals(self, v: Optional[Decimal]) -> float:
         return float(v) if v is not None else 0.0
-
-    class Config:
-        from_attributes = True
-        populate_by_name = True
 
 
 class TransactionCreate(BaseModel):

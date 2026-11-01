@@ -19,6 +19,8 @@ import {
   Repeat,
   Sliders,
   ReceiptText,
+  Gift,
+  Landmark,
 } from "lucide-react";
 import { api } from "@/lib/api";
 import ReceiptModal from "@/app/components/ReceiptModal";
@@ -95,6 +97,13 @@ export default function AdminTransactionsPage() {
         return <Repeat className="h-4 w-4 text-[#38BDF8]" />;
       case "referral_bonus":
         return <Share2 className="h-4 w-4 text-[#A78BFA]" />;
+      case "registration_bonus":
+      case "bonus":
+        return <Gift className="h-4 w-4 text-[#C5A059]" />;
+      case "loan_disbursement":
+      case "loan_repayment":
+      case "loan":
+        return <Landmark className="h-4 w-4 text-[#38BDF8]" />;
       case "adjustment":
         return <Sliders className="h-4 w-4 text-[#F43F5E]" />;
       default:
@@ -164,6 +173,8 @@ export default function AdminTransactionsPage() {
               <option value="return">Contract Return</option>
               <option value="reinvestment">Reinvestment</option>
               <option value="referral_bonus">Referral Reward</option>
+              <option value="bonus">Welcome Bonus</option>
+              <option value="loan">Credit Facility / Loan</option>
               <option value="adjustment">Manual Adjustment</option>
             </select>
           </div>
