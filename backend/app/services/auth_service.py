@@ -51,9 +51,30 @@ class AuthService:
         self, db: AsyncSession, user_in: UserCreate, ip_address: Optional[str] = None, user_agent: Optional[str] = None
     ) -> User:
         """Register a new user, auto-creating their crypto wallets and logging audit trails."""
-        # 1. Normalize and check if user already exists
+        # 1. Normalize and check referral code if provided
         email_clean = user_in.email.strip().lower()
         user_in.email = email_clean
+
+        referred_by_id = None
+        referrer = None
+        if user_in.referred_by_code and user_in.referred_by_code.strip():
+            clean_code = user_in.referred_by_code.strip().upper()
+            referrer_result = await db.execute(
+                select(User).filter(func.upper(func.trim(User.referral_code)) == clean_code)
+            )
+            referrer = referrer_result.scalars().first()
+            if not referrer:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="The provided referral invitation code is invalid or does not exist.",
+                )
+            if referrer.email.strip().lower() == email_clean:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Self-referrals are prohibited. You cannot register using your own referral code.",
+                )
+
+        # 2. Check if user already exists
         existing_user_result = await db.execute(select(User).filter(func.lower(User.email) == email_clean))
         if existing_user_result.scalars().first() is not None:
             raise HTTPException(
@@ -61,18 +82,10 @@ class AuthService:
                 detail="A user with this email address already exists.",
             )
 
-        # 2. Check referral code if provided
-        referred_by_id = None
-        referrer = None
-        if user_in.referred_by_code:
-            referrer_result = await db.execute(
-                select(User).filter(User.referral_code == user_in.referred_by_code)
-            )
-            referrer = referrer_result.scalars().first()
-            if referrer:
-                referred_by_id = referrer.id
-                referrer.referral_count += 1
-                db.add(referrer)
+        if referrer:
+            referred_by_id = referrer.id
+            referrer.referral_count = (referrer.referral_count or 0) + 1
+            db.add(referrer)
 
         # 3. Create the user
         referral_code = self._generate_referral_code()
@@ -141,7 +154,7 @@ class AuthService:
         )
         db.add(bonus_tx)
 
-        # 7. Notify user
+        # 7. Notify user and referrer
         await notification_service.create_notification(
             db,
             user_id=new_user.id,
@@ -149,6 +162,15 @@ class AuthService:
             title="$10 Welcome Bonus Credited",
             message="You received a $10.00 USDT promotional welcome credit! Complete your first investment (e.g. Silver Plan) to unlock this bonus for withdrawal.",
         )
+
+        if referrer:
+            await notification_service.create_notification(
+                db,
+                user_id=referrer.id,
+                type="referral",
+                title="New Referral Joined! 👥",
+                message=f"{new_user.full_name} has registered on Horizon Equity using your partner invitation link.",
+            )
 
         # 8. Log audit trail
         audit = AuditLog(

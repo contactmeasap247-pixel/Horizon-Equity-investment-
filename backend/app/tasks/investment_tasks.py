@@ -127,7 +127,7 @@ async def check_matured_investments():
                             lang=user_lang,
                         )
 
-                # 5. Process pending referral commissions
+                # 5. Process pending referral commissions (Idempotent Settlement)
                 commission_query = (
                     select(ReferralCommission)
                     .filter(ReferralCommission.investment_id == inv.id)
@@ -136,64 +136,9 @@ async def check_matured_investments():
                 comm_res = await db.execute(commission_query)
                 commissions = comm_res.scalars().all()
                 
+                from app.services.referral_service import referral_service
                 for comm in commissions:
-                    # Credit referrer's wallet
-                    ref_wallet_query = (
-                        select(Wallet)
-                        .filter(Wallet.user_id == comm.referrer_id)
-                        .filter(Wallet.currency == comm.currency)
-                    )
-                    ref_wallet_res = await db.execute(ref_wallet_query)
-                    ref_wallet = ref_wallet_res.scalars().first()
-                    if ref_wallet:
-                        ref_wallet.balance += comm.commission_amount
-                        db.add(ref_wallet)
-                        
-                    # Update commission record
-                    comm.status = "paid"
-                    comm.paid_at = now
-                    db.add(comm)
-                    
-                    # Record or update referral bonus transaction in ledger
-                    ref_tx_check = await db.execute(
-                        select(Transaction).filter(
-                            (Transaction.reference.ilike(f"REF-{comm.id.hex[:10]}%")) |
-                            (
-                                (Transaction.user_id == comm.referrer_id) &
-                                (Transaction.type == "referral_bonus") &
-                                (Transaction.amount == comm.commission_amount) &
-                                (Transaction.status == "pending")
-                            )
-                        )
-                    )
-                    existing_ref_tx = ref_tx_check.scalars().first()
-                    if existing_ref_tx:
-                        existing_ref_tx.status = "completed"
-                        existing_ref_tx.updated_at = now
-                        db.add(existing_ref_tx)
-                    else:
-                        ref_tx = Transaction(
-                            user_id=comm.referrer_id,
-                            type="referral_bonus",
-                            subtype="commission",
-                            amount=comm.commission_amount,
-                            fee=Decimal("0.0"),
-                            currency=comm.currency,
-                            status="completed",
-                            reference=f"REF-{comm.id.hex[:12].upper()}",
-                            description=f"Referral commission from {inv.user.full_name}'s {inv.plan.name} investment maturity",
-                            created_at=now,
-                        )
-                        db.add(ref_tx)
-
-                    # Notify referrer
-                    await notification_service.create_notification(
-                        db,
-                        user_id=comm.referrer_id,
-                        type="referral_commission",
-                        title="Referral Commission Paid! 💸",
-                        message=f"You received a referral bonus of {comm.commission_amount} {comm.currency} from {inv.user.full_name}'s matured investment.",
-                    )
+                    await referral_service.settle_referral_commission(db, comm.id)
 
                 # 6. Auto-renewal handling
                 if inv.is_auto_renew:

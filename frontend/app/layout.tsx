@@ -1,9 +1,11 @@
+import { Suspense } from "react";
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { LanguageProvider } from "@/lib/language-context";
 import NavigationProgress from "@/app/components/NavigationProgress";
 import ServerKeepAlive from "@/app/components/ServerKeepAlive";
 import SmartsuppChat from "@/app/components/SmartsuppChat";
+import ReferralCapture from "@/app/components/ReferralCapture";
 
 export const viewport: Viewport = {
   width: "device-width",
@@ -42,6 +44,9 @@ export default function RootLayout({
         <meta httpEquiv="Content-Security-Policy" content="upgrade-insecure-requests" />
       </head>
       <body className="min-h-screen bg-canvas text-text selection:bg-accent/25 selection:text-text antialiased">
+        <Suspense fallback={null}>
+          <ReferralCapture />
+        </Suspense>
         <ServerKeepAlive />
         <NavigationProgress />
         <SmartsuppChat />

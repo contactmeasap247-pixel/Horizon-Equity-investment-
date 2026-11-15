@@ -201,6 +201,16 @@ async def adjust_user_balance(
     )
 
 
+@router.delete("/users/{user_id}")
+async def delete_user(
+    user_id: UUID,
+    current_admin: User = Depends(get_admin_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Permanently delete a user account and reconcile all downstream platform analytics."""
+    return await admin_service.delete_user(db, user_id=user_id, admin_id=current_admin.id)
+
+
 # ----------------------------------------------------
 # 3. DEPOSITS MANAGEMENT
 # ----------------------------------------------------
@@ -520,6 +530,30 @@ async def get_referral_analytics(
 ):
     """Analytics on top referrers, total commissions paid and pending."""
     return await admin_service.get_referral_analytics(db)
+
+
+@router.post("/referrals/reconcile")
+async def reconcile_referral_system(
+    current_admin: User = Depends(get_admin_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Audit and reconcile all affiliate partner counts, matured commissions, and recorded earnings."""
+    from app.services.referral_service import referral_service
+    return await referral_service.reconcile_referrals(db)
+
+
+@router.post("/referrals/commissions/{commission_id}/settle")
+async def settle_referral_commission(
+    commission_id: UUID,
+    current_admin: User = Depends(get_admin_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Manually settle a pending affiliate commission, crediting the partner's balance."""
+    from app.services.referral_service import referral_service
+    res = await referral_service.settle_referral_commission(db, commission_id=commission_id)
+    if not res:
+        raise HTTPException(status_code=404, detail="Referral commission not found.")
+    return {"status": "success", "message": f"Commission {commission_id} settled successfully.", "commission_id": str(commission_id)}
 
 
 # ----------------------------------------------------

@@ -7,7 +7,7 @@ import { User, Mail, Lock, Eye, EyeOff, Loader2, ArrowLeft, AlertCircle, CheckCi
 import BrandLogo from "@/app/components/BrandLogo";
 import LanguageSelector from "@/app/components/LanguageSelector";
 import { useAuthStore } from "@/lib/auth-store";
-import { warmUpBackend } from "@/lib/api";
+import { warmUpBackend, api } from "@/lib/api";
 import { useLanguage } from "@/lib/language-context";
 
 function RegisterForm() {
@@ -20,6 +20,8 @@ function RegisterForm() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [referralCode, setReferralCode] = useState("");
+  const [referrerName, setReferrerName] = useState<string | null>(null);
+  const [refValidated, setRefValidated] = useState<boolean | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [agreeTerms, setAgreeTerms] = useState(false);
 
@@ -29,11 +31,49 @@ function RegisterForm() {
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
   useEffect(() => {
-    const ref = searchParams.get("ref");
-    if (ref) {
-      setReferralCode(ref);
+    let ref =
+      searchParams.get("ref") ||
+      searchParams.get("referral") ||
+      searchParams.get("referral_code") ||
+      searchParams.get("r");
+
+    if (!ref && typeof window !== "undefined") {
+      try {
+        ref = localStorage.getItem("he_referral_code");
+      } catch {}
+    }
+
+    if (ref && ref.trim()) {
+      setReferralCode(ref.trim().toUpperCase());
     }
   }, [searchParams]);
+
+  // Real-time pre-validation of referral invitation code
+  useEffect(() => {
+    if (!referralCode.trim()) {
+      setReferrerName(null);
+      setRefValidated(null);
+      return;
+    }
+    const clean = referralCode.trim().toUpperCase();
+    const timer = setTimeout(async () => {
+      try {
+        const res = await api.get(`/referrals/validate/${encodeURIComponent(clean)}`);
+        if (res.data?.valid) {
+          setRefValidated(true);
+          setReferrerName(res.data.referrer_name);
+        } else {
+          setRefValidated(false);
+          setReferrerName(null);
+        }
+      } catch {
+        setRefValidated(false);
+        setReferrerName(null);
+      }
+    }, 400);
+
+    return () => clearTimeout(timer);
+  }, [referralCode]);
 
   useEffect(() => {
     initialize();
@@ -69,6 +109,9 @@ function RegisterForm() {
       await register(fullName.trim(), email.trim(), password, referralCode.trim() || undefined, (status) => {
         setStatusMsg(t(status));
       });
+      try {
+        localStorage.removeItem("he_referral_code");
+      } catch {}
       setSuccessMsg(t("Account initialized successfully! Redirecting you to sign in..."));
 
       setTimeout(() => {
@@ -209,11 +252,29 @@ function RegisterForm() {
             id="reg-ref"
             type="text"
             value={referralCode}
-            onChange={(e) => setReferralCode(e.target.value)}
+            onChange={(e) => setReferralCode(e.target.value.toUpperCase())}
             placeholder="e.g. HE-USER1"
-            className="input uppercase font-mono text-xs"
+            className={`input uppercase font-mono text-xs ${
+              refValidated === true
+                ? "border-[#27C58B]/50 focus:border-[#27C58B]"
+                : refValidated === false
+                ? "border-[#F06464]/50 focus:border-[#F06464]"
+                : ""
+            }`}
             disabled={isLoading}
           />
+          {refValidated === true && referrerName && (
+            <p className="text-[11px] text-[#27C58B] flex items-center gap-1.5 mt-1 font-medium">
+              <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+              <span>Attributed to: {referrerName}</span>
+            </p>
+          )}
+          {refValidated === false && (
+            <p className="text-[11px] text-[#F06464] flex items-center gap-1.5 mt-1">
+              <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+              <span>Unrecognized referral invitation code.</span>
+            </p>
+          )}
         </div>
 
         {/* Terms Agreement Checkbox */}

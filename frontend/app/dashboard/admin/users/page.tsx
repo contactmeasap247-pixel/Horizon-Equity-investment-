@@ -25,6 +25,7 @@ import {
   TrendingUp,
   History,
   FileText,
+  Trash2,
 } from "lucide-react";
 import { api } from "@/lib/api";
 
@@ -163,6 +164,8 @@ export default function AdminUsersPage() {
     description: string;
   } | null>(null);
 
+  const [deleteUserModal, setDeleteUserModal] = useState<UserSummary | UserDetail | null>(null);
+
   const [actionLoading, setActionLoading] = useState(false);
   const [feedback, setFeedback] = useState<{ type: "success" | "error"; msg: string } | null>(null);
 
@@ -282,6 +285,32 @@ export default function AdminUsersPage() {
     } catch (err: unknown) {
       const e = err as { response?: { data?: { detail?: string } } };
       setFeedback({ type: "error", msg: e.response?.data?.detail || "Adjustment failed." });
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleDeleteUser = async () => {
+    if (!deleteUserModal) return;
+    setActionLoading(true);
+    try {
+      await api.delete(`/admin/users/${deleteUserModal.id}`);
+      setFeedback({
+        type: "success",
+        msg: `User account ${deleteUserModal.full_name} (${deleteUserModal.email}) permanently deleted.`,
+      });
+      setDeleteUserModal(null);
+      if (selectedUserId === deleteUserModal.id) {
+        setSelectedUserId(null);
+        setSelectedUserDetail(null);
+      }
+      fetchUsers();
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { detail?: string } } };
+      setFeedback({
+        type: "error",
+        msg: e.response?.data?.detail || "Failed to delete user account.",
+      });
     } finally {
       setActionLoading(false);
     }
@@ -493,11 +522,21 @@ export default function AdminUsersPage() {
                         className={`px-2 py-1 rounded transition-all font-medium text-[11px] ${
                           u.is_suspended
                             ? "bg-[#27C58B]/10 text-[#27C58B] hover:bg-[#27C58B] hover:text-white"
-                            : "bg-[#F06464]/10 text-[#F06464] hover:bg-[#F06464] hover:text-white"
+                            : "bg-[#F3B94F]/10 text-[#F3B94F] hover:bg-[#F3B94F] hover:text-white"
                         }`}
                         title={u.is_suspended ? "Restore Account" : "Suspend Account"}
                       >
                         {u.is_suspended ? "Restore" : "Suspend"}
+                      </button>
+
+                      {/* Delete User */}
+                      <button
+                        type="button"
+                        onClick={() => setDeleteUserModal(u)}
+                        className="px-2 py-1 rounded bg-[#F06464]/10 hover:bg-[#F06464] text-[#F06464] hover:text-white transition-all font-medium text-[11px]"
+                        title="Permanently Delete User"
+                      >
+                        Delete
                       </button>
                     </td>
                   </tr>
@@ -576,23 +615,34 @@ export default function AdminUsersPage() {
                     <h3 className="text-xs font-semibold text-[#F5F7FA] uppercase tracking-wider">
                       Account Profile
                     </h3>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setEditUserModal(selectedUserDetail);
-                        setEditFormData({
-                          full_name: selectedUserDetail.full_name || "",
-                          phone: selectedUserDetail.phone || "",
-                          country: selectedUserDetail.country || "",
-                          city: selectedUserDetail.city || "",
-                          address: selectedUserDetail.address || "",
-                        });
-                      }}
-                      className="flex items-center gap-1.5 px-2.5 py-1 text-xs rounded bg-[#151F2B] hover:bg-[#4388F5] text-white transition-all"
-                    >
-                      <Edit2 className="h-3 w-3" />
-                      <span>Edit Profile</span>
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEditUserModal(selectedUserDetail);
+                          setEditFormData({
+                            full_name: selectedUserDetail.full_name || "",
+                            phone: selectedUserDetail.phone || "",
+                            country: selectedUserDetail.country || "",
+                            city: selectedUserDetail.city || "",
+                            address: selectedUserDetail.address || "",
+                          });
+                        }}
+                        className="flex items-center gap-1.5 px-2.5 py-1 text-xs rounded bg-[#151F2B] hover:bg-[#4388F5] text-white transition-all"
+                      >
+                        <Edit2 className="h-3 w-3" />
+                        <span>Edit Profile</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setDeleteUserModal(selectedUserDetail)}
+                        className="flex items-center gap-1.5 px-2.5 py-1 text-xs rounded bg-[#F06464]/10 hover:bg-[#F06464] text-[#F06464] hover:text-white transition-all"
+                        title="Permanently Delete User"
+                      >
+                        <Trash2 className="h-3 w-3" />
+                        <span>Delete User</span>
+                      </button>
+                    </div>
                   </div>
 
                   <div className="grid grid-cols-2 gap-3 text-xs">
@@ -1020,6 +1070,64 @@ export default function AdminUsersPage() {
               >
                 {actionLoading && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
                 Confirm Balance Adjustment
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* DELETE USER CONFIRMATION MODAL */}
+      {deleteUserModal && (
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="w-full max-w-md bg-[#111821] border border-[#F06464]/30 rounded-xl p-5 space-y-4 shadow-2xl">
+            <div className="flex items-center justify-between pb-3 border-b border-white/10">
+              <div className="flex items-center gap-2 text-[#F06464]">
+                <AlertTriangle className="h-5 w-5" />
+                <h3 className="text-sm font-bold text-white">Permanently Delete Account</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setDeleteUserModal(null)}
+                className="text-[#7D8998] hover:text-white"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="space-y-3 text-xs text-[#7D8998]">
+              <p>
+                Are you sure you want to permanently delete the account for{" "}
+                <span className="text-white font-semibold">{deleteUserModal.full_name}</span> (
+                <span className="font-mono text-[#4388F5]">{deleteUserModal.email}</span>)?
+              </p>
+              <div className="p-3 rounded-lg bg-[#F06464]/10 border border-[#F06464]/20 text-[#F06464] space-y-1">
+                <p className="font-semibold text-xs flex items-center gap-1.5">
+                  <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+                  Irreversible Action Warning:
+                </p>
+                <p className="text-[11px] leading-relaxed">
+                  This action will permanently purge all associated data, including custodial balances, transaction ledgers, investment contracts, deposit records, KYC files, tickets, and notifications. System statistics and user counts will be updated immediately.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-3 border-t border-white/10 text-xs">
+              <button
+                type="button"
+                onClick={() => setDeleteUserModal(null)}
+                className="px-4 py-2 rounded-lg bg-[#0B0F14] text-[#7D8998] hover:text-white"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleDeleteUser}
+                disabled={actionLoading}
+                className="px-4 py-2 rounded-lg bg-[#F06464] hover:bg-[#D94E4E] text-white font-semibold flex items-center gap-1.5 disabled:opacity-50 transition-colors"
+              >
+                {actionLoading && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                <Trash2 className="h-3.5 w-3.5" />
+                Confirm Permanent Deletion
               </button>
             </div>
           </div>

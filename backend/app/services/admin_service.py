@@ -10,7 +10,7 @@ from decimal import Decimal
 from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
-from sqlalchemy import func, or_, and_, desc
+from sqlalchemy import func, or_, and_, desc, delete, update
 
 from app.models.user import User
 from app.models.wallet import Wallet
@@ -1238,25 +1238,42 @@ class AdminService:
         )
         pending_totals = {cur.upper(): float(amt or 0.0) for cur, amt in pending_comm.all()}
 
-        # Recent commissions list
+        # Recent commissions list with comprehensive attribution telemetry
         recent_res = await db.execute(
-            select(ReferralCommission, User)
-            .join(User, ReferralCommission.referrer_id == User.id)
+            select(ReferralCommission)
             .order_by(ReferralCommission.created_at.desc())
-            .limit(30)
+            .limit(50)
         )
-        recent_commissions = [
-            {
+        recent_comms = recent_res.scalars().all()
+        recent_commissions = []
+        for rc in recent_comms:
+            ref_user = await db.get(User, rc.referrer_id)
+            referee = await db.get(User, rc.referred_user_id)
+            plan_name = None
+            if rc.investment_id:
+                inv_res = await db.execute(
+                    select(InvestmentPlan.name)
+                    .join(Investment, Investment.plan_id == InvestmentPlan.id)
+                    .filter(Investment.id == rc.investment_id)
+                )
+                plan_name = inv_res.scalar()
+
+            recent_commissions.append({
                 "id": str(rc.id),
-                "referrer_name": user.full_name,
-                "referrer_email": user.email,
+                "referrer_id": str(rc.referrer_id),
+                "referrer_name": ref_user.full_name if ref_user else "N/A",
+                "referrer_email": ref_user.email if ref_user else "N/A",
+                "referred_id": str(rc.referred_user_id),
+                "referred_name": referee.full_name if referee else "N/A",
+                "referred_email": referee.email if referee else "N/A",
                 "amount": float(rc.commission_amount),
                 "currency": rc.currency,
                 "status": rc.status,
+                "source_type": rc.source_type or "investment",
+                "plan_name": plan_name or ("Manual Deposit" if rc.source_type == "deposit" else "Investment Tier"),
                 "created_at": rc.created_at.isoformat() if rc.created_at else None,
-            }
-            for rc, user in recent_res.all()
-        ]
+                "paid_at": rc.paid_at.isoformat() if rc.paid_at else None,
+            })
 
         return {
             "top_referrers": top_referrers,
@@ -1744,6 +1761,16 @@ class AdminService:
                     lang=getattr(dep_user, "preferred_language", "en") or "en",
                 )
 
+                # Process referral deposit activity & optional commission
+                if dep_user.referred_by:
+                    from app.services.referral_service import referral_service
+                    await referral_service.create_deposit_referral_commission(
+                        db=db,
+                        deposit=deposit,
+                        referrer_id=dep_user.referred_by,
+                        referred_user=dep_user,
+                    )
+
         elif status_clean == "rejected":
             deposit.rejection_reason = rejection_reason.strip() if rejection_reason else "Invalid proof details."
             await notification_service.create_notification(
@@ -1996,7 +2023,6 @@ class AdminService:
         await db.refresh(user)
         return user
 
-
     @staticmethod
     async def suspend_user(
         db: AsyncSession,
@@ -2042,6 +2068,104 @@ class AdminService:
         await db.commit()
         await db.refresh(user)
         return user
+
+    @staticmethod
+    async def delete_user(
+        db: AsyncSession,
+        user_id: uuid.UUID,
+        admin_id: uuid.UUID,
+    ) -> Dict[str, Any]:
+        """Permanently delete a user account, cleanly cascading child records and synchronizing analytics."""
+        if user_id == admin_id:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Cannot delete your own active administrator account.",
+            )
+
+        user_res = await db.execute(select(User).filter(User.id == user_id))
+        target_user = user_res.scalars().first()
+        if target_user is None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found.")
+
+        deleted_email = target_user.email
+        deleted_name = target_user.full_name
+        referrer_id = target_user.referred_by
+
+        # 1. Nullify referrals pointing to this user
+        await db.execute(
+            update(User).filter(User.referred_by == user_id).values(referred_by=None)
+        )
+
+        # 2. Delete referral commissions involving this user
+        await db.execute(
+            delete(ReferralCommission).filter(
+                or_(ReferralCommission.referrer_id == user_id, ReferralCommission.referred_user_id == user_id)
+            )
+        )
+
+        # 3. Clean up related records
+        try:
+            from app.models.loan import LoanApplication
+            await db.execute(delete(LoanApplication).filter(LoanApplication.user_id == user_id))
+        except Exception:
+            pass
+
+        try:
+            from app.models.ticket import SupportTicket, TicketMessage
+            await db.execute(delete(TicketMessage).filter(TicketMessage.user_id == user_id))
+            await db.execute(delete(SupportTicket).filter(SupportTicket.user_id == user_id))
+        except Exception:
+            pass
+
+        try:
+            from app.models.auth_token import AuthToken
+            await db.execute(delete(AuthToken).filter(AuthToken.user_id == user_id))
+        except Exception:
+            pass
+
+        await db.execute(delete(SessionToken).filter(SessionToken.user_id == user_id))
+        await db.execute(delete(RegistrationBonus).filter(RegistrationBonus.user_id == user_id))
+        await db.execute(delete(Investment).filter(Investment.user_id == user_id))
+        await db.execute(delete(DepositRequest).filter(DepositRequest.user_id == user_id))
+        await db.execute(delete(WithdrawalRequest).filter(WithdrawalRequest.user_id == user_id))
+        await db.execute(delete(Transaction).filter(Transaction.user_id == user_id))
+        await db.execute(delete(Notification).filter(Notification.user_id == user_id))
+        await db.execute(delete(UserSavedWallet).filter(UserSavedWallet.user_id == user_id))
+        await db.execute(delete(Wallet).filter(Wallet.user_id == user_id))
+        await db.execute(delete(AuditLog).filter(AuditLog.user_id == user_id))
+
+        # 4. Delete the user
+        await db.delete(target_user)
+
+        # 5. Re-synchronize referrer's referral_count and earnings if this user had a referrer
+        if referrer_id:
+            ref_user_res = await db.execute(select(User).filter(User.id == referrer_id))
+            referrer = ref_user_res.scalars().first()
+            if referrer:
+                count_res = await db.execute(
+                    select(func.count(User.id)).filter(User.referred_by == referrer_id)
+                )
+                referrer.referral_count = count_res.scalar() or 0
+                db.add(referrer)
+
+        # 6. Audit log for administrator
+        audit = AuditLog(
+            user_id=admin_id,
+            admin_id=admin_id,
+            action="user_deleted",
+            entity_type="user",
+            entity_id=user_id,
+            new_values={"deleted_email": deleted_email, "deleted_name": deleted_name},
+        )
+        db.add(audit)
+
+        await db.commit()
+
+        return {
+            "status": "success",
+            "message": f"User {deleted_name} ({deleted_email}) and all associated records have been permanently deleted.",
+            "deleted_user_id": str(user_id),
+        }
 
     @staticmethod
     async def manual_adjust_balance(
