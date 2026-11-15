@@ -13,6 +13,7 @@ import {
   Loader2,
   ShieldCheck,
   Gift,
+  X,
 } from "lucide-react";
 
 import { useAuthStore } from "@/lib/auth-store";
@@ -44,6 +45,17 @@ interface InvestmentItem {
   };
 }
 
+interface BonusData {
+  amount: number;
+  currency?: string;
+  status: string;
+  is_withdrawable?: boolean;
+  lifecycle_state?: "not_qualified" | "qualification_pending" | "qualified_and_unlocked" | "claimed_or_withdrawn" | "acknowledged_or_dismissed";
+  banner_visible?: boolean;
+  is_dismissed?: boolean;
+  is_claimed?: boolean;
+}
+
 const DEFAULT_CRYPTO_RATES: Record<string, number> = {
   BTC: 96450,
   ETH: 3380,
@@ -60,7 +72,23 @@ export default function DashboardOverview() {
   const [referralCode, setReferralCode] = useState("");
   const [referralCount, setReferralCount] = useState(0);
   const [referralEarnings, setReferralEarnings] = useState(0);
-  const [bonus, setBonus] = useState<{ amount: number; status: string; is_withdrawable: boolean } | null>(null);
+  const [bonus, setBonus] = useState<BonusData | null>(null);
+  const [isDismissingBonus, setIsDismissingBonus] = useState(false);
+
+  const handleDismissBonusBanner = async () => {
+    if (isDismissingBonus) return;
+    setIsDismissingBonus(true);
+    try {
+      await api.post("/users/bonus/dismiss");
+      setBonus((prev) => (prev ? { ...prev, banner_visible: false, lifecycle_state: "acknowledged_or_dismissed" } : null));
+    } catch (err) {
+      console.error("Failed to dismiss bonus banner:", err);
+      // Optimistically hide banner locally to ensure seamless UX
+      setBonus((prev) => (prev ? { ...prev, banner_visible: false } : null));
+    } finally {
+      setIsDismissingBonus(false);
+    }
+  };
 
   const [isLoading, setIsLoading] = useState(true);
   const [copied, setCopied] = useState(false);
@@ -178,41 +206,101 @@ export default function DashboardOverview() {
         </div>
       </div>
 
-      {/* Promotional Welcome Bonus Banner (Phase 10) */}
-      {bonus && (
-        <div className="panel p-4 bg-gradient-to-r from-[#4388F5]/10 via-[#111821] to-[#27C58B]/10 border-white/10 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <div className="h-9 w-9 rounded-full bg-[#4388F5]/20 border border-[#4388F5]/30 flex items-center justify-center text-[#4388F5] shrink-0">
+      {/* Promotional Welcome Bonus Banner (5-State Lifecycle) */}
+      {bonus && bonus.banner_visible !== false && bonus.lifecycle_state !== "claimed_or_withdrawn" && bonus.lifecycle_state !== "acknowledged_or_dismissed" && (
+        <div
+          className={`panel p-4 border flex flex-col sm:flex-row sm:items-center justify-between gap-3 transition-all ${
+            bonus.lifecycle_state === "qualified_and_unlocked"
+              ? "bg-gradient-to-r from-[#27C58B]/15 via-[#111821] to-[#27C58B]/5 border-[#27C58B]/40"
+              : bonus.lifecycle_state === "qualification_pending"
+              ? "bg-gradient-to-r from-[#4388F5]/15 via-[#111821] to-[#4388F5]/5 border-[#4388F5]/40"
+              : "bg-gradient-to-r from-[#F3B94F]/10 via-[#111821] to-[#4388F5]/10 border-white/10"
+          }`}
+        >
+          <div className="flex items-start sm:items-center gap-3">
+            <div
+              className={`h-9 w-9 rounded-full flex items-center justify-center shrink-0 border ${
+                bonus.lifecycle_state === "qualified_and_unlocked"
+                  ? "bg-[#27C58B]/20 border-[#27C58B]/40 text-[#27C58B]"
+                  : bonus.lifecycle_state === "qualification_pending"
+                  ? "bg-[#4388F5]/20 border-[#4388F5]/40 text-[#4388F5]"
+                  : "bg-[#F3B94F]/20 border-[#F3B94F]/40 text-[#F3B94F]"
+              }`}
+            >
               <Gift className="h-4 w-4" />
             </div>
             <div>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <span className="text-xs font-bold text-white">
-                  {t(`$${Number(bonus.amount).toFixed(2)} USDT Welcome Bonus Credited`)}
+                  {bonus.lifecycle_state === "qualified_and_unlocked"
+                    ? t(`$${Number(bonus.amount).toFixed(2)} USDT Welcome Bonus Unlocked!`)
+                    : bonus.lifecycle_state === "qualification_pending"
+                    ? t(`$${Number(bonus.amount).toFixed(2)} USDT Welcome Bonus (Contract Active)`)
+                    : t(`$${Number(bonus.amount).toFixed(2)} USDT Welcome Bonus Credited`)}
                 </span>
                 <span
                   className={`text-[9px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wider ${
-                    bonus.status === "unlocked"
+                    bonus.lifecycle_state === "qualified_and_unlocked"
                       ? "bg-[#27C58B]/15 text-[#27C58B] border border-[#27C58B]/30"
+                      : bonus.lifecycle_state === "qualification_pending"
+                      ? "bg-[#4388F5]/15 text-[#4388F5] border border-[#4388F5]/30"
                       : "bg-[#F3B94F]/15 text-[#F3B94F] border border-[#F3B94F]/30"
                   }`}
                 >
-                  {bonus.status === "unlocked" ? t("Unlocked for Withdrawal") : t("Locked (Qualifying Plan Required)")}
+                  {bonus.lifecycle_state === "qualified_and_unlocked"
+                    ? t("Unlocked for Withdrawal")
+                    : bonus.lifecycle_state === "qualification_pending"
+                    ? t("Qualification In Progress")
+                    : t("Locked (Qualifying Plan Required)")}
                 </span>
               </div>
               <p className="text-[11px] text-[#A6B0BE] mt-0.5">
-                {bonus.status === "unlocked"
-                  ? t(`Congratulations! Your qualifying investment has completed. Your $${Number(bonus.amount).toFixed(2)} welcome bonus is now unlocked for withdrawal.`)
+                {bonus.lifecycle_state === "qualified_and_unlocked"
+                  ? t(`Congratulations! Your qualifying investment has completed. Your $${Number(bonus.amount).toFixed(2)} welcome bonus is now unlocked for withdrawal or reinvestment.`)
+                  : bonus.lifecycle_state === "qualification_pending"
+                  ? t("Your qualifying investment contract is active and compounding. The welcome bonus will unlock automatically upon contract maturity.")
                   : t("Complete your first qualifying investment contract (e.g. Silver Plan) to unlock this welcome bonus for withdrawal.")}
               </p>
             </div>
           </div>
-          <Link
-            href="/dashboard/investments"
-            className="text-xs font-semibold text-[#4388F5] hover:underline shrink-0"
-          >
-            {bonus.status === "unlocked" ? t("View Balances →") : t("Explore Qualifying Plans →")}
-          </Link>
+          <div className="flex items-center gap-3 shrink-0 self-end sm:self-center">
+            {bonus.lifecycle_state === "qualified_and_unlocked" ? (
+              <Link
+                href="/dashboard/wallets"
+                className="text-xs font-semibold text-[#27C58B] hover:underline"
+              >
+                {t("View Balances →")}
+              </Link>
+            ) : bonus.lifecycle_state === "qualification_pending" ? (
+              <Link
+                href="/dashboard/investments"
+                className="text-xs font-semibold text-[#4388F5] hover:underline"
+              >
+                {t("View Active Contract →")}
+              </Link>
+            ) : (
+              <Link
+                href="/dashboard/investments"
+                className="text-xs font-semibold text-[#F3B94F] hover:underline"
+              >
+                {t("Explore Qualifying Plans →")}
+              </Link>
+            )}
+
+            {/* Dismiss button when qualified and unlocked */}
+            {bonus.lifecycle_state === "qualified_and_unlocked" && (
+              <button
+                type="button"
+                onClick={handleDismissBonusBanner}
+                disabled={isDismissingBonus}
+                className="p-1.5 rounded-md hover:bg-white/10 text-[#7D8998] hover:text-white transition"
+                title={t("Dismiss notification")}
+                aria-label={t("Dismiss notification")}
+              >
+                <X className="h-4 w-4" />
+              </button>
+            )}
+          </div>
         </div>
       )}
 

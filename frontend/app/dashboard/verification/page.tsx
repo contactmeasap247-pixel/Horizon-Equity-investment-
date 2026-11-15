@@ -51,9 +51,26 @@ export default function VerificationPage() {
   const [frontDocBase64, setFrontDocBase64] = useState("");
   const [backDocName, setBackDocName] = useState("");
   const [backDocBase64, setBackDocBase64] = useState("");
-  const [selfieName, setSelfieName] = useState("");
-  const [selfieBase64, setSelfieBase64] = useState("");
   const [agreementChecked, setAgreementChecked] = useState(false);
+
+  // Completion calculation for dossier progress
+  const isDocNumberFilled = Boolean(docNumber.trim());
+  const isLegalNameFilled = Boolean(legalName.trim());
+  const isDobFilled = Boolean(dob.trim());
+  const isNationalityFilled = Boolean(nationality.trim());
+  const isFrontDocUploaded = Boolean(frontDocBase64);
+  const isBackDocUploaded = Boolean(backDocBase64);
+
+  const completionPercent = (
+    [
+      isDocNumberFilled,
+      isLegalNameFilled,
+      isDobFilled,
+      isNationalityFilled,
+      isFrontDocUploaded,
+      isBackDocUploaded,
+    ].filter(Boolean).length / 6
+  ) * 100;
 
   const fetchKycStatus = async () => {
     try {
@@ -102,6 +119,16 @@ export default function VerificationPage() {
       return;
     }
 
+    if (!frontDocBase64) {
+      setFormError("Please upload the front scan of your identification document.");
+      return;
+    }
+
+    if (!backDocBase64) {
+      setFormError("Please upload the reverse/back scan of your identification document.");
+      return;
+    }
+
     if (!agreementChecked) {
       setFormError("You must attest that the submitted legal information is genuine.");
       return;
@@ -115,9 +142,8 @@ export default function VerificationPage() {
         full_legal_name: legalName.trim(),
         date_of_birth: dob.trim(),
         nationality: nationality.trim(),
-        front_document: frontDocBase64 || "doc_front_attached",
-        back_document: backDocBase64 || undefined,
-        selfie_proof: selfieBase64 || undefined,
+        front_document: frontDocBase64,
+        back_document: backDocBase64,
       };
 
       const res = await api.post("/users/kyc/submit", payload);
@@ -276,13 +302,26 @@ export default function VerificationPage() {
       {!isVerified && (
         <div className="panel p-6 sm:p-8 flex flex-col gap-6">
           <div className="border-b border-white/10 pb-4">
-            <h3 className="text-base font-bold text-white flex items-center gap-2">
-              <UserCheck className="h-5 w-5 text-[#4388F5]" />
-              Submit Identity Documentation
-            </h3>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <h3 className="text-base font-bold text-white flex items-center gap-2">
+                <UserCheck className="h-5 w-5 text-[#4388F5]" />
+                Submit Identity Documentation
+              </h3>
+              <div className="flex items-center gap-2 text-xs">
+                <span className="text-[#7D8998]">Dossier Completion:</span>
+                <span className="font-bold text-[#27C58B]">{Math.round(completionPercent)}%</span>
+              </div>
+            </div>
             <p className="text-xs text-[#7D8998] mt-1">
               All documents are transmitted using 256-bit AES encryption and stored securely in air-gapped compliance vaults.
             </p>
+            {/* Completion Progress Bar */}
+            <div className="w-full h-1.5 bg-white/5 rounded-full overflow-hidden mt-3">
+              <div
+                className="h-full bg-gradient-to-r from-[#4388F5] to-[#27C58B] transition-all duration-300"
+                style={{ width: `${completionPercent}%` }}
+              />
+            </div>
           </div>
 
           {formError && (
@@ -380,20 +419,20 @@ export default function VerificationPage() {
 
             {/* Document Uploads */}
             <div className="pt-4 border-t border-white/10">
-              <h4 className="text-xs font-bold uppercase tracking-wider text-[#7D8998] mb-3">
-                Document Scans & Photographic Verification
+              <h4 className="text-xs font-bold uppercase tracking-wider text-[#7D8998] mb-2">
+                Government ID Scans (Front & Reverse)
               </h4>
               <p className="text-xs text-[#A6B0BE] mb-4">
-                Upload clear color photographs or scans. Ensure all 4 edges are visible, text is crisp, and no flash glare obscures personal details. Supported formats: JPG, PNG, PDF (Max 5MB each).
+                Upload clear color photographs or scans of the front and reverse sides of your government-issued ID. Ensure all 4 edges are visible, text is crisp, and no flash glare obscures personal details. Supported formats: JPG, PNG, PDF (Max 5MB each).
               </p>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* Front Document */}
-                <div className="p-4 rounded-lg bg-[#0B0F14] border border-white/10 flex flex-col items-center text-center justify-between min-h-[170px]">
-                  <UploadCloud className="h-7 w-7 text-[#4388F5] mb-2" />
-                  <div>
+                <div className={`p-4 rounded-lg bg-[#0B0F14] border flex flex-col items-center text-center justify-between min-h-[170px] transition ${frontDocBase64 ? "border-[#27C58B]/40 bg-[#27C58B]/5" : "border-white/10"}`}>
+                  <div className="flex flex-col items-center">
+                    <UploadCloud className={`h-7 w-7 mb-2 ${frontDocBase64 ? "text-[#27C58B]" : "text-[#4388F5]"}`} />
                     <span className="text-xs font-bold text-white block">Front of Document *</span>
-                    <span className="text-[11px] text-[#7D8998] block mt-0.5 truncate max-w-[200px]">
+                    <span className="text-[11px] text-[#7D8998] block mt-0.5 truncate max-w-[240px]">
                       {frontDocName || "Photo page or front side"}
                     </span>
                   </div>
@@ -409,12 +448,12 @@ export default function VerificationPage() {
                 </div>
 
                 {/* Back Document */}
-                <div className="p-4 rounded-lg bg-[#0B0F14] border border-white/10 flex flex-col items-center text-center justify-between min-h-[170px]">
-                  <FileText className="h-7 w-7 text-[#7D8998] mb-2" />
-                  <div>
-                    <span className="text-xs font-bold text-white block">Back of Document</span>
-                    <span className="text-[11px] text-[#7D8998] block mt-0.5 truncate max-w-[200px]">
-                      {backDocName || "Optional for passports"}
+                <div className={`p-4 rounded-lg bg-[#0B0F14] border flex flex-col items-center text-center justify-between min-h-[170px] transition ${backDocBase64 ? "border-[#27C58B]/40 bg-[#27C58B]/5" : "border-white/10"}`}>
+                  <div className="flex flex-col items-center">
+                    <FileText className={`h-7 w-7 mb-2 ${backDocBase64 ? "text-[#27C58B]" : "text-[#7D8998]"}`} />
+                    <span className="text-xs font-bold text-white block">Back of Document *</span>
+                    <span className="text-[11px] text-[#7D8998] block mt-0.5 truncate max-w-[240px]">
+                      {backDocName || "Barcode or reverse side"}
                     </span>
                   </div>
                   <label className="btn btn-secondary btn-sm text-xs cursor-pointer mt-3 w-full justify-center">
@@ -423,26 +462,6 @@ export default function VerificationPage() {
                       type="file"
                       accept="image/*,application/pdf"
                       onChange={(e) => handleFileUpload(e, setBackDocName, setBackDocBase64)}
-                      className="hidden"
-                    />
-                  </label>
-                </div>
-
-                {/* Selfie Proof */}
-                <div className="p-4 rounded-lg bg-[#0B0F14] border border-white/10 flex flex-col items-center text-center justify-between min-h-[170px]">
-                  <UserCheck className="h-7 w-7 text-[#27C58B] mb-2" />
-                  <div>
-                    <span className="text-xs font-bold text-white block">Selfie with Document</span>
-                    <span className="text-[11px] text-[#7D8998] block mt-0.5 truncate max-w-[200px]">
-                      {selfieName || "Holding document clearly"}
-                    </span>
-                  </div>
-                  <label className="btn btn-secondary btn-sm text-xs cursor-pointer mt-3 w-full justify-center">
-                    <span>{selfieName ? "Replace File" : "Choose File"}</span>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={(e) => handleFileUpload(e, setSelfieName, setSelfieBase64)}
                       className="hidden"
                     />
                   </label>

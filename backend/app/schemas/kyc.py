@@ -1,5 +1,6 @@
 # ============================================
 # HORIZON EQUITY - KYC VERIFICATION SCHEMAS
+# Standard Two-Sided Identity Verification Flow
 # ============================================
 
 from pydantic import BaseModel, Field
@@ -13,9 +14,9 @@ class KycSubmissionRequest(BaseModel):
     full_legal_name: str = Field(..., min_length=2, max_length=150)
     date_of_birth: str = Field(..., description="YYYY-MM-DD")
     nationality: Optional[str] = None
-    front_document: Optional[str] = Field(None, description="Document image or upload reference")
-    back_document: Optional[str] = Field(None, description="Back image if applicable")
-    selfie_proof: Optional[str] = Field(None, description="Selfie holding document or proof")
+    front_document: str = Field(..., min_length=1, description="Front scan or photograph of document (Required)")
+    back_document: str = Field(..., min_length=1, description="Back scan or photograph of document (Required)")
+    selfie_proof: Optional[str] = Field(None, description="Selfie proof (optional / legacy compatibility)")
 
 
 class KycStatusResponse(BaseModel):

@@ -5,7 +5,7 @@
 
 import uuid
 from datetime import datetime
-from sqlalchemy import Column, String, DECIMAL, TIMESTAMP, ForeignKey, Uuid, Text
+from sqlalchemy import Column, String, Boolean, DECIMAL, TIMESTAMP, ForeignKey, Uuid, Text
 from sqlalchemy.orm import relationship
 from app.core.database import Base
 
@@ -21,6 +21,8 @@ class RegistrationBonus(Base):
     qualifying_investment_id = Column(Uuid, ForeignKey("investments.id"), nullable=True)
     awarded_at = Column(TIMESTAMP, default=datetime.utcnow)
     unlocked_at = Column(TIMESTAMP, nullable=True)
+    banner_dismissed_at = Column(TIMESTAMP, nullable=True)
+    is_claimed = Column(Boolean, default=False)
     notes = Column(Text, nullable=True)
 
     # Relationships

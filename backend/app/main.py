@@ -79,6 +79,15 @@ async def lifespan(app: FastAPI):
                 await conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS preferred_language VARCHAR(10) DEFAULT 'en';"))
             except Exception:
                 pass
+            # Safe non-breaking schema evolution for registration_bonuses banner lifecycle
+            try:
+                await conn.execute(text("ALTER TABLE registration_bonuses ADD COLUMN IF NOT EXISTS banner_dismissed_at TIMESTAMP;"))
+            except Exception:
+                pass
+            try:
+                await conn.execute(text("ALTER TABLE registration_bonuses ADD COLUMN IF NOT EXISTS is_claimed BOOLEAN DEFAULT FALSE;"))
+            except Exception:
+                pass
         print("[OK] Database tables verified/connected")
     except Exception as e:
         print(f"[WARN] Database schema verification deferred: {e}")

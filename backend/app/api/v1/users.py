@@ -17,6 +17,7 @@ from app.schemas.user import UserResponse, UserUpdate
 from app.schemas.kyc import KycSubmissionRequest, KycStatusResponse
 from app.models.user import User
 from app.models.wallet import Wallet
+from app.models.withdrawal_request import WithdrawalRequest
 from app.models.registration_bonus import RegistrationBonus
 from app.models.investment import Investment
 from app.models.transaction import Transaction
@@ -206,6 +207,18 @@ async def submit_kyc(
             detail="Your identity is already verified. Resubmission is not required.",
         )
 
+    if not payload.front_document or not payload.front_document.strip():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Front of identification document is required.",
+        )
+
+    if not payload.back_document or not payload.back_document.strip():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Back of identification document is required.",
+        )
+
     doc_store = {
         "document_type": payload.document_type,
         "document_number": payload.document_number.strip(),
@@ -342,11 +355,57 @@ async def get_registration_bonus_status(
                 lang=getattr(current_user, "preferred_language", "en") or "en",
             )
 
+    # 1. Check if user has an active qualifying investment in progress
+    active_inv_res = await db.execute(
+        select(Investment).filter(
+            Investment.user_id == current_user.id,
+            Investment.status == "active",
+        )
+    )
+    has_active_inv = active_inv_res.scalars().first() is not None
+
+    # 2. Check if user has claimed or completed a withdrawal of funds
+    withdrawn_res = await db.execute(
+        select(WithdrawalRequest).filter(
+            WithdrawalRequest.user_id == current_user.id,
+            WithdrawalRequest.status.in_(["approved", "completed", "paid", "processing"]),
+        )
+    )
+    has_withdrawn = withdrawn_res.scalars().first() is not None or getattr(bonus, "is_claimed", False)
+
+    # 3. Check if user acknowledged / dismissed the unlocked banner
+    is_dismissed = False
+    if getattr(bonus, "banner_dismissed_at", None) is not None:
+        is_dismissed = True
+    elif bonus.notes and "BANNER_DISMISSED" in bonus.notes:
+        is_dismissed = True
+
+    # 4. Map lifecycle state
+    if has_withdrawn:
+        lifecycle_state = "claimed_or_withdrawn"
+        banner_visible = False
+    elif is_dismissed:
+        lifecycle_state = "acknowledged_or_dismissed"
+        banner_visible = False
+    elif bonus.status == "unlocked":
+        lifecycle_state = "qualified_and_unlocked"
+        banner_visible = True
+    elif has_active_inv:
+        lifecycle_state = "qualification_pending"
+        banner_visible = True
+    else:
+        lifecycle_state = "not_qualified"
+        banner_visible = True
+
     return {
         "amount": float(bonus.amount),
         "currency": bonus.currency,
         "status": bonus.status,
         "is_withdrawable": bonus.status == "unlocked",
+        "lifecycle_state": lifecycle_state,
+        "banner_visible": banner_visible,
+        "is_dismissed": is_dismissed,
+        "is_claimed": has_withdrawn,
         "awarded_at": bonus.awarded_at.isoformat() if bonus.awarded_at else None,
         "unlocked_at": bonus.unlocked_at.isoformat() if bonus.unlocked_at else None,
         "qualifying_investment_id": str(bonus.qualifying_investment_id) if bonus.qualifying_investment_id else None,
@@ -355,4 +414,34 @@ async def get_registration_bonus_status(
             "requirement": f"The ${float(bonus.amount):.2f} welcome bonus is a promotional credit credited directly to your USDT balance. To unlock this bonus for withdrawal, you must successfully complete at least one qualifying investment contract (e.g. Silver Plan).",
             "qualifying_plan": "Silver Starter Tier (Min $100, 2-day duration)",
         },
+    }
+
+
+@router.post("/bonus/dismiss")
+@router.post("/bonus/acknowledge")
+async def dismiss_bonus_banner(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Persistently dismiss the welcome bonus banner across all investor devices."""
+    bonus_res = await db.execute(
+        select(RegistrationBonus).filter(RegistrationBonus.user_id == current_user.id)
+    )
+    bonus = bonus_res.scalars().first()
+    if bonus:
+        now = datetime.utcnow()
+        try:
+            bonus.banner_dismissed_at = now
+        except Exception:
+            pass
+        note_str = bonus.notes or ""
+        if "BANNER_DISMISSED" not in note_str:
+            bonus.notes = (note_str + f" [BANNER_DISMISSED:{now.isoformat()}]").strip()
+        db.add(bonus)
+        await db.commit()
+    return {
+        "status": "dismissed",
+        "banner_visible": False,
+        "lifecycle_state": "acknowledged_or_dismissed",
+        "message": "Welcome bonus banner acknowledged and dismissed.",
     }

@@ -265,7 +265,7 @@ export default function AdminKycPage() {
       {/* Review Dossier Modal */}
       {selectedUser && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="panel w-full max-w-lg p-6 bg-[#111821] border-white/20 shadow-2xl relative animate-in fade-in zoom-in-95 max-h-[90vh] overflow-y-auto">
+          <div className="panel w-full max-w-2xl p-6 bg-[#111821] border-white/20 shadow-2xl relative animate-in fade-in zoom-in-95 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between border-b border-white/10 pb-3 mb-4">
               <h3 className="text-base font-bold text-white flex items-center gap-2">
                 <ShieldCheck className="h-4 w-4 text-[#27C58B]" />
@@ -286,7 +286,7 @@ export default function AdminKycPage() {
                 <h4 className="text-[11px] font-bold uppercase tracking-wider text-[#7D8998] border-b border-white/5 pb-1">
                   Submitted Applicant Details
                 </h4>
-                <div className="grid grid-cols-2 gap-2 pt-1">
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 pt-1">
                   <div>
                     <span className="text-[#7D8998] block">Legal Name:</span>
                     <span className="font-bold text-white">
@@ -319,9 +319,144 @@ export default function AdminKycPage() {
                   </div>
                   <div>
                     <span className="text-[#7D8998] block">Account Email:</span>
-                    <span className="text-white">{selectedUser.email}</span>
+                    <span className="text-white truncate block">{selectedUser.email}</span>
                   </div>
                 </div>
+              </div>
+
+              {/* Document Scans Inspection */}
+              <div className="p-4 rounded-lg bg-[#0B0F14] border border-white/10 flex flex-col gap-3">
+                <div className="flex items-center justify-between border-b border-white/5 pb-1.5">
+                  <h4 className="text-[11px] font-bold uppercase tracking-wider text-[#7D8998] flex items-center gap-1.5">
+                    <FileText className="h-3.5 w-3.5 text-[#4388F5]" />
+                    Document Scans Inspection
+                  </h4>
+                  <span className="text-[10px] text-[#7D8998]">Click image to inspect full size</span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {/* Front Scan */}
+                  <div className="flex flex-col gap-1.5">
+                    <span className="text-[11px] font-semibold text-[#A6B0BE]">Front of Document</span>
+                    {selectedUser.kyc_documents?.front_document ? (
+                      selectedUser.kyc_documents.front_document.startsWith("data:application/pdf") ? (
+                        <div className="h-44 rounded-lg bg-[#06090D] border border-white/10 flex flex-col items-center justify-center p-3 text-center">
+                          <FileText className="h-8 w-8 text-[#4388F5] mb-2" />
+                          <span className="text-xs text-white font-medium">PDF Document</span>
+                          <a
+                            href={selectedUser.kyc_documents.front_document}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="btn btn-secondary btn-sm text-[11px] mt-2 py-1 px-3"
+                          >
+                            Open PDF ↗
+                          </a>
+                        </div>
+                      ) : (
+                        <div className="relative group rounded-lg overflow-hidden border border-white/10 bg-[#06090D] h-44 flex items-center justify-center">
+                          {selectedUser.kyc_documents.front_document.startsWith("data:image/") ||
+                          selectedUser.kyc_documents.front_document.startsWith("http") ||
+                          selectedUser.kyc_documents.front_document.startsWith("/") ? (
+                            <img
+                              src={selectedUser.kyc_documents.front_document}
+                              alt="Front of ID"
+                              className="w-full h-full object-contain cursor-pointer transition group-hover:scale-105"
+                              onClick={() => {
+                                const w = window.open("");
+                                if (w) {
+                                  w.document.write(`<img src="${selectedUser.kyc_documents?.front_document}" style="max-width:100%;height:auto;margin:auto;display:block;" />`);
+                                }
+                              }}
+                            />
+                          ) : (
+                            <div className="p-3 text-center text-xs text-[#7D8998]">
+                              <FileText className="h-6 w-6 mx-auto mb-1 text-[#4388F5]" />
+                              <span>{selectedUser.kyc_documents.front_document}</span>
+                            </div>
+                          )}
+                        </div>
+                      )
+                    ) : (
+                      <div className="h-44 rounded-lg bg-[#06090D] border border-white/10 border-dashed flex items-center justify-center text-xs text-[#7D8998]">
+                        No front document scan attached
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Back Scan */}
+                  <div className="flex flex-col gap-1.5">
+                    <span className="text-[11px] font-semibold text-[#A6B0BE]">Back / Reverse Side</span>
+                    {selectedUser.kyc_documents?.back_document ? (
+                      selectedUser.kyc_documents.back_document.startsWith("data:application/pdf") ? (
+                        <div className="h-44 rounded-lg bg-[#06090D] border border-white/10 flex flex-col items-center justify-center p-3 text-center">
+                          <FileText className="h-8 w-8 text-[#4388F5] mb-2" />
+                          <span className="text-xs text-white font-medium">PDF Document</span>
+                          <a
+                            href={selectedUser.kyc_documents.back_document}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="btn btn-secondary btn-sm text-[11px] mt-2 py-1 px-3"
+                          >
+                            Open PDF ↗
+                          </a>
+                        </div>
+                      ) : (
+                        <div className="relative group rounded-lg overflow-hidden border border-white/10 bg-[#06090D] h-44 flex items-center justify-center">
+                          {selectedUser.kyc_documents.back_document.startsWith("data:image/") ||
+                          selectedUser.kyc_documents.back_document.startsWith("http") ||
+                          selectedUser.kyc_documents.back_document.startsWith("/") ? (
+                            <img
+                              src={selectedUser.kyc_documents.back_document}
+                              alt="Back of ID"
+                              className="w-full h-full object-contain cursor-pointer transition group-hover:scale-105"
+                              onClick={() => {
+                                const w = window.open("");
+                                if (w) {
+                                  w.document.write(`<img src="${selectedUser.kyc_documents?.back_document}" style="max-width:100%;height:auto;margin:auto;display:block;" />`);
+                                }
+                              }}
+                            />
+                          ) : (
+                            <div className="p-3 text-center text-xs text-[#7D8998]">
+                              <FileText className="h-6 w-6 mx-auto mb-1 text-[#4388F5]" />
+                              <span>{selectedUser.kyc_documents.back_document}</span>
+                            </div>
+                          )}
+                        </div>
+                      )
+                    ) : (
+                      <div className="h-44 rounded-lg bg-[#06090D] border border-white/10 border-dashed flex items-center justify-center text-xs text-[#7D8998]">
+                        No back document scan attached
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Historical Selfie Proof if present */}
+                {selectedUser.kyc_documents?.selfie_proof && (
+                  <div className="pt-2 border-t border-white/5 flex flex-col gap-1.5">
+                    <span className="text-[11px] font-semibold text-[#7D8998]">Selfie Proof (Historical Record)</span>
+                    <div className="rounded-lg overflow-hidden border border-white/10 bg-[#06090D] max-h-40 flex items-center justify-center p-2">
+                      {selectedUser.kyc_documents.selfie_proof.startsWith("data:image/") ||
+                      selectedUser.kyc_documents.selfie_proof.startsWith("http") ||
+                      selectedUser.kyc_documents.selfie_proof.startsWith("/") ? (
+                        <img
+                          src={selectedUser.kyc_documents.selfie_proof}
+                          alt="Historical Selfie"
+                          className="max-h-36 object-contain cursor-pointer"
+                          onClick={() => {
+                            const w = window.open("");
+                            if (w) {
+                              w.document.write(`<img src="${selectedUser.kyc_documents?.selfie_proof}" style="max-width:100%;height:auto;margin:auto;display:block;" />`);
+                            }
+                          }}
+                        />
+                      ) : (
+                        <span className="text-xs text-[#7D8998]">{selectedUser.kyc_documents.selfie_proof}</span>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Review Decision Form */}
