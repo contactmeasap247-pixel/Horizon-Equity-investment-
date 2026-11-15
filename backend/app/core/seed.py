@@ -56,7 +56,7 @@ INVESTMENT_PLANS_DATA = [
         "min_amount": Decimal("5000.0"),
         "max_amount": None,
         "return_percentage": Decimal("45.0"),
-        "duration_days": 7,
+        "duration_days": 14,
         "referral_bonus_percentage": Decimal("12.0"),
         "is_active": True,
         "is_featured": True,
@@ -65,7 +65,7 @@ INVESTMENT_PLANS_DATA = [
 ]
 
 async def sync_investment_plans():
-    """Sync investment plan yield percentages and parameters with active database."""
+    """Sync investment plan yield percentages and parameters with active database, strictly enforcing 14-day maximum."""
     async with async_session() as db:
         for p_data in INVESTMENT_PLANS_DATA:
             q = select(InvestmentPlan).filter(InvestmentPlan.name == p_data["name"])
@@ -80,12 +80,22 @@ async def sync_investment_plans():
                 existing_plan.description = p_data["description"]
                 existing_plan.min_amount = p_data["min_amount"]
                 existing_plan.max_amount = p_data["max_amount"]
-                existing_plan.duration_days = p_data["duration_days"]
+                # Enforce absolute 14-day maximum
+                existing_plan.duration_days = min(14, max(1, p_data["duration_days"]))
                 existing_plan.referral_bonus_percentage = p_data["referral_bonus_percentage"]
                 existing_plan.is_active = p_data["is_active"]
                 existing_plan.sort_order = p_data["sort_order"]
                 db.add(existing_plan)
                 print(f"[SEED] Synced plan: {p_data['name']} -> {p_data['return_percentage']}%")
+
+        # Safely cap any legacy custom plan in database exceeding 14 days without modifying existing user investments
+        all_res = await db.execute(select(InvestmentPlan))
+        for p in all_res.scalars().all():
+            if p.duration_days > 14:
+                print(f"[AUDIT] Plan {p.name} duration ({p.duration_days} days) exceeded 14 days. Capped to 14 days.")
+                p.duration_days = 14
+                db.add(p)
+
         await db.commit()
 
 async def seed_data():

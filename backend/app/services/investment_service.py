@@ -52,6 +52,17 @@ class InvestmentService:
 
     async def create_investment_plan(self, db: AsyncSession, plan_in: InvestmentPlanCreate) -> InvestmentPlan:
         """Create a new investment plan tier."""
+        if plan_in.duration_days > 14:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Investment plan duration cannot exceed 14 days (2 weeks). Maximum allowed is 14 days.",
+            )
+        if plan_in.duration_days < 1:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Investment plan duration must be at least 1 day.",
+            )
+
         new_plan = InvestmentPlan(
             name=plan_in.name,
             description=plan_in.description,
@@ -76,6 +87,18 @@ class InvestmentService:
         plan = await self.get_investment_plan_by_id(db, plan_id)
         if plan is None:
             return None
+
+        if plan_in.duration_days is not None:
+            if plan_in.duration_days > 14:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Investment plan duration cannot exceed 14 days (2 weeks). Maximum allowed is 14 days.",
+                )
+            if plan_in.duration_days < 1:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Investment plan duration must be at least 1 day.",
+                )
 
         # Update fields if provided
         for field, value in plan_in.model_dump(exclude_unset=True).items():

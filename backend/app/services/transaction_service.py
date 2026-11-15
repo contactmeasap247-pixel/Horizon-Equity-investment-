@@ -158,12 +158,12 @@ def build_breakdown_and_context(tx: Transaction, user: Optional[User] = None) ->
 
     elif tx_type in ("adjustment", "admin_credit", "admin_debit"):
         title = "Audited Ledger Adjustment"
-        subtitle = "Administrative Financial Correction & Settlement"
+        subtitle = "Custodial Balance Adjustment & Settlement"
         direction = "Credit (+)" if float(tx.amount) >= 0 else "Debit (-)"
         breakdown.append(ReceiptBreakdownItem(label="Adjustment Operation", value=direction, badge=direction))
         breakdown.append(ReceiptBreakdownItem(label="Authorized Desk", value="Horizon Custody & Clearing Operations"))
         if tx.description:
-            breakdown.append(ReceiptBreakdownItem(label="Audit Justification", value=tx.description))
+            breakdown.append(ReceiptBreakdownItem(label="Settlement Note", value=tx.description))
 
     elif tx_type == "fee":
         title = "Custodial Execution Fee"
@@ -299,6 +299,8 @@ class TransactionService:
         status: str = "completed",
         description: Optional[str] = None,
         reference: Optional[str] = None,
+        approved_by: Optional[uuid.UUID] = None,
+        approved_at: Optional[datetime] = None,
     ) -> Transaction:
         """Create a new manual ledger transaction record."""
         currency_clean = currency.upper().strip()
@@ -315,6 +317,8 @@ class TransactionService:
             status=status_clean,
             reference=ref,
             description=description,
+            approved_by=approved_by,
+            approved_at=approved_at,
         )
         db.add(transaction)
         await db.commit()

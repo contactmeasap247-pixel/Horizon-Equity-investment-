@@ -143,6 +143,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     { name: t("admin_notifications"), href: "/dashboard/admin/notifications", icon: Bell },
     { name: t("admin_audit_logs"), href: "/dashboard/admin/audit-logs", icon: FileText },
     { name: t("admin_security"), href: "/dashboard/admin/security", icon: Lock },
+    { name: "Investment Plans", href: "/dashboard/admin/plans", icon: TrendingUp },
     { name: t("admin_settings"), href: "/dashboard/admin/settings", icon: Settings },
     { name: t("admin_wallets"), href: "/dashboard/admin/wallets", icon: Wallet },
   ];

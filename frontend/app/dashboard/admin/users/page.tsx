@@ -259,18 +259,16 @@ export default function AdminUsersPage() {
       setFeedback({ type: "error", msg: "Amount must be a positive number." });
       return;
     }
-    if (!adjustmentModal.description.trim()) {
-      setFeedback({ type: "error", msg: "Please enter a valid administrative reason." });
-      return;
-    }
 
     setActionLoading(true);
     try {
+      const note = adjustmentModal.description?.trim() || "";
       await api.post(`/admin/users/${adjustmentModal.user.id}/adjust-balance`, {
         currency: adjustmentModal.currency,
         amount: numAmt,
         adjustment_type: adjustmentModal.type,
-        description: adjustmentModal.description.trim(),
+        description: note,
+        note: note,
       });
       setFeedback({
         type: "success",
@@ -962,9 +960,9 @@ export default function AdminUsersPage() {
               </div>
 
               <div>
-                <label className="text-[#7D8998] block mb-1">Administrative Reason (Required)</label>
+                <label className="text-[#7D8998] block mb-1">Administrator Note (Optional)</label>
                 <textarea
-                  placeholder="Reason for adjustment, internal reference, or settlement note..."
+                  placeholder="Optional note for the investor (e.g. promotional reward, correction)..."
                   value={adjustmentModal.description}
                   onChange={(e) => setAdjustmentModal({ ...adjustmentModal, description: e.target.value })}
                   className="w-full bg-[#0B0F14] border border-white/10 rounded-lg p-2 text-white focus:outline-none focus:border-[#4388F5] h-16"
@@ -1017,7 +1015,7 @@ export default function AdminUsersPage() {
               <button
                 type="button"
                 onClick={handleExecuteAdjustment}
-                disabled={actionLoading || !adjustmentModal.amount || !adjustmentModal.description.trim()}
+                disabled={actionLoading || !adjustmentModal.amount || isNaN(parseFloat(adjustmentModal.amount)) || parseFloat(adjustmentModal.amount) <= 0}
                 className="px-4 py-2 rounded-lg bg-[#4388F5] text-white font-semibold flex items-center gap-1.5 disabled:opacity-50"
               >
                 {actionLoading && <Loader2 className="h-3.5 w-3.5 animate-spin" />}

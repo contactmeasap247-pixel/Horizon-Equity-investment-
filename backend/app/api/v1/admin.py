@@ -40,7 +40,9 @@ from app.schemas.admin import (
 from app.schemas.user import UserResponse
 from app.schemas.wallet import DepositRequestResponse, WithdrawalRequestResponse, WalletResponse
 from app.schemas.ticket import SupportTicketResponse
+from app.schemas.investment import InvestmentPlanCreate, InvestmentPlanUpdate, InvestmentPlanResponse
 from app.services.admin_service import admin_service
+from app.services.investment_service import investment_service
 from app.models.user import User
 from app.models.deposit_request import DepositRequest
 from app.models.withdrawal_request import WithdrawalRequest
@@ -195,6 +197,7 @@ async def adjust_user_balance(
         adjustment_type=body.adjustment_type,
         admin_id=current_admin.id,
         description=body.description,
+        note=body.note,
     )
 
 
@@ -379,21 +382,106 @@ async def list_investment_plans(
     current_admin: User = Depends(get_admin_user),
     db: AsyncSession = Depends(get_db)
 ):
-    """Retrieve available investment tiers for reinvestment or configuration."""
+    """Retrieve all investment tiers for administration and configuration."""
     result = await db.execute(select(InvestmentPlan).order_by(InvestmentPlan.sort_order.asc()))
     plans = result.scalars().all()
     return [
         {
             "id": str(p.id),
             "name": p.name,
+            "description": p.description,
             "min_amount": float(p.min_amount),
             "max_amount": float(p.max_amount) if p.max_amount else None,
             "return_percentage": float(p.return_percentage),
             "duration_days": p.duration_days,
+            "duration_weeks": round(p.duration_days / 7.0, 2),
+            "referral_bonus_percentage": float(p.referral_bonus_percentage or 5.0),
             "is_active": p.is_active,
+            "is_featured": p.is_featured,
+            "sort_order": p.sort_order,
         }
         for p in plans
     ]
+
+
+@router.post("/investments/plans", response_model=InvestmentPlanResponse, status_code=status.HTTP_201_CREATED)
+async def admin_create_investment_plan(
+    body: InvestmentPlanCreate,
+    current_admin: User = Depends(get_admin_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Create a new investment plan tier with strict <= 14-day (2 weeks) duration limit."""
+    if body.duration_days > 14:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Investment plan duration cannot exceed 14 days (2 weeks). Maximum allowed is 14 days.",
+        )
+    if body.duration_days < 1:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Investment plan duration must be at least 1 day.",
+        )
+    return await investment_service.create_investment_plan(db, body)
+
+
+@router.put("/investments/plans/{plan_id}", response_model=InvestmentPlanResponse)
+async def admin_update_investment_plan(
+    plan_id: UUID,
+    body: InvestmentPlanUpdate,
+    current_admin: User = Depends(get_admin_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Update an existing investment plan tier with strict <= 14-day (2 weeks) duration limit."""
+    if body.duration_days is not None:
+        if body.duration_days > 14:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Investment plan duration cannot exceed 14 days (2 weeks). Maximum allowed is 14 days.",
+            )
+        if body.duration_days < 1:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Investment plan duration must be at least 1 day.",
+            )
+    updated = await investment_service.update_investment_plan(db, plan_id, body)
+    if not updated:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Investment plan not found.")
+    return updated
+
+
+@router.patch("/investments/plans/{plan_id}/toggle-status")
+async def admin_toggle_plan_status(
+    plan_id: UUID,
+    current_admin: User = Depends(get_admin_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Quickly toggle active / disabled status for an investment plan."""
+    plan = await investment_service.get_investment_plan_by_id(db, plan_id)
+    if not plan:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Investment plan not found.")
+    plan.is_active = not plan.is_active
+    db.add(plan)
+    await db.commit()
+    await db.refresh(plan)
+    return {
+        "id": str(plan.id),
+        "name": plan.name,
+        "is_active": plan.is_active,
+        "message": f"Plan '{plan.name}' is now {'active' if plan.is_active else 'disabled'}.",
+    }
+
+
+@router.delete("/investments/plans/{plan_id}")
+async def admin_delete_investment_plan(
+    plan_id: UUID,
+    current_admin: User = Depends(get_admin_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Delete an investment plan tier."""
+    deleted = await investment_service.delete_investment_plan(db, plan_id)
+    if not deleted:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Investment plan not found.")
+    return {"message": "Investment plan deleted successfully."}
 
 
 # ----------------------------------------------------

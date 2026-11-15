@@ -246,7 +246,7 @@ export default function InvestmentsPage() {
                     </div>
                     <div className="text-[11px] text-text-faint mt-1 flex items-center gap-1">
                       <Clock className="w-3 h-3 text-accent" />
-                      Locked Term: {p.duration_days} Calendar Days
+                      Locked Term: {p.duration_days % 7 === 0 ? `${p.duration_days} Days (${p.duration_days / 7} ${p.duration_days / 7 === 1 ? "Week" : "Weeks"})` : `${p.duration_days} Calendar Days`}
                     </div>
                   </div>
 

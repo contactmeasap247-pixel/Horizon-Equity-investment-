@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import Link from "next/link";
 import {
   Settings,
   Shield,
@@ -17,6 +18,7 @@ import {
   RefreshCw,
   Power,
   Zap,
+  TrendingUp,
 } from "lucide-react";
 import { api } from "@/lib/api";
 
@@ -136,6 +138,7 @@ export default function AdminSettingsPage() {
     { id: "deposits", name: "Deposits", icon: ArrowDownLeft },
     { id: "withdrawals", name: "Withdrawals", icon: ArrowUpRight },
     { id: "auto_withdrawal", name: "Auto-Withdrawals (Phase 13)", icon: Zap },
+    { id: "plans", name: "Investment Plans & Terms", icon: TrendingUp },
   ];
 
   return (
@@ -607,6 +610,46 @@ export default function AdminSettingsPage() {
                   </button>
                 </div>
               </form>
+            )}
+
+            {/* INVESTMENT PLANS & TERMS */}
+            {activeGroup === "plans" && (
+              <div className="space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-white/10 gap-3">
+                  <div>
+                    <h3 className="text-base font-bold text-white">Investment Plans & Duration Governance</h3>
+                    <p className="text-xs text-[#7D8998] mt-0.5">
+                      Configure multi-tier portfolio options, lockup terms (strictly &le; 14 days), and ROI rates.
+                    </p>
+                  </div>
+                  <Link
+                    href="/dashboard/admin/plans"
+                    className="px-4 py-2 rounded-lg bg-[#4388F5] text-white text-xs font-semibold hover:bg-[#4388F5]/90 transition-all flex items-center gap-2 shrink-0 shadow-sm"
+                  >
+                    <TrendingUp className="h-3.5 w-3.5" />
+                    <span>Open Plans Management Suite</span>
+                  </Link>
+                </div>
+
+                <div className="p-4 rounded-xl bg-[#0B0F14] border border-[#C5A059]/30 space-y-2">
+                  <span className="text-xs font-bold text-[#C5A059] block">14-Day Maximum Duration Mandate</span>
+                  <p className="text-xs text-[#7D8998] leading-relaxed">
+                    Under the platform risk governance policy, all investment contracts and portfolio tiers are bounded by an absolute maximum duration of <strong>14 Days (2 Weeks)</strong>.
+                    Durations may be configured in <strong>Days (1–14)</strong> or <strong>Weeks (1–2)</strong>.
+                    Server-side validations reject any configuration exceeding 14 days.
+                  </p>
+                </div>
+
+                <div className="p-4 rounded-xl bg-[#0B0F14] border border-white/5 space-y-2">
+                  <span className="text-xs font-semibold text-white block">Actions Available in Management Suite:</span>
+                  <ul className="text-xs text-[#7D8998] space-y-1.5 list-disc list-inside">
+                    <li>Create new investment plan tiers with customizable ROI, min/max capital, and duration.</li>
+                    <li>Edit existing plans: update duration (in Days or Weeks, up to 14 days), ROI %, and boundaries.</li>
+                    <li>One-click enable / disable toggle to activate or deactivate plan tiers instantly.</li>
+                    <li>Existing investor contracts and contractual maturity dates remain strictly untouched.</li>
+                  </ul>
+                </div>
+              </div>
             )}
           </div>
         </div>

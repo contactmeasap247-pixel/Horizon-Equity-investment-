@@ -2052,6 +2052,7 @@ class AdminService:
         adjustment_type: str,
         admin_id: uuid.UUID,
         description: Optional[str] = None,
+        note: Optional[str] = None,
     ) -> Wallet:
         """Manually credit or debit a user's wallet balance, logging details to transaction histories."""
         currency = currency.upper().strip()
@@ -2072,10 +2073,11 @@ class AdminService:
             db.add(wallet)
 
         old_balance = wallet.balance
+        user_note = (note.strip() if note and note.strip() else None) or (description.strip() if description and description.strip() else None)
 
         if adj_type == "credit":
             wallet.balance += amount
-            desc = description or "Administrative balance credit."
+            desc = user_note or "Wallet Credited"
             
             await transaction_service.create_transaction(
                 db,
@@ -2085,14 +2087,20 @@ class AdminService:
                 currency=currency,
                 status="completed",
                 description=desc,
+                approved_by=admin_id,
+                approved_at=datetime.utcnow(),
             )
             
+            msg = f"Your wallet has been credited with {amount} {currency}."
+            if user_note:
+                msg += f"\n\nNote: {user_note}"
+
             await notification_service.create_notification(
                 db,
                 user_id=user_id,
                 type="system",
-                title="Balance Adjustment",
-                message=f"Your wallet has been credited with {amount} {currency} by system admin.",
+                title="Wallet Credited",
+                message=msg,
             )
 
         elif adj_type == "debit":
@@ -2102,7 +2110,7 @@ class AdminService:
                     detail=f"Inadequate funds for debit. Current balance is {wallet.balance} {currency}.",
                 )
             wallet.balance -= amount
-            desc = description or "Administrative balance debit."
+            desc = user_note or "Wallet Debited"
 
             await transaction_service.create_transaction(
                 db,
@@ -2112,14 +2120,20 @@ class AdminService:
                 currency=currency,
                 status="completed",
                 description=desc,
+                approved_by=admin_id,
+                approved_at=datetime.utcnow(),
             )
+
+            msg = f"Your wallet has been debited with {amount} {currency}."
+            if user_note:
+                msg += f"\n\nNote: {user_note}"
 
             await notification_service.create_notification(
                 db,
                 user_id=user_id,
                 type="system",
-                title="Balance Adjustment",
-                message=f"Your wallet has been debited by {amount} {currency} by system admin.",
+                title="Wallet Debited",
+                message=msg,
             )
 
         db.add(wallet)
@@ -2131,7 +2145,12 @@ class AdminService:
             entity_type="wallet",
             entity_id=wallet.id,
             old_values={"balance": float(old_balance)},
-            new_values={"balance": float(wallet.balance), "type": adj_type, "amount": float(amount)},
+            new_values={
+                "balance": float(wallet.balance),
+                "type": adj_type,
+                "amount": float(amount),
+                "note": user_note,
+            },
         )
         db.add(audit)
 

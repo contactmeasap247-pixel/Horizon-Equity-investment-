@@ -2,7 +2,7 @@
 # HORIZON EQUITY - LOAN SCHEMAS
 # ============================================
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 from typing import Optional, List, Dict, Any
 from datetime import datetime
 from uuid import UUID
@@ -17,6 +17,8 @@ class LoanProductResponse(BaseModel):
     max_amount: float
     monthly_interest_rate: float
     duration_months: int
+    duration_days: Optional[int] = None
+    duration_weeks: Optional[float] = None
     repayment_frequency: str
     description: Optional[str] = None
     is_active: bool
@@ -35,8 +37,43 @@ class LoanEligibilityResponse(BaseModel):
 class LoanApplicationCreate(BaseModel):
     product_id: UUID
     amount: Decimal = Field(..., gt=0, description="Principal amount to borrow")
-    duration_months: int = Field(..., ge=1, le=24, description="Duration in months")
+    duration_months: Optional[int] = Field(None, ge=1, le=24, description="Duration in months")
+    duration_days: Optional[int] = Field(None, ge=1, le=14, description="Duration in days (max 14 days)")
+    duration_unit: Optional[str] = Field(None, description="Duration unit: 'days' or 'weeks'")
+    duration_value: Optional[int] = Field(None, description="Duration value in unit")
     terms_accepted: bool = Field(..., description="Must explicitly accept loan agreement terms")
+
+    @model_validator(mode="before")
+    @classmethod
+    def validate_duration_limits(cls, data: Any) -> Any:
+        if isinstance(data, dict):
+            unit = data.get("duration_unit")
+            val = data.get("duration_value")
+            if unit and val is not None:
+                try:
+                    val_int = int(val)
+                except (ValueError, TypeError):
+                    raise ValueError("Duration value must be a valid integer.")
+                if unit.lower() in ("week", "weeks"):
+                    data["duration_days"] = val_int * 7
+                elif unit.lower() in ("day", "days"):
+                    data["duration_days"] = val_int
+
+            days = data.get("duration_days")
+            if days is not None:
+                try:
+                    days_int = int(days)
+                except (ValueError, TypeError):
+                    raise ValueError("Duration days must be an integer.")
+                if days_int > 14:
+                    raise ValueError("Loan duration cannot exceed 14 days (2 weeks). Maximum allowed is 14 days.")
+                if days_int < 1:
+                    raise ValueError("Loan duration must be at least 1 day.")
+                data["duration_days"] = days_int
+                # Provide fallback duration_months if not provided
+                if not data.get("duration_months"):
+                    data["duration_months"] = max(1, round(days_int / 30.0))
+        return data
 
 
 class LoanApplicationResponse(BaseModel):

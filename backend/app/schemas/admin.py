@@ -45,6 +45,7 @@ class BalanceAdjustmentRequest(BaseModel):
     amount: Decimal = Field(..., gt=0, description="Amount to adjust, must be greater than zero")
     adjustment_type: str = Field(..., description="Adjustment type: credit or debit")
     description: Optional[str] = Field(None, description="Description or reason for adjustment")
+    note: Optional[str] = Field(None, description="Optional administrator note for the investor")
 
 
 class AdminDashboardStats(BaseModel):

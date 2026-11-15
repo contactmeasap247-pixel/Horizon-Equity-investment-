@@ -64,3 +64,4 @@ def test_transaction_response_null_fee_and_null_metadata():
     assert dump["reference"] == "BONUS-ABC"
     assert dump["fee"] == 0.0
     assert dump["metadata"] is None
+
