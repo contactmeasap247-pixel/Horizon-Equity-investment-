@@ -1,9 +1,11 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { CheckCircle2, ArrowRight, ShieldCheck, Check } from "lucide-react";
 import PublicNav from "@/app/components/PublicNav";
 import PublicFooter from "@/app/components/PublicFooter";
+import { api } from "@/lib/api";
 
 const DETAILED_PLANS = [
   {
@@ -67,13 +69,13 @@ const DETAILED_PLANS = [
     name: "Diamond Tier",
     badge: "VIP Unlimited",
     roi: "45.0%",
-    durationDays: 7,
+    durationDays: 14,
     minDeposit: 5000,
     maxDeposit: null, // Unlimited
     popular: false,
     features: [
       "45.0% fixed contract return",
-      "7-day maximum compounding cycle (1 week)",
+      "14-day maximum compounding cycle (2 weeks)",
       "Unlimited allocation ceiling ($5,000+)",
       "Bespoke private wealth management",
       "Instant priority wire & on-chain settlements",
@@ -86,7 +88,7 @@ const DETAILED_PLANS = [
 
 const COMPARISON_ROWS = [
   { feature: "Fixed Contract Return", silver: "15.0%", gold: "20.0%", platinum: "35.0%", diamond: "45.0%" },
-  { feature: "Term Duration", silver: "2 Days", gold: "3 Days", platinum: "7 Days (1 Wk)", diamond: "7 Days (1 Wk)" },
+  { feature: "Term Duration", silver: "2 Days", gold: "3 Days", platinum: "7 Days (1 Wk)", diamond: "14 Days (2 Wks)" },
   { feature: "Minimum Allocation", silver: "$100", gold: "$500", platinum: "$1,000", diamond: "$5,000" },
   { feature: "Maximum Allocation", silver: "$499", gold: "$999", platinum: "$4,999", diamond: "Unlimited" },
   { feature: "Principal Return Guarantee", silver: true, gold: true, platinum: true, diamond: true },
@@ -98,6 +100,47 @@ const COMPARISON_ROWS = [
 ];
 
 export default function PlansPage() {
+  const [plans, setPlans] = useState(DETAILED_PLANS);
+
+  useEffect(() => {
+    async function loadActivePlans() {
+      try {
+        const res = await api.get("/investments/plans");
+        if (Array.isArray(res.data) && res.data.length > 0) {
+          const merged = res.data.map((dbPlan) => {
+            const fallback = DETAILED_PLANS.find(
+              (p) => p.name.toLowerCase().includes(dbPlan.name.toLowerCase().split(" ")[0])
+            ) || DETAILED_PLANS[0];
+
+            const days = dbPlan.duration_days;
+            const durationLabel = days % 7 === 0 ? `${days / 7} ${days / 7 === 1 ? "Week" : "Weeks"} (${days} Days)` : `${days} Days`;
+
+            return {
+              id: dbPlan.id,
+              name: dbPlan.name,
+              badge: dbPlan.is_featured ? "Featured Tier" : fallback.badge,
+              roi: `${parseFloat(dbPlan.return_percentage)}%`,
+              durationDays: days,
+              durationLabel: durationLabel,
+              minDeposit: parseFloat(dbPlan.min_amount),
+              maxDeposit: dbPlan.max_amount ? parseFloat(dbPlan.max_amount) : null,
+              popular: dbPlan.is_featured,
+              features: [
+                `${parseFloat(dbPlan.return_percentage)}% fixed contract yield`,
+                `${durationLabel} lockup term`,
+                `Affiliate rebate bonus: ${parseFloat(dbPlan.referral_bonus_percentage || 5)}%`,
+                ...fallback.features.slice(2),
+              ],
+            };
+          });
+          setPlans(merged);
+        }
+      } catch {
+        // Fallback to static compliant plans
+      }
+    }
+    loadActivePlans();
+  }, []);
   return (
     <div className="min-h-screen bg-[#080C12] text-[#F1F5F9] selection:bg-[#4C8DFF]/30">
       <PublicNav />
@@ -122,7 +165,7 @@ export default function PlansPage() {
       <section className="section py-16">
         <div className="container-page">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-20">
-            {DETAILED_PLANS.map((plan) => (
+            {plans.map((plan) => (
               <div
                 key={plan.id}
                 className={`panel p-6 sm:p-7 flex flex-col justify-between relative border ${
@@ -170,7 +213,9 @@ export default function PlansPage() {
                     <div className="flex justify-between border-t border-[#263345] pt-2">
                       <span className="text-[#718096]">Term Duration:</span>
                       <span className="num font-mono font-semibold text-[#4C8DFF]">
-                        {plan.durationDays} Days
+                        {plan.durationDays % 7 === 0
+                          ? `${plan.durationDays / 7} ${plan.durationDays / 7 === 1 ? "Week" : "Weeks"} (${plan.durationDays} Days)`
+                          : `${plan.durationDays} Calendar Days`}
                       </span>
                     </div>
                   </div>

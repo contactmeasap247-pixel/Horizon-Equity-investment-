@@ -137,13 +137,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     { name: t("admin_withdrawals"), href: "/dashboard/admin/withdrawals", icon: ArrowUpRight },
     { name: t("dash_transactions"), href: "/dashboard/admin/transactions", icon: History },
     { name: t("admin_active_deposits"), href: "/dashboard/admin/active-deposits", icon: Layers },
+    { name: t("admin_plans") || "Investment Plans", href: "/dashboard/admin/plans", icon: TrendingUp, badge: "≤14d" },
     { name: t("admin_referrals"), href: "/dashboard/admin/referrals", icon: Share2 },
     { name: t("admin_exchange"), href: "/dashboard/admin/exchange", icon: Repeat },
     { name: t("admin_email_templates"), href: "/dashboard/admin/email-templates", icon: Mail },
     { name: t("admin_notifications"), href: "/dashboard/admin/notifications", icon: Bell },
     { name: t("admin_audit_logs"), href: "/dashboard/admin/audit-logs", icon: FileText },
     { name: t("admin_security"), href: "/dashboard/admin/security", icon: Lock },
-    { name: "Investment Plans", href: "/dashboard/admin/plans", icon: TrendingUp },
     { name: t("admin_settings"), href: "/dashboard/admin/settings", icon: Settings },
     { name: t("admin_wallets"), href: "/dashboard/admin/wallets", icon: Wallet },
   ];
@@ -227,10 +227,17 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                       href={item.href}
                       onClick={() => setMobileMenuOpen(false)}
                       aria-current={isActive ? "page" : undefined}
-                      className={`side-link ${isActive ? "bg-[#4388F5]/12 text-white font-semibold" : ""}`}
+                      className={`side-link flex items-center justify-between ${isActive ? "bg-[#4388F5]/12 text-white font-semibold" : ""}`}
                     >
-                      <Icon className={`h-4 w-4 shrink-0 ${isActive ? "text-[#4388F5]" : "text-[#7D8998]"}`} />
-                      <span>{item.name}</span>
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <Icon className={`h-4 w-4 shrink-0 ${isActive ? "text-[#4388F5]" : "text-[#7D8998]"}`} />
+                        <span className="truncate">{item.name}</span>
+                      </div>
+                      {"badge" in item && item.badge && (
+                        <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-[#4388F5]/15 text-[#4388F5] border border-[#4388F5]/30 tracking-wider">
+                          {item.badge}
+                        </span>
+                      )}
                     </Link>
                   );
                 })}

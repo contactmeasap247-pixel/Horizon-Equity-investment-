@@ -100,6 +100,7 @@ export default function AdminOverviewPage() {
     { name: "Email Templates", desc: "Custom templates & previewer", href: "/dashboard/admin/email-templates", icon: Mail },
     { name: "Notifications", desc: "System alerts & user broadcast", href: "/dashboard/admin/notifications", icon: Bell },
     { name: "Audit Logs", desc: "Traceable admin & security events", href: "/dashboard/admin/audit-logs", icon: FileText },
+    { name: "Investment Plans", desc: "Plan tiers, duration governance (≤ 14d) & ROI", href: "/dashboard/admin/plans", icon: TrendingUp },
     { name: "Security & Controls", desc: "Maintenance mode & login rules", href: "/dashboard/admin/security", icon: Lock },
     { name: "Platform Settings", desc: "Global parameters & auto-withdrawal", href: "/dashboard/admin/settings", icon: Settings },
   ];

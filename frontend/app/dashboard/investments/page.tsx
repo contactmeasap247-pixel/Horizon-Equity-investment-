@@ -502,6 +502,43 @@ export default function InvestmentsPage() {
                 </div>
               </div>
 
+              {/* Contract Terms & Real-Time Return Summary Box */}
+              <div className="p-3.5 rounded-lg bg-surface-raised border border-accent/25 space-y-2 text-xs">
+                <div className="flex items-center justify-between text-text-muted">
+                  <span className="flex items-center gap-1.5">
+                    <Clock className="w-3.5 h-3.5 text-accent" />
+                    Lockup Duration:
+                  </span>
+                  <span className="font-semibold text-text font-mono">
+                    {selectedPlan.duration_days % 7 === 0
+                      ? `${selectedPlan.duration_days / 7} ${selectedPlan.duration_days / 7 === 1 ? "Week" : "Weeks"} (${selectedPlan.duration_days} Days)`
+                      : `${selectedPlan.duration_days} Calendar Days`}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between text-text-muted">
+                  <span className="flex items-center gap-1.5">
+                    <Calendar className="w-3.5 h-3.5 text-text-faint" />
+                    Target Maturity:
+                  </span>
+                  <span className="font-mono text-text">
+                    {new Date(Date.now() + selectedPlan.duration_days * 86400000).toLocaleDateString(undefined, {
+                      month: "short",
+                      day: "numeric",
+                      year: "numeric",
+                    })}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between pt-1.5 border-t border-border-subtle">
+                  <span className="text-text-muted">Estimated Settlement:</span>
+                  <span className="font-mono text-success font-bold num">
+                    {purchaseAmount && !isNaN(parseFloat(purchaseAmount)) && parseFloat(purchaseAmount) > 0
+                      ? (parseFloat(purchaseAmount) * (1 + parseFloat(selectedPlan.return_percentage.toString()) / 100)).toFixed(4)
+                      : "0.00"}{" "}
+                    {purchaseCurrency} (+{selectedPlan.return_percentage}%)
+                  </span>
+                </div>
+              </div>
+
               {/* Auto-renew checkbox */}
               <label className="flex items-center justify-between p-3.5 inset rounded-lg cursor-pointer">
                 <div>

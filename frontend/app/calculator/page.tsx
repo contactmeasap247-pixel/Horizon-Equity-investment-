@@ -10,7 +10,7 @@ const TIERS = [
   { id: "silver", name: "Silver Tier", rate: 15.0, days: 2, min: 100, max: 499, unlimited: false },
   { id: "gold", name: "Gold Tier", rate: 20.0, days: 3, min: 500, max: 999, unlimited: false },
   { id: "platinum", name: "Platinum Tier", rate: 35.0, days: 7, min: 1000, max: 4999, unlimited: false },
-  { id: "diamond", name: "Diamond Tier", rate: 45.0, days: 7, min: 5000, max: 100000, unlimited: true },
+  { id: "diamond", name: "Diamond Tier", rate: 45.0, days: 14, min: 5000, max: 100000, unlimited: true },
 ];
 
 export default function CalculatorPage() {

@@ -89,15 +89,15 @@ const INVESTMENT_PLANS = [
     name: "Diamond Tier",
     badge: "VIP Unlimited",
     rate: 45.0,
-    dailyRate: 45.0 / 7,
-    durationDays: 7,
+    dailyRate: 45.0 / 14,
+    durationDays: 14,
     minDeposit: 5000,
     maxDeposit: 100000, // Slider ceiling
     isUnlimited: true,
     popular: false,
     features: [
       "45.0% fixed contract return",
-      "7-day maximum compounding cycle (1 week)",
+      "14-day maximum compounding cycle (2 weeks)",
       "Unlimited capital allocation ceiling",
       "Bespoke private wealth management",
       "Priority on-chain & wire settlements",
