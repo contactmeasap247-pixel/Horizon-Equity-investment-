@@ -49,12 +49,13 @@ async def apply_for_loan(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Submit a loan application with explicit terms acceptance."""
+    """Submit a loan application with explicit terms acceptance and strict <= 14-day duration validation."""
     application = await loan_service.apply_for_loan(
         db=db,
         user_id=current_user.id,
         product_id=payload.product_id,
         amount=payload.amount,
+        duration_days=payload.duration_days,
         duration_months=payload.duration_months,
         terms_accepted=payload.terms_accepted,
     )

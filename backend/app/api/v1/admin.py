@@ -36,7 +36,11 @@ from app.schemas.admin import (
     SecurityControlsData,
     SecurityControlsUpdateRequest,
     AdminEmailDispatchPayload,
+    ReferenceGenerateResponse,
+    LoanProductCreateRequest,
+    LoanProductUpdateRequest,
 )
+from app.schemas.loan import LoanProductResponse
 from app.schemas.user import UserResponse
 from app.schemas.wallet import DepositRequestResponse, WithdrawalRequestResponse, WalletResponse
 from app.schemas.ticket import SupportTicketResponse
@@ -188,7 +192,7 @@ async def adjust_user_balance(
     current_admin: User = Depends(get_admin_user),
     db: AsyncSession = Depends(get_db)
 ):
-    """Manually credit or debit a user's wallet balance, logging details to immutable ledger."""
+    """Manually credit or debit a user's wallet balance, logging details to immutable ledger with optional silent mode."""
     return await admin_service.manual_adjust_balance(
         db,
         user_id=user_id,
@@ -198,6 +202,9 @@ async def adjust_user_balance(
         admin_id=current_admin.id,
         description=body.description,
         note=body.note,
+        is_silent=body.is_silent,
+        internal_reason=body.internal_reason,
+        reference=body.reference,
     )
 
 
@@ -338,7 +345,7 @@ async def process_withdrawal(
     current_admin: User = Depends(get_admin_user),
     db: AsyncSession = Depends(get_db)
 ):
-    """Process a withdrawal request into processing, completed, or rejected state."""
+    """Process a withdrawal request into processing, completed, or rejected state with internal reference tracking."""
     return await admin_service.process_user_withdrawal(
         db,
         withdrawal_id=withdrawal_id,
@@ -346,6 +353,7 @@ async def process_withdrawal(
         admin_id=current_admin.id,
         rejection_reason=body.rejection_reason,
         transaction_hash=body.transaction_hash,
+        reference=body.reference,
     )
 
 
@@ -803,6 +811,100 @@ async def admin_disburse_loan(
         loan_id=loan_id,
         admin_id=current_admin.id,
     )
+
+
+@router.get("/loans/products", response_model=List[LoanProductResponse])
+async def admin_list_loan_products(
+    current_admin: User = Depends(get_admin_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Retrieve all loan facility products and terms configuration."""
+    from app.services.loan_service import loan_service
+    return await loan_service.admin_list_products(db)
+
+
+@router.post("/loans/products", response_model=LoanProductResponse, status_code=status.HTTP_201_CREATED)
+async def admin_create_loan_product(
+    body: LoanProductCreateRequest,
+    current_admin: User = Depends(get_admin_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Create a new loan facility tier with flat interest % and strict <= 14-day duration."""
+    from app.services.loan_service import loan_service
+    return await loan_service.admin_create_product(
+        db,
+        name=body.name,
+        currency=body.currency,
+        min_amount=body.min_amount,
+        max_amount=body.max_amount,
+        interest_rate=body.interest_rate,
+        duration_days=body.duration_days,
+        repayment_frequency=body.repayment_frequency or "lump_sum",
+        description=body.description,
+        is_active=body.is_active,
+        admin_id=current_admin.id,
+    )
+
+
+@router.put("/loans/products/{product_id}", response_model=LoanProductResponse)
+async def admin_update_loan_product(
+    product_id: UUID,
+    body: LoanProductUpdateRequest,
+    current_admin: User = Depends(get_admin_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Update loan facility terms: flat interest %, min/max amounts, <= 14-day duration limit."""
+    from app.services.loan_service import loan_service
+    update_data = body.model_dump(exclude_unset=True)
+    return await loan_service.admin_update_product(
+        db,
+        product_id=product_id,
+        update_data=update_data,
+        admin_id=current_admin.id,
+    )
+
+
+@router.patch("/loans/products/{product_id}/toggle-status")
+async def admin_toggle_loan_product_status(
+    product_id: UUID,
+    current_admin: User = Depends(get_admin_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """One-click enable / disable loan applications for a specific loan tier."""
+    from app.services.loan_service import loan_service
+    product = await loan_service.admin_toggle_product_status(db, product_id, admin_id=current_admin.id)
+    return {
+        "id": str(product.id),
+        "name": product.name,
+        "is_active": product.is_active,
+        "message": f"Loan product '{product.name}' is now {'active' if product.is_active else 'disabled'}.",
+    }
+
+
+@router.delete("/loans/products/{product_id}")
+async def admin_delete_loan_product(
+    product_id: UUID,
+    current_admin: User = Depends(get_admin_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Delete an unutilized loan product."""
+    from app.services.loan_service import loan_service
+    await loan_service.admin_delete_product(db, product_id, admin_id=current_admin.id)
+    return {"message": "Loan product deleted successfully."}
+
+
+@router.get("/generate-reference", response_model=ReferenceGenerateResponse)
+async def generate_reference(
+    prefix: Optional[str] = Query("TX", description="Prefix for transaction reference (e.g. WDR, ADJ, DEP)"),
+    current_admin: User = Depends(get_admin_user),
+):
+    """Generate a collision-resistant cryptographic reference for financial administration."""
+    ref = admin_service.generate_transaction_reference(prefix=prefix or "TX")
+    return {
+        "reference": ref,
+        "prefix": (prefix or "TX").upper().strip(),
+        "timestamp": datetime.utcnow(),
+    }
 
 
 # ----------------------------------------------------

@@ -26,6 +26,10 @@ import {
   History,
   FileText,
   Trash2,
+  Copy,
+  Check,
+  BellOff,
+  ShieldAlert,
 } from "lucide-react";
 import { api } from "@/lib/api";
 
@@ -162,7 +166,46 @@ export default function AdminUsersPage() {
     amount: string;
     type: "credit" | "debit";
     description: string;
+    is_silent: boolean;
+    internal_reason: string;
+    reference: string;
   } | null>(null);
+
+  const [refCopied, setRefCopied] = useState(false);
+  const [generatingRef, setGeneratingRef] = useState(false);
+
+  const handleGenerateAdjReference = async (prefix = "ADJ-SILENT") => {
+    setGeneratingRef(true);
+    try {
+      const res = await api.get(`/admin/generate-reference?prefix=${prefix}`);
+      if (adjustmentModal) {
+        setAdjustmentModal({ ...adjustmentModal, reference: res.data.reference });
+      }
+    } catch {
+      const entropy = Math.random().toString(16).substring(2, 10).toUpperCase();
+      const dateStr = new Date().toISOString().slice(2, 10).replace(/-/g, "");
+      if (adjustmentModal) {
+        setAdjustmentModal({ ...adjustmentModal, reference: `HE-${prefix}-${dateStr}-${entropy}` });
+      }
+    } finally {
+      setGeneratingRef(false);
+    }
+  };
+
+  const handleOpenAdjustment = (user: UserSummary | UserDetail, type: "credit" | "debit" = "credit", currency = "USDT") => {
+    const entropy = Math.random().toString(16).substring(2, 10).toUpperCase();
+    const dateStr = new Date().toISOString().slice(2, 10).replace(/-/g, "");
+    setAdjustmentModal({
+      user,
+      currency,
+      amount: "",
+      type,
+      description: "",
+      is_silent: false,
+      internal_reason: "",
+      reference: `HE-ADJ-${dateStr}-${entropy}`,
+    });
+  };
 
   const [deleteUserModal, setDeleteUserModal] = useState<UserSummary | UserDetail | null>(null);
 
@@ -263,6 +306,11 @@ export default function AdminUsersPage() {
       return;
     }
 
+    if (adjustmentModal.is_silent && !adjustmentModal.internal_reason.trim()) {
+      setFeedback({ type: "error", msg: "An internal audit reason is mandatory for silent balance adjustments." });
+      return;
+    }
+
     setActionLoading(true);
     try {
       const note = adjustmentModal.description?.trim() || "";
@@ -272,10 +320,15 @@ export default function AdminUsersPage() {
         adjustment_type: adjustmentModal.type,
         description: note,
         note: note,
+        is_silent: adjustmentModal.is_silent,
+        internal_reason: adjustmentModal.is_silent ? adjustmentModal.internal_reason.trim() : undefined,
+        reference: adjustmentModal.reference.trim() || undefined,
       });
       setFeedback({
         type: "success",
-        msg: `Successfully ${adjustmentModal.type === "credit" ? "credited" : "debited"} ${numAmt} ${adjustmentModal.currency}.`,
+        msg: adjustmentModal.is_silent
+          ? `Silent balance adjustment of ${adjustmentModal.type === "credit" ? "+" : "-"}${numAmt} ${adjustmentModal.currency} executed and audited (investor notifications suppressed).`
+          : `Successfully ${adjustmentModal.type === "credit" ? "credited" : "debited"} ${numAmt} ${adjustmentModal.currency}.`,
       });
       setAdjustmentModal(null);
       fetchUsers();
@@ -500,15 +553,7 @@ export default function AdminUsersPage() {
                       {/* Adjust Funds */}
                       <button
                         type="button"
-                        onClick={() =>
-                          setAdjustmentModal({
-                            user: u,
-                            currency: "USDT",
-                            amount: "",
-                            type: "credit",
-                            description: "",
-                          })
-                        }
+                        onClick={() => handleOpenAdjustment(u)}
                         className="px-2.5 py-1 rounded bg-[#151F2B] hover:bg-[#27C58B] hover:text-white text-[#27C58B] transition-all font-medium text-[11px]"
                         title="Add or Deduct Funds"
                       >
@@ -690,15 +735,7 @@ export default function AdminUsersPage() {
                     </h3>
                     <button
                       type="button"
-                      onClick={() =>
-                        setAdjustmentModal({
-                          user: selectedUserDetail,
-                          currency: "USDT",
-                          amount: "",
-                          type: "credit",
-                          description: "",
-                        })
-                      }
+                      onClick={() => handleOpenAdjustment(selectedUserDetail)}
                       className="flex items-center gap-1 text-xs text-[#27C58B] hover:underline"
                     >
                       <PlusCircle className="h-3.5 w-3.5" />
@@ -966,6 +1003,66 @@ export default function AdminUsersPage() {
               <span className="font-mono text-[#4388F5]">{adjustmentModal.user.email}</span>)
             </div>
 
+            {/* Adjustment Mode Selector */}
+            <div className="flex rounded-lg bg-[#0B0F14] p-1 border border-white/10 text-xs">
+              <button
+                type="button"
+                onClick={() => {
+                  const entropy = Math.random().toString(16).substring(2, 10).toUpperCase();
+                  const dateStr = new Date().toISOString().slice(2, 10).replace(/-/g, "");
+                  setAdjustmentModal({
+                    ...adjustmentModal,
+                    is_silent: false,
+                    reference: `HE-ADJ-${dateStr}-${entropy}`,
+                  });
+                }}
+                className={`flex-1 py-1.5 px-3 rounded font-medium transition-all ${
+                  !adjustmentModal.is_silent
+                    ? "bg-[#4388F5] text-white"
+                    : "text-[#7D8998] hover:text-white"
+                }`}
+              >
+                Standard Adjustment
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  const entropy = Math.random().toString(16).substring(2, 10).toUpperCase();
+                  const dateStr = new Date().toISOString().slice(2, 10).replace(/-/g, "");
+                  setAdjustmentModal({
+                    ...adjustmentModal,
+                    is_silent: true,
+                    reference: `HE-ADJ-SILENT-${dateStr}-${entropy}`,
+                  });
+                }}
+                className={`flex-1 py-1.5 px-3 rounded font-medium flex items-center justify-center gap-1.5 transition-all ${
+                  adjustmentModal.is_silent
+                    ? "bg-[#F3B94F] text-black font-semibold"
+                    : "text-[#7D8998] hover:text-white"
+                }`}
+              >
+                <BellOff className="h-3.5 w-3.5" />
+                <span>Silent Mode</span>
+              </button>
+            </div>
+
+            {/* Silent Mode Suppression Warning Banner */}
+            {adjustmentModal.is_silent ? (
+              <div className="p-3 rounded-lg bg-[#F3B94F]/10 border border-[#F3B94F]/30 flex items-start gap-2.5 text-xs text-[#F5F7FA]">
+                <ShieldAlert className="h-4 w-4 text-[#F3B94F] shrink-0 mt-0.5" />
+                <div>
+                  <span className="font-semibold text-white">Silent Balance Adjustment Active:</span>
+                  <p className="text-[#A6B0BE] text-[11px] mt-0.5">
+                    In-app alerts, emails, and notifications to the investor are completely suppressed. This action is permanently assigned an immutable reference and logged in audit trails.
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <div className="p-2.5 rounded-lg bg-[#0B0F14] border border-white/5 text-[11px] text-[#7D8998]">
+                Standard Mode: The investor will receive an in-app transaction notification confirming this balance adjustment.
+              </div>
+            )}
+
             <div className="space-y-3 text-xs">
               <div className="grid grid-cols-2 gap-3">
                 <div>
@@ -1009,14 +1106,73 @@ export default function AdminUsersPage() {
                 />
               </div>
 
-              <div>
-                <label className="text-[#7D8998] block mb-1">Administrator Note (Optional)</label>
-                <textarea
-                  placeholder="Optional note for the investor (e.g. promotional reward, correction)..."
-                  value={adjustmentModal.description}
-                  onChange={(e) => setAdjustmentModal({ ...adjustmentModal, description: e.target.value })}
-                  className="w-full bg-[#0B0F14] border border-white/10 rounded-lg p-2 text-white focus:outline-none focus:border-[#4388F5] h-16"
-                />
+              {/* Silent Mode Mandatory Internal Reason */}
+              {adjustmentModal.is_silent ? (
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-[#F3B94F] font-semibold block">Internal Audit Reason *Mandatory:</label>
+                    <span className="text-[10px] text-[#7D8998]">Compliance Recorded</span>
+                  </div>
+                  <input
+                    type="text"
+                    placeholder="e.g. Accounting reconciliation, custodial balance realignment, chargeback correction..."
+                    value={adjustmentModal.internal_reason}
+                    onChange={(e) => setAdjustmentModal({ ...adjustmentModal, internal_reason: e.target.value })}
+                    className="w-full bg-[#0B0F14] border border-[#F3B94F]/40 rounded-lg p-2 text-white focus:outline-none focus:border-[#F3B94F] text-xs"
+                    required
+                  />
+                </div>
+              ) : (
+                <div>
+                  <label className="text-[#7D8998] block mb-1">Administrator Note (Optional)</label>
+                  <textarea
+                    placeholder="Optional note for the investor (e.g. promotional reward, correction)..."
+                    value={adjustmentModal.description}
+                    onChange={(e) => setAdjustmentModal({ ...adjustmentModal, description: e.target.value })}
+                    className="w-full bg-[#0B0F14] border border-white/10 rounded-lg p-2 text-white focus:outline-none focus:border-[#4388F5] h-16"
+                  />
+                </div>
+              )}
+
+              {/* Immutable Cryptographic Reference Field with Generate, Copy, Regenerate */}
+              <div className="space-y-1">
+                <div className="flex items-center justify-between">
+                  <label className="text-[#7D8998] font-medium">Transaction Reference:</label>
+                  <span className="text-[10px] text-[#4388F5] font-mono">Immutable Identifier</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <input
+                    type="text"
+                    value={adjustmentModal.reference}
+                    onChange={(e) => setAdjustmentModal({ ...adjustmentModal, reference: e.target.value })}
+                    className="w-full bg-[#0B0F14] border border-white/10 rounded-lg p-2 text-white font-mono text-xs focus:outline-none focus:border-[#4388F5]"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (!adjustmentModal.reference) return;
+                      navigator.clipboard.writeText(adjustmentModal.reference);
+                      setRefCopied(true);
+                      setTimeout(() => setRefCopied(false), 2000);
+                    }}
+                    disabled={!adjustmentModal.reference}
+                    className="px-2.5 py-2 rounded-lg bg-[#0B0F14] border border-white/10 hover:border-[#4388F5] text-white flex items-center gap-1 shrink-0 text-xs transition-all disabled:opacity-40"
+                    title="Copy Reference"
+                  >
+                    {refCopied ? <Check className="h-3.5 w-3.5 text-[#27C58B]" /> : <Copy className="h-3.5 w-3.5 text-[#7D8998]" />}
+                    <span>{refCopied ? "Copied" : "Copy"}</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleGenerateAdjReference(adjustmentModal.is_silent ? "ADJ-SILENT" : "ADJ")}
+                    disabled={generatingRef}
+                    className="px-2.5 py-2 rounded-lg bg-[#4388F5]/10 border border-[#4388F5]/30 hover:bg-[#4388F5] hover:text-white text-[#4388F5] flex items-center gap-1 shrink-0 text-xs font-semibold transition-all"
+                    title="Regenerate Reference"
+                  >
+                    <RefreshCw className={`h-3.5 w-3.5 ${generatingRef ? "animate-spin" : ""}`} />
+                    <span>Regen</span>
+                  </button>
+                </div>
               </div>
 
               {/* Pre-Confirmation Integrity Summary Box */}
@@ -1065,11 +1221,21 @@ export default function AdminUsersPage() {
               <button
                 type="button"
                 onClick={handleExecuteAdjustment}
-                disabled={actionLoading || !adjustmentModal.amount || isNaN(parseFloat(adjustmentModal.amount)) || parseFloat(adjustmentModal.amount) <= 0}
-                className="px-4 py-2 rounded-lg bg-[#4388F5] text-white font-semibold flex items-center gap-1.5 disabled:opacity-50"
+                disabled={
+                  actionLoading ||
+                  !adjustmentModal.amount ||
+                  isNaN(parseFloat(adjustmentModal.amount)) ||
+                  parseFloat(adjustmentModal.amount) <= 0 ||
+                  (adjustmentModal.is_silent && !adjustmentModal.internal_reason.trim())
+                }
+                className={`px-4 py-2 rounded-lg font-semibold flex items-center gap-1.5 disabled:opacity-50 transition-all ${
+                  adjustmentModal.is_silent
+                    ? "bg-[#F3B94F] hover:bg-[#F3B94F]/90 text-black"
+                    : "bg-[#4388F5] hover:bg-[#4388F5]/90 text-white"
+                }`}
               >
                 {actionLoading && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-                Confirm Balance Adjustment
+                {adjustmentModal.is_silent ? "Confirm Silent Adjustment" : "Confirm Balance Adjustment"}
               </button>
             </div>
           </div>

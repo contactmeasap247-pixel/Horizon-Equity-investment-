@@ -26,6 +26,7 @@ class WithdrawalProcessingRequest(BaseModel):
     status: str = Field(..., description="Withdrawal status: processing, completed, or rejected")
     rejection_reason: Optional[str] = Field(None, description="Reason for rejection if status is 'rejected'")
     transaction_hash: Optional[str] = Field(None, description="Blockchain transaction hash (TXID) if status is 'completed'")
+    reference: Optional[str] = Field(None, description="Internal unique transaction reference (e.g. HE-TX-WDR-...)")
 
 
 class WithdrawalReinvestRequest(BaseModel):
@@ -46,6 +47,42 @@ class BalanceAdjustmentRequest(BaseModel):
     adjustment_type: str = Field(..., description="Adjustment type: credit or debit")
     description: Optional[str] = Field(None, description="Description or reason for adjustment")
     note: Optional[str] = Field(None, description="Optional administrator note for the investor")
+    is_silent: bool = Field(False, description="Set True for silent adjustment (suppresses investor notifications & emails)")
+    internal_reason: Optional[str] = Field(None, description="Mandatory internal audit reason when is_silent is True")
+    reference: Optional[str] = Field(None, description="Optional custom internal transaction reference")
+
+
+class ReferenceGenerateResponse(BaseModel):
+    """Cryptographically unique reference payload."""
+    reference: str
+    prefix: str
+    timestamp: datetime
+
+
+class LoanProductCreateRequest(BaseModel):
+    """Schema for admin creating a new loan product with <= 14 days duration."""
+    name: str = Field(..., min_length=2, max_length=100)
+    currency: str = Field("USDT", max_length=10)
+    min_amount: Decimal = Field(..., gt=0)
+    max_amount: Decimal = Field(..., gt=0)
+    interest_rate: Decimal = Field(..., ge=0, description="Flat interest percentage (e.g. 5.0 for 5%)")
+    duration_days: int = Field(..., ge=1, le=14, description="Duration in days (1–14 days, max 2 weeks)")
+    repayment_frequency: Optional[str] = "lump_sum"
+    description: Optional[str] = None
+    is_active: bool = True
+
+
+class LoanProductUpdateRequest(BaseModel):
+    """Schema for admin updating an existing loan product."""
+    name: Optional[str] = None
+    currency: Optional[str] = None
+    min_amount: Optional[Decimal] = None
+    max_amount: Optional[Decimal] = None
+    interest_rate: Optional[Decimal] = None
+    duration_days: Optional[int] = Field(None, ge=1, le=14)
+    repayment_frequency: Optional[str] = None
+    description: Optional[str] = None
+    is_active: Optional[bool] = None
 
 
 class AdminDashboardStats(BaseModel):

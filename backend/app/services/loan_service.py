@@ -38,10 +38,10 @@ class LoanService:
                     currency="USDT",
                     min_amount=Decimal("100.00"),
                     max_amount=Decimal("500.00"),
-                    monthly_interest_rate=Decimal("2.00"),
-                    duration_months=3,
-                    repayment_frequency="monthly",
-                    description="Short-term liquidity backed by qualifying starter tier investments. 2% monthly simple interest.",
+                    monthly_interest_rate=Decimal("5.00"),  # 5% flat rate interest
+                    duration_months=7,                     # 7 days (1 week)
+                    repayment_frequency="lump_sum",
+                    description="Short-term liquidity backed by qualifying starter tier investments. 5% flat interest. 7-day duration.",
                     is_active=True,
                 ),
                 LoanProduct(
@@ -49,10 +49,10 @@ class LoanService:
                     currency="USDT",
                     min_amount=Decimal("500.00"),
                     max_amount=Decimal("2500.00"),
-                    monthly_interest_rate=Decimal("2.00"),
-                    duration_months=6,
-                    repayment_frequency="monthly",
-                    description="Mid-tier financing for active portfolio holders. 2% monthly simple interest.",
+                    monthly_interest_rate=Decimal("10.00"), # 10% flat rate interest
+                    duration_months=14,                     # 14 days (2 weeks)
+                    repayment_frequency="lump_sum",
+                    description="Mid-tier financing for active portfolio holders. 10% flat interest. 14-day duration (2 weeks).",
                     is_active=True,
                 ),
                 LoanProduct(
@@ -60,10 +60,10 @@ class LoanService:
                     currency="USDT",
                     min_amount=Decimal("2500.00"),
                     max_amount=Decimal("10000.00"),
-                    monthly_interest_rate=Decimal("1.75"),
-                    duration_months=12,
-                    repayment_frequency="monthly",
-                    description="High-tier structured credit for established investors. 1.75% monthly simple interest.",
+                    monthly_interest_rate=Decimal("15.00"), # 15% flat rate interest
+                    duration_months=14,                     # 14 days (2 weeks)
+                    repayment_frequency="lump_sum",
+                    description="High-tier structured credit for established investors. 15% flat interest. 14-day duration (2 weeks).",
                     is_active=True,
                 ),
             ]
@@ -143,10 +143,11 @@ class LoanService:
         user_id: uuid.UUID,
         product_id: uuid.UUID,
         amount: Decimal,
-        duration_months: int,
-        terms_accepted: bool,
+        duration_days: Optional[int] = None,
+        duration_months: Optional[int] = None,
+        terms_accepted: bool = False,
     ) -> LoanApplication:
-        """Process and submit a loan application with precise simple-interest calculations."""
+        """Process and submit a loan application with flat-rate interest and strict <= 14-day duration validation."""
         if not terms_accepted:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -173,10 +174,23 @@ class LoanService:
                 detail=f"Amount must be between {product.min_amount} and {product.max_amount} {product.currency}.",
             )
 
-        if duration_months < 1 or duration_months > product.duration_months:
+        # Determine effective duration in days and enforce strict <= 14 days (2 weeks)
+        if duration_days is not None:
+            days = int(duration_days)
+        elif duration_months is not None:
+            days = int(duration_months) if duration_months <= 14 else min(14, int(duration_months) * 7)
+        else:
+            days = min(14, product.duration_months if product.duration_months <= 14 else 7)
+
+        if days > 14:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Duration must be between 1 and {product.duration_months} months for this product.",
+                detail="Loan duration cannot exceed 14 days (2 weeks). Maximum allowed duration is 14 days.",
+            )
+        if days < 1:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Loan duration must be at least 1 day.",
             )
 
         # Find most recent completed qualifying investment
@@ -187,12 +201,12 @@ class LoanService:
         )
         qualifying_inv = inv_res.scalars().first()
 
-        # Simple Interest Calculation:
-        # Interest = Principal * (monthly_rate / 100) * duration_months
-        rate_monthly = product.monthly_interest_rate
-        total_interest = amount * (rate_monthly / Decimal("100.0")) * Decimal(str(duration_months))
+        # Flat Rate Interest Calculation:
+        # Total Interest = Principal * (flat_rate / 100)
+        rate_flat = product.monthly_interest_rate
+        total_interest = (amount * rate_flat) / Decimal("100.0")
         total_repayment = amount + total_interest
-        monthly_installment = total_repayment / Decimal(str(duration_months))
+        monthly_installment = total_repayment  # Lump sum repayment due within 14-day duration
 
         ref = f"LOAN-{uuid.uuid4().hex[:8].upper()}"
 
@@ -203,8 +217,8 @@ class LoanService:
             qualifying_investment_id=qualifying_inv.id if qualifying_inv else None,
             principal_amount=amount,
             currency=product.currency,
-            monthly_interest_rate=rate_monthly,
-            duration_months=duration_months,
+            monthly_interest_rate=rate_flat,
+            duration_months=days,  # Persist exact agreed duration in days
             total_interest=total_interest,
             total_repayment=total_repayment,
             monthly_installment=monthly_installment,
@@ -225,11 +239,26 @@ class LoanService:
             new_values={
                 "reference": ref,
                 "amount": float(amount),
+                "interest_rate": float(rate_flat),
+                "total_interest": float(total_interest),
                 "total_repayment": float(total_repayment),
-                "duration_months": duration_months,
+                "duration_days": days,
             },
         )
         db.add(audit)
+
+        # Notify user
+        await notification_service.create_notification(
+            db,
+            user_id=user_id,
+            type="system",
+            title="Loan Application Received",
+            message=f"Your loan application for {amount} {product.currency} ({ref}) has been submitted for administrative review.",
+        )
+
+        await db.commit()
+        await db.refresh(new_loan)
+        return new_loan
 
         # Notify user
         await notification_service.create_notification(
@@ -495,7 +524,8 @@ class LoanService:
         now = datetime.utcnow()
         loan.status = "active"
         loan.disbursed_at = now
-        loan.due_date = now + timedelta(days=loan.duration_months * 30)
+        loan_days = loan.duration_months if loan.duration_months <= 14 else loan.duration_months * 30
+        loan.due_date = now + timedelta(days=loan_days)
         db.add(loan)
 
         # Log transaction
@@ -534,6 +564,198 @@ class LoanService:
         await db.commit()
         await db.refresh(loan)
         return loan
+
+    @staticmethod
+    async def admin_list_products(db: AsyncSession) -> List[LoanProduct]:
+        """Admin list all loan products including inactive ones."""
+        result = await db.execute(select(LoanProduct).order_by(LoanProduct.created_at.asc()))
+        products = result.scalars().all()
+        if not products:
+            return await LoanService.get_or_seed_products(db)
+        return list(products)
+
+    @staticmethod
+    async def admin_create_product(
+        db: AsyncSession,
+        name: str,
+        currency: str,
+        min_amount: Decimal,
+        max_amount: Decimal,
+        interest_rate: Decimal,
+        duration_days: int,
+        repayment_frequency: str = "lump_sum",
+        description: Optional[str] = None,
+        is_active: bool = True,
+        admin_id: Optional[uuid.UUID] = None,
+    ) -> LoanProduct:
+        """Admin create a new loan facility product with <= 14 days duration."""
+        if duration_days > 14:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Loan product duration cannot exceed 14 days (2 weeks). Maximum allowed is 14 days.",
+            )
+        if duration_days < 1:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Loan product duration must be at least 1 day.",
+            )
+        if max_amount < min_amount:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Maximum loan amount cannot be less than minimum loan amount.",
+            )
+
+        product = LoanProduct(
+            name=name.strip(),
+            currency=currency.upper().strip(),
+            min_amount=min_amount,
+            max_amount=max_amount,
+            monthly_interest_rate=interest_rate,
+            duration_months=duration_days,
+            repayment_frequency=repayment_frequency or "lump_sum",
+            description=description.strip() if description else None,
+            is_active=is_active,
+        )
+        db.add(product)
+
+        audit = AuditLog(
+            admin_id=admin_id,
+            action="loan_product_created",
+            entity_type="loan_product",
+            new_values={
+                "name": product.name,
+                "interest_rate": float(interest_rate),
+                "duration_days": duration_days,
+                "min_amount": float(min_amount),
+                "max_amount": float(max_amount),
+            },
+        )
+        db.add(audit)
+
+        await db.commit()
+        await db.refresh(product)
+        return product
+
+    @staticmethod
+    async def admin_update_product(
+        db: AsyncSession,
+        product_id: uuid.UUID,
+        update_data: Dict[str, Any],
+        admin_id: Optional[uuid.UUID] = None,
+    ) -> LoanProduct:
+        """Admin update an existing loan product with <= 14 days duration validation."""
+        result = await db.execute(select(LoanProduct).filter(LoanProduct.id == product_id))
+        product = result.scalars().first()
+        if not product:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Loan product not found.")
+
+        old_values = {
+            "name": product.name,
+            "min_amount": float(product.min_amount),
+            "max_amount": float(product.max_amount),
+            "interest_rate": float(product.monthly_interest_rate),
+            "duration_days": product.duration_months if product.duration_months <= 14 else product.duration_months * 30,
+            "is_active": product.is_active,
+        }
+
+        if "duration_days" in update_data and update_data["duration_days"] is not None:
+            days = int(update_data["duration_days"])
+            if days > 14 or days < 1:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Loan duration cannot exceed 14 days (2 weeks). Must be between 1 and 14 days.",
+                )
+            product.duration_months = days
+
+        if "interest_rate" in update_data and update_data["interest_rate"] is not None:
+            product.monthly_interest_rate = Decimal(str(update_data["interest_rate"]))
+
+        if "name" in update_data and update_data["name"] is not None:
+            product.name = update_data["name"].strip()
+
+        if "currency" in update_data and update_data["currency"] is not None:
+            product.currency = update_data["currency"].upper().strip()
+
+        if "min_amount" in update_data and update_data["min_amount"] is not None:
+            product.min_amount = Decimal(str(update_data["min_amount"]))
+
+        if "max_amount" in update_data and update_data["max_amount"] is not None:
+            product.max_amount = Decimal(str(update_data["max_amount"]))
+
+        if "repayment_frequency" in update_data and update_data["repayment_frequency"] is not None:
+            product.repayment_frequency = update_data["repayment_frequency"]
+
+        if "description" in update_data and update_data["description"] is not None:
+            product.description = update_data["description"].strip() if update_data["description"] else None
+
+        if "is_active" in update_data and update_data["is_active"] is not None:
+            product.is_active = bool(update_data["is_active"])
+
+        db.add(product)
+
+        audit = AuditLog(
+            admin_id=admin_id,
+            action="loan_product_updated",
+            entity_type="loan_product",
+            entity_id=product.id,
+            old_values=old_values,
+            new_values={
+                "name": product.name,
+                "min_amount": float(product.min_amount),
+                "max_amount": float(product.max_amount),
+                "interest_rate": float(product.monthly_interest_rate),
+                "duration_days": product.duration_months,
+                "is_active": product.is_active,
+            },
+        )
+        db.add(audit)
+
+        await db.commit()
+        await db.refresh(product)
+        return product
+
+    @staticmethod
+    async def admin_toggle_product_status(db: AsyncSession, product_id: uuid.UUID, admin_id: Optional[uuid.UUID] = None) -> LoanProduct:
+        """Toggle active / disabled state for a loan product."""
+        result = await db.execute(select(LoanProduct).filter(LoanProduct.id == product_id))
+        product = result.scalars().first()
+        if not product:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Loan product not found.")
+
+        product.is_active = not product.is_active
+        db.add(product)
+
+        audit = AuditLog(
+            admin_id=admin_id,
+            action="loan_product_status_toggled",
+            entity_type="loan_product",
+            entity_id=product.id,
+            new_values={"is_active": product.is_active},
+        )
+        db.add(audit)
+
+        await db.commit()
+        await db.refresh(product)
+        return product
+
+    @staticmethod
+    async def admin_delete_product(db: AsyncSession, product_id: uuid.UUID, admin_id: Optional[uuid.UUID] = None) -> bool:
+        """Delete loan product if no applications are using it."""
+        app_res = await db.execute(select(LoanApplication).filter(LoanApplication.product_id == product_id))
+        if app_res.scalars().first():
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Cannot delete loan product with existing loan applications. Disable it instead.",
+            )
+
+        prod_res = await db.execute(select(LoanProduct).filter(LoanProduct.id == product_id))
+        product = prod_res.scalars().first()
+        if not product:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Loan product not found.")
+
+        db.delete(product)
+        await db.commit()
+        return True
 
 
 loan_service = LoanService()

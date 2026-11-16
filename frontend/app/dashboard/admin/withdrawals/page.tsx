@@ -17,6 +17,8 @@ import {
   Send,
   Layers,
   ShieldAlert,
+  Copy,
+  Check,
 } from "lucide-react";
 import { api } from "@/lib/api";
 
@@ -65,6 +67,9 @@ export default function AdminWithdrawalsPage() {
   // Processing & TXID Modal
   const [completingItem, setCompletingItem] = useState<WithdrawalItem | null>(null);
   const [txHash, setTxHash] = useState("");
+  const [internalRef, setInternalRef] = useState("");
+  const [refCopied, setRefCopied] = useState(false);
+  const [generatingRef, setGeneratingRef] = useState(false);
 
   // Rejection Modal
   const [rejectingItem, setRejectingItem] = useState<WithdrawalItem | null>(null);
@@ -76,6 +81,33 @@ export default function AdminWithdrawalsPage() {
 
   const [actionLoading, setActionLoading] = useState(false);
   const [feedback, setFeedback] = useState<{ type: "success" | "error"; msg: string } | null>(null);
+
+  const handleGenerateReference = async (prefix = "WDR") => {
+    setGeneratingRef(true);
+    try {
+      const res = await api.get(`/admin/generate-reference?prefix=${prefix}`);
+      setInternalRef(res.data.reference);
+    } catch {
+      const entropy = Math.random().toString(16).substring(2, 10).toUpperCase();
+      const dateStr = new Date().toISOString().slice(2, 10).replace(/-/g, "");
+      setInternalRef(`HE-${prefix}-${dateStr}-${entropy}`);
+    } finally {
+      setGeneratingRef(false);
+    }
+  };
+
+  const handleCopyReference = () => {
+    if (!internalRef) return;
+    navigator.clipboard.writeText(internalRef);
+    setRefCopied(true);
+    setTimeout(() => setRefCopied(false), 2000);
+  };
+
+  const handleOpenComplete = (item: WithdrawalItem) => {
+    setCompletingItem(item);
+    setTxHash(item.transaction_hash || "");
+    handleGenerateReference("WDR");
+  };
 
   const fetchWithdrawals = useCallback(async () => {
     setIsLoading(true);
@@ -142,13 +174,15 @@ export default function AdminWithdrawalsPage() {
       await api.post(`/admin/withdrawals/${completingItem.id}/process`, {
         status: "completed",
         transaction_hash: txHash.trim(),
+        reference: internalRef.trim() || undefined,
       });
       setFeedback({
         type: "success",
-        msg: `Withdrawal of ${completingItem.amount} ${completingItem.currency} finalized with TXID.`,
+        msg: `Withdrawal of ${completingItem.amount} ${completingItem.currency} finalized with TXID & Reference.`,
       });
       setCompletingItem(null);
       setTxHash("");
+      setInternalRef("");
       fetchWithdrawals();
     } catch (err: unknown) {
       const e = err as { response?: { data?: { detail?: string } } };
@@ -409,7 +443,7 @@ export default function AdminWithdrawalsPage() {
                         <>
                           <button
                             type="button"
-                            onClick={() => setCompletingItem(w)}
+                            onClick={() => handleOpenComplete(w)}
                             className="px-2.5 py-1 rounded bg-[#27C58B] text-black font-semibold text-[11px] hover:bg-[#27C58B]/90 transition-all"
                             title="Enter TXID to Complete"
                           >
@@ -502,18 +536,59 @@ export default function AdminWithdrawalsPage() {
               </div>
             </div>
 
-            <div className="space-y-2 text-xs">
-              <label className="text-[#7D8998] block">Blockchain Transaction Hash (TXID) *Required:</label>
+            {/* Internal Cryptographic Reference */}
+            <div className="space-y-1.5 text-xs">
+              <div className="flex items-center justify-between">
+                <label className="text-[#7D8998] font-medium">Internal Transaction Reference:</label>
+                <span className="text-[10px] text-[#4388F5] font-mono">Platform Ledger ID</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <input
+                  type="text"
+                  value={internalRef}
+                  onChange={(e) => setInternalRef(e.target.value)}
+                  placeholder="HE-WDR-..."
+                  className="w-full bg-[#0B0F14] border border-white/10 rounded-lg p-2 text-white font-mono text-xs focus:outline-none focus:border-[#4388F5]"
+                />
+                <button
+                  type="button"
+                  onClick={handleCopyReference}
+                  disabled={!internalRef}
+                  className="px-2.5 py-2 rounded-lg bg-[#0B0F14] border border-white/10 hover:border-[#4388F5] text-white flex items-center gap-1 shrink-0 text-xs transition-all disabled:opacity-40"
+                  title="Copy Reference"
+                >
+                  {refCopied ? <Check className="h-3.5 w-3.5 text-[#27C58B]" /> : <Copy className="h-3.5 w-3.5 text-[#7D8998]" />}
+                  <span>{refCopied ? "Copied" : "Copy"}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleGenerateReference("WDR")}
+                  disabled={generatingRef}
+                  className="px-2.5 py-2 rounded-lg bg-[#4388F5]/10 border border-[#4388F5]/30 hover:bg-[#4388F5] hover:text-white text-[#4388F5] flex items-center gap-1 shrink-0 text-xs font-semibold transition-all"
+                  title="Regenerate cryptographic reference"
+                >
+                  <RefreshCw className={`h-3.5 w-3.5 ${generatingRef ? "animate-spin" : ""}`} />
+                  <span>{internalRef ? "Regenerate" : "Generate"}</span>
+                </button>
+              </div>
+              <p className="text-[11px] text-[#7D8998]">
+                Unique internal cryptographic reference assigned to the platform database transaction and audit log.
+              </p>
+            </div>
+
+            {/* Blockchain Transaction Hash (TXID) */}
+            <div className="space-y-1.5 text-xs">
+              <label className="text-[#7D8998] font-medium block">Blockchain Transaction Hash (TXID) *Required:</label>
               <input
                 type="text"
-                placeholder="e.g. 0x4f8a9e... or 5KzL9p..."
+                placeholder="e.g. 0x4f8a9e... or 5KzL9p... (from on-chain broadcast)"
                 value={txHash}
                 onChange={(e) => setTxHash(e.target.value)}
                 className="w-full bg-[#0B0F14] border border-white/10 rounded-lg p-2.5 text-white font-mono focus:outline-none focus:border-[#27C58B]"
                 required
               />
               <p className="text-[11px] text-[#7D8998]">
-                Completing will deduct the frozen funds, create a completed withdrawal ledger entry, and notify the user.
+                Genuine on-chain blockchain broadcast hash provided to the investor for network verification.
               </p>
             </div>
 

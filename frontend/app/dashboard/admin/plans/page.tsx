@@ -17,6 +17,8 @@ import {
   ShieldAlert,
   ArrowLeft,
   Calendar,
+  Bell,
+  BellOff,
 } from "lucide-react";
 import { api } from "@/lib/api";
 
@@ -57,6 +59,7 @@ export default function AdminPlansPage() {
   const [formIsActive, setFormIsActive] = useState<boolean>(true);
   const [formIsFeatured, setFormIsFeatured] = useState<boolean>(false);
   const [formSortOrder, setFormSortOrder] = useState<string>("1");
+  const [broadcastAnnouncement, setBroadcastAnnouncement] = useState<boolean>(false);
 
   const fetchPlans = useCallback(async () => {
     setLoading(true);
@@ -95,6 +98,7 @@ export default function AdminPlansPage() {
     setFormIsActive(true);
     setFormIsFeatured(false);
     setFormSortOrder((plans.length + 1).toString());
+    setBroadcastAnnouncement(false);
     setModalOpen(true);
   };
 
@@ -119,6 +123,7 @@ export default function AdminPlansPage() {
     setFormIsActive(plan.is_active);
     setFormIsFeatured(plan.is_featured || false);
     setFormSortOrder((plan.sort_order || 0).toString());
+    setBroadcastAnnouncement(false);
     setModalOpen(true);
   };
 
@@ -174,12 +179,18 @@ export default function AdminPlansPage() {
       is_active: formIsActive,
       is_featured: formIsFeatured,
       sort_order: sortOrd,
+      broadcast_announcement: broadcastAnnouncement,
     };
 
     try {
       if (editingPlan) {
         await api.put(`/admin/investments/plans/${editingPlan.id}`, payload);
-        setFeedback({ type: "success", msg: `Plan '${payload.name}' updated successfully!` });
+        setFeedback({
+          type: "success",
+          msg: broadcastAnnouncement
+            ? `Plan '${payload.name}' updated and announcement broadcasted to active investors!`
+            : `Plan '${payload.name}' updated quietly (Silent Price Adjustment mode).`,
+        });
       } else {
         await api.post("/admin/investments/plans", payload);
         setFeedback({ type: "success", msg: `Plan '${payload.name}' created successfully!` });
@@ -640,6 +651,33 @@ export default function AdminPlansPage() {
                   />
                   <span className="text-white">Featured Badge</span>
                 </label>
+              </div>
+
+              {/* SILENT PRICE ADJUSTMENT VS PUBLIC BROADCAST TOGGLE */}
+              <div className="p-3 rounded-xl bg-[#0B0F14] border border-white/10 space-y-2">
+                <label className="flex items-center justify-between cursor-pointer">
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={broadcastAnnouncement}
+                      onChange={(e) => setBroadcastAnnouncement(e.target.checked)}
+                      className="h-4 w-4 rounded accent-[#4388F5]"
+                    />
+                    <span className="text-white font-medium text-xs">Broadcast Public Announcement to Investors</span>
+                  </div>
+                  <span className={`text-[10px] font-mono px-2 py-0.5 rounded font-semibold ${
+                    broadcastAnnouncement
+                      ? "bg-[#4388F5]/20 text-[#4388F5] border border-[#4388F5]/30"
+                      : "bg-[#F3B94F]/20 text-[#F3B94F] border border-[#F3B94F]/30"
+                  }`}>
+                    {broadcastAnnouncement ? "Broadcast Mode" : "Silent Price Adjustment"}
+                  </span>
+                </label>
+                <p className="text-[11px] text-[#7D8998]">
+                  {broadcastAnnouncement
+                    ? "Active platform investors will receive an in-app system announcement notifying them of updated tier terms."
+                    : "Silent Mode: Updates tier limits, ROI and terms quietly in the database without dispatching broadcast notifications to investors."}
+                </p>
               </div>
 
               {/* Buttons */}

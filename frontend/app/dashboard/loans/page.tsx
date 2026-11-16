@@ -80,7 +80,8 @@ export default function LoansPage() {
   // Application Form States
   const [selectedProductId, setSelectedProductId] = useState<string>("");
   const [borrowAmount, setBorrowAmount] = useState<string>("");
-  const [durationMonths, setDurationMonths] = useState<number>(3);
+  const [durationUnit, setDurationUnit] = useState<"days" | "weeks">("days");
+  const [durationVal, setDurationVal] = useState<number>(7);
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [appError, setAppError] = useState("");
   const [appSuccess, setAppSuccess] = useState("");
@@ -111,7 +112,9 @@ export default function LoansPage() {
       if (prods.length > 0 && !selectedProductId) {
         setSelectedProductId(prods[0].id);
         setBorrowAmount(prods[0].min_amount.toString());
-        setDurationMonths(prods[0].duration_months);
+        const initDays = prods[0].duration_days || (prods[0].duration_months <= 14 ? prods[0].duration_months : 7);
+        setDurationVal(initDays <= 14 ? initDays : 7);
+        setDurationUnit("days");
       }
     } catch (e) {
       console.error("Failed to load loan telemetry:", e);
@@ -126,13 +129,15 @@ export default function LoansPage() {
 
   const activeProduct = products.find((p) => p.id === selectedProductId);
 
-  // Calculate Simple Interest Calculations
+  // Duration in days with strict <= 14-day validation
+  const computedDays = durationUnit === "weeks" ? Math.min(14, durationVal * 7) : Math.min(14, durationVal);
+  const isDurationValid = computedDays >= 1 && computedDays <= 14;
+
+  // Calculate Flat Rate Interest Calculations (e.g. 15% flat on $1,000 = $150 interest, total repayment $1,150)
   const principal = parseFloat(borrowAmount) || 0;
-  const rateMonthly = activeProduct ? activeProduct.monthly_interest_rate : 2.0;
-  // Interest = Principal * (monthly_rate / 100) * duration_months
-  const calculatedInterest = principal * (rateMonthly / 100.0) * durationMonths;
+  const flatRate = activeProduct ? ((activeProduct as any).interest_rate ?? activeProduct.monthly_interest_rate) : 5.0;
+  const calculatedInterest = principal * (flatRate / 100.0);
   const totalRepayment = principal + calculatedInterest;
-  const monthlyInstallment = durationMonths > 0 ? totalRepayment / durationMonths : 0;
 
   const handleApply = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -151,6 +156,11 @@ export default function LoansPage() {
       return;
     }
 
+    if (!isDurationValid) {
+      setAppError("Loan duration cannot exceed 14 days (2 weeks). Must be between 1 and 14 days.");
+      return;
+    }
+
     if (!termsAccepted) {
       setAppError("You must review and explicitly accept the credit facility terms agreement.");
       return;
@@ -161,7 +171,9 @@ export default function LoansPage() {
       const res = await api.post("/loans/apply", {
         product_id: activeProduct.id,
         amount: principal,
-        duration_months: durationMonths,
+        duration_days: computedDays,
+        duration_unit: durationUnit,
+        duration_value: durationVal,
         terms_accepted: true,
       });
 
@@ -362,7 +374,9 @@ export default function LoansPage() {
                         onClick={() => {
                           setSelectedProductId(prod.id);
                           setBorrowAmount(prod.min_amount.toString());
-                          setDurationMonths(prod.duration_months);
+                          const prodDays = (prod as any).duration_days || (prod.duration_months <= 14 ? prod.duration_months : 7);
+                          setDurationVal(prodDays);
+                          setDurationUnit("days");
                         }}
                         className={`p-4 rounded-lg border cursor-pointer transition flex items-center justify-between gap-3 ${
                           isSel
@@ -390,7 +404,7 @@ export default function LoansPage() {
 
                         <div className="text-right shrink-0">
                           <span className="text-xs font-bold text-[#27C58B] block">
-                            {prod.monthly_interest_rate}% / mo
+                            {((prod as any).interest_rate ?? prod.monthly_interest_rate)}% Flat
                           </span>
                           <span className="text-[10px] text-[#7D8998] block">
                             ${prod.min_amount} - ${prod.max_amount} USDT
@@ -425,30 +439,47 @@ export default function LoansPage() {
                   />
                 </div>
 
-                {/* Duration */}
-                <div>
-                  <div className="flex justify-between items-center mb-1">
-                    <label className="text-xs font-semibold text-[#A6B0BE]">
-                      Duration (Months) *
+                {/* Duration Configuration (≤ 14 Days / 2 Weeks Maximum) */}
+                <div className="space-y-1.5">
+                  <div className="flex justify-between items-center">
+                    <label className="text-xs font-semibold text-[#A6B0BE] flex items-center gap-1.5">
+                      <Calendar className="h-3.5 w-3.5 text-[#4388F5]" />
+                      <span>Repayment Duration *</span>
                     </label>
-                    <span className="text-[10px] text-[#7D8998]">
-                      Up to {activeProduct?.duration_months || 12} months
+                    <span className="text-[10px] text-[#C5A059] font-mono">
+                      Max: 14 Days (2 Weeks)
                     </span>
                   </div>
-                  <select
-                    value={durationMonths}
-                    onChange={(e) => setDurationMonths(parseInt(e.target.value))}
-                    className="input w-full bg-[#0B0F14] border-white/10 text-white text-xs h-10"
-                  >
-                    {Array.from(
-                      { length: activeProduct?.duration_months || 6 },
-                      (_, i) => i + 1
-                    ).map((m) => (
-                      <option key={m} value={m}>
-                        {m} Month{m > 1 ? "s" : ""}
-                      </option>
-                    ))}
-                  </select>
+                  <div className="grid grid-cols-2 gap-3">
+                    <select
+                      value={durationUnit}
+                      onChange={(e) => {
+                        const newUnit = e.target.value as "days" | "weeks";
+                        setDurationUnit(newUnit);
+                        if (newUnit === "weeks" && durationVal > 2) {
+                          setDurationVal(2);
+                        }
+                      }}
+                      className="input w-full bg-[#0B0F14] border-white/10 text-white text-xs h-10"
+                    >
+                      <option value="days">Days (1–14 Days)</option>
+                      <option value="weeks">Weeks (1–2 Weeks)</option>
+                    </select>
+                    <input
+                      type="number"
+                      min={1}
+                      max={durationUnit === "days" ? 14 : 2}
+                      value={durationVal}
+                      onChange={(e) => setDurationVal(parseInt(e.target.value, 10) || 1)}
+                      className="input w-full bg-[#0B0F14] border-white/10 text-white text-xs h-10 font-mono font-bold"
+                    />
+                  </div>
+                  <div className="flex items-center justify-between text-[11px] font-mono text-[#7D8998] pt-1">
+                    <span>Selected Term:</span>
+                    <span className={isDurationValid ? "text-[#27C58B] font-bold" : "text-[#F06464] font-bold"}>
+                      {computedDays} Days ({durationUnit === "weeks" ? `${durationVal} Week(s)` : `${computedDays} Day(s)`})
+                    </span>
+                  </div>
                 </div>
 
                 {/* Terms Agreement Checkbox */}
@@ -462,13 +493,13 @@ export default function LoansPage() {
                     required
                   />
                   <label htmlFor="loanTerms" className="text-[11px] text-[#A6B0BE] leading-relaxed cursor-pointer">
-                    I have reviewed and explicitly agree to the credit agreement. I understand interest is calculated at {rateMonthly}% monthly simple interest and installments are due monthly. No automated collateral deduction occurs without prior formal notice.
+                    I have reviewed and explicitly agree to the credit agreement. I understand interest is calculated at a flat rate of {flatRate}% ({calculatedInterest.toFixed(2)} USDT) and total repayment of ${formatUsd(totalRepayment)} USDT is due at maturity in {computedDays} days. No automated collateral deduction occurs without prior formal notice.
                   </label>
                 </div>
 
                 <button
                   type="submit"
-                  disabled={applying || !termsAccepted}
+                  disabled={applying || !termsAccepted || !isDurationValid}
                   className="btn btn-primary w-full py-2.5 font-semibold text-xs flex items-center justify-center gap-2 shadow-md disabled:opacity-50"
                 >
                   {applying ? (
@@ -487,11 +518,11 @@ export default function LoansPage() {
             </div>
           </div>
 
-          {/* Right Column: Transparent Simple Interest Schedule */}
+          {/* Right Column: Transparent Flat Rate Interest Schedule */}
           <div className="lg:col-span-5 flex flex-col gap-4">
             <div className="panel p-5 bg-[#111821] border-white/10 flex flex-col gap-4">
               <h4 className="text-xs font-bold uppercase tracking-wider text-[#7D8998] border-b border-white/10 pb-2.5">
-                Simple Interest Schedule Breakdown
+                Flat Interest Schedule Breakdown
               </h4>
 
               <div className="flex flex-col gap-3 text-xs">
@@ -503,16 +534,16 @@ export default function LoansPage() {
                 </div>
 
                 <div className="flex justify-between items-center text-[#A6B0BE]">
-                  <span>Monthly Interest Rate</span>
+                  <span>Flat Interest Rate</span>
                   <span className="font-bold text-[#27C58B]">
-                    {rateMonthly}% Simple Interest
+                    {flatRate}% Flat
                   </span>
                 </div>
 
                 <div className="flex justify-between items-center text-[#A6B0BE]">
                   <span>Duration Term</span>
-                  <span className="font-bold text-white">
-                    {durationMonths} Months
+                  <span className="font-bold text-white font-mono">
+                    {computedDays} Days ({durationUnit === "weeks" ? `${durationVal} Week(s)` : `${computedDays} Day(s)`})
                   </span>
                 </div>
 
@@ -531,9 +562,9 @@ export default function LoansPage() {
                 </div>
 
                 <div className="flex justify-between items-center text-[#A6B0BE] text-xs pt-1">
-                  <span>Monthly Installment</span>
+                  <span>Repayment Terms</span>
                   <span className="font-bold text-[#4388F5]">
-                    ${formatUsd(monthlyInstallment)} USDT / mo
+                    Bullet settlement upon maturity (≤ 14 days)
                   </span>
                 </div>
               </div>
@@ -541,7 +572,7 @@ export default function LoansPage() {
               <div className="p-3 rounded bg-[#0B0F14] border border-white/5 text-[11px] text-[#7D8998] flex items-start gap-2">
                 <Info className="h-4 w-4 text-[#4388F5] shrink-0 mt-0.5" />
                 <p>
-                  Calculated as: <em>Interest = Principal × Rate × Months</em>. Once approved by administration, funds are disbursed directly to your USDT balance.
+                  Calculated as: <em>Flat Interest = Principal × Flat Rate %</em>. Full principal plus flat interest is payable within the agreed term (≤ 14 days). Once approved, funds are disbursed directly to your USDT balance.
                 </p>
               </div>
             </div>

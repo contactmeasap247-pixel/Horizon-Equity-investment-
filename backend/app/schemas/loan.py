@@ -16,6 +16,7 @@ class LoanProductResponse(BaseModel):
     min_amount: float
     max_amount: float
     monthly_interest_rate: float
+    interest_rate: Optional[float] = None
     duration_months: int
     duration_days: Optional[int] = None
     duration_weeks: Optional[float] = None
@@ -23,8 +24,41 @@ class LoanProductResponse(BaseModel):
     description: Optional[str] = None
     is_active: bool
 
+    @model_validator(mode="after")
+    def populate_duration_and_rate(self) -> "LoanProductResponse":
+        if self.interest_rate is None:
+            self.interest_rate = self.monthly_interest_rate
+        if self.duration_days is None:
+            self.duration_days = self.duration_months if self.duration_months <= 14 else min(14, self.duration_months * 30)
+        self.duration_weeks = round(self.duration_days / 7.0, 1)
+        return self
+
     class Config:
         from_attributes = True
+
+
+class LoanProductCreate(BaseModel):
+    name: str = Field(..., min_length=2, max_length=100)
+    currency: str = Field("USDT", max_length=10)
+    min_amount: Decimal = Field(..., gt=0)
+    max_amount: Decimal = Field(..., gt=0)
+    interest_rate: Decimal = Field(..., ge=0, description="Flat interest percentage (e.g. 5.0 for 5%)")
+    duration_days: int = Field(..., ge=1, le=14, description="Duration in days (1–14 days, max 2 weeks)")
+    repayment_frequency: Optional[str] = "lump_sum"
+    description: Optional[str] = None
+    is_active: bool = True
+
+
+class LoanProductUpdate(BaseModel):
+    name: Optional[str] = None
+    currency: Optional[str] = None
+    min_amount: Optional[Decimal] = None
+    max_amount: Optional[Decimal] = None
+    interest_rate: Optional[Decimal] = None
+    duration_days: Optional[int] = Field(None, ge=1, le=14)
+    repayment_frequency: Optional[str] = None
+    description: Optional[str] = None
+    is_active: Optional[bool] = None
 
 
 class LoanEligibilityResponse(BaseModel):

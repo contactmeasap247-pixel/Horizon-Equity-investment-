@@ -77,6 +77,8 @@ class InvestmentPlanUpdate(BaseModel):
     is_active: Optional[bool] = None
     is_featured: Optional[bool] = None
     sort_order: Optional[int] = None
+    broadcast_announcement: Optional[bool] = Field(False, description="Set True to broadcast an in-app announcement to investors; False for silent price adjustment")
+    announcement_title: Optional[str] = Field(None, description="Optional custom broadcast announcement title")
 
     @model_validator(mode="before")
     @classmethod

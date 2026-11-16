@@ -297,8 +297,10 @@ class TransactionService:
         currency: str,
         fee: Decimal = Decimal("0.0"),
         status: str = "completed",
+        subtype: Optional[str] = None,
         description: Optional[str] = None,
         reference: Optional[str] = None,
+        metadata_: Optional[dict] = None,
         approved_by: Optional[uuid.UUID] = None,
         approved_at: Optional[datetime] = None,
     ) -> Transaction:
@@ -311,12 +313,14 @@ class TransactionService:
         transaction = Transaction(
             user_id=user_id,
             type=type_clean,
+            subtype=subtype,
             amount=amount,
             fee=fee,
             currency=currency_clean,
             status=status_clean,
             reference=ref,
             description=description,
+            metadata_=metadata_,
             approved_by=approved_by,
             approved_at=approved_at,
         )

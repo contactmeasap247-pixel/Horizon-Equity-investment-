@@ -17,8 +17,10 @@ from app.models.investment_plan import InvestmentPlan
 from app.models.investment import Investment
 from app.models.transaction import Transaction
 from app.models.referral_commission import ReferralCommission
+from app.models.audit_log import AuditLog
 from app.schemas.investment import InvestmentPlanCreate, InvestmentPlanUpdate, InvestmentCreate
 from app.services.wallet_service import wallet_service
+from app.services.notification_service import notification_service
 
 
 class InvestmentService:
@@ -83,7 +85,7 @@ class InvestmentService:
     async def update_investment_plan(
         self, db: AsyncSession, plan_id: uuid.UUID, plan_in: InvestmentPlanUpdate
     ) -> Optional[InvestmentPlan]:
-        """Update an existing investment plan tier."""
+        """Update an existing investment plan tier with silent price adjustment or broadcast announcement."""
         plan = await self.get_investment_plan_by_id(db, plan_id)
         if plan is None:
             return None
@@ -100,11 +102,64 @@ class InvestmentService:
                     detail="Investment plan duration must be at least 1 day.",
                 )
 
-        # Update fields if provided
-        for field, value in plan_in.model_dump(exclude_unset=True).items():
+        old_values = {
+            "name": plan.name,
+            "min_amount": float(plan.min_amount),
+            "max_amount": float(plan.max_amount) if plan.max_amount else None,
+            "return_percentage": float(plan.return_percentage),
+            "duration_days": plan.duration_days,
+            "is_active": plan.is_active,
+        }
+
+        # Extract extra non-column fields
+        update_data = plan_in.model_dump(exclude_unset=True)
+        broadcast = update_data.pop("broadcast_announcement", False)
+        announcement_title = update_data.pop("announcement_title", None)
+        update_data.pop("duration_unit", None)
+        update_data.pop("duration_value", None)
+
+        # Update model fields
+        for field, value in update_data.items():
             setattr(plan, field, value)
 
         db.add(plan)
+
+        new_values = {
+            "name": plan.name,
+            "min_amount": float(plan.min_amount),
+            "max_amount": float(plan.max_amount) if plan.max_amount else None,
+            "return_percentage": float(plan.return_percentage),
+            "duration_days": plan.duration_days,
+            "is_active": plan.is_active,
+            "broadcast_announcement": broadcast,
+        }
+
+        if broadcast:
+            # Public Broadcast Mode
+            await notification_service.broadcast_system_notification(
+                db,
+                title=announcement_title or f"Investment Tier Updated: {plan.name}",
+                message=(
+                    f"Parameters for the {plan.name} plan have been updated: "
+                    f"Yield: {plan.return_percentage}%, Duration: {plan.duration_days} days, "
+                    f"Min Capital: ${plan.min_amount}."
+                ),
+                type="announcement",
+            )
+            audit_action = "investment_plan_updated"
+        else:
+            # Silent Price Adjustment Mode: Updates database tier without investor broadcast
+            audit_action = "silent_price_adjustment"
+
+        audit = AuditLog(
+            action=audit_action,
+            entity_type="investment_plan",
+            entity_id=plan.id,
+            old_values=old_values,
+            new_values=new_values,
+        )
+        db.add(audit)
+
         await db.commit()
         await db.refresh(plan)
         return plan

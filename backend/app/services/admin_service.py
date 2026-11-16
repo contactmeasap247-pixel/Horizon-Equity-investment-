@@ -1800,6 +1800,14 @@ class AdminService:
         return deposit
 
     @staticmethod
+    def generate_transaction_reference(prefix: str = "TX") -> str:
+        """Generate cryptographically unique, collision-resistant platform transaction reference."""
+        clean_prefix = "".join(ch for ch in prefix.upper().strip() if ch.isalnum() or ch == "-") or "TX"
+        ts = datetime.utcnow().strftime("%y%m%d")
+        entropy = uuid.uuid4().hex[:8].upper()
+        return f"HE-{clean_prefix}-{ts}-{entropy}"
+
+    @staticmethod
     async def process_user_withdrawal(
         db: AsyncSession,
         withdrawal_id: uuid.UUID,
@@ -1807,6 +1815,7 @@ class AdminService:
         admin_id: uuid.UUID,
         rejection_reason: Optional[str] = None,
         transaction_hash: Optional[str] = None,
+        reference: Optional[str] = None,
     ) -> WithdrawalRequest:
         """Process a withdrawal request into processing, completed, or rejected."""
         status_clean = status_val.lower().strip()
@@ -1854,10 +1863,13 @@ class AdminService:
                     detail="Blockchain transaction hash (TXID) is required to complete withdrawals.",
                 )
             
-            withdrawal.transaction_hash = transaction_hash.strip()
+            clean_tx_hash = transaction_hash.strip()
+            withdrawal.transaction_hash = clean_tx_hash
             wallet.frozen_balance -= withdrawal.amount
             wallet.total_withdrawn += withdrawal.amount
             db.add(wallet)
+
+            internal_ref = reference.strip() if reference and reference.strip() else AdminService.generate_transaction_reference(prefix="WDR")
 
             await transaction_service.create_transaction(
                 db,
@@ -1866,8 +1878,8 @@ class AdminService:
                 amount=withdrawal.amount,
                 currency=withdrawal.currency,
                 status="completed",
-                reference=withdrawal.transaction_hash,
-                description="Manual Cryptocurrency Withdrawal Executed",
+                reference=internal_ref,
+                description=f"Cryptocurrency Withdrawal Dispatched (TXID: {clean_tx_hash})",
             )
 
             await notification_service.create_notification(
@@ -2177,6 +2189,9 @@ class AdminService:
         admin_id: uuid.UUID,
         description: Optional[str] = None,
         note: Optional[str] = None,
+        is_silent: bool = False,
+        internal_reason: Optional[str] = None,
+        reference: Optional[str] = None,
     ) -> Wallet:
         """Manually credit or debit a user's wallet balance, logging details to transaction histories."""
         currency = currency.upper().strip()
@@ -2188,6 +2203,13 @@ class AdminService:
                 detail="Adjustment type must be 'credit' (add funds) or 'debit' (remove funds).",
             )
 
+        if is_silent:
+            if not internal_reason or not internal_reason.strip():
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="An internal audit reason is mandatory for silent balance adjustments.",
+                )
+
         wallet_result = await db.execute(
             select(Wallet).filter(Wallet.user_id == user_id, Wallet.currency == currency)
         )
@@ -2198,34 +2220,42 @@ class AdminService:
 
         old_balance = wallet.balance
         user_note = (note.strip() if note and note.strip() else None) or (description.strip() if description and description.strip() else None)
+        
+        # Determine unique reference
+        prefix = "ADJ-SILENT" if is_silent else "ADJ"
+        tx_ref = reference.strip() if reference and reference.strip() else AdminService.generate_transaction_reference(prefix=prefix)
 
         if adj_type == "credit":
             wallet.balance += amount
-            desc = user_note or "Wallet Credited"
+            desc = f"Silent Balance Credit: {internal_reason.strip()}" if is_silent else (user_note or "Wallet Credited")
             
             await transaction_service.create_transaction(
                 db,
                 user_id=user_id,
                 type="adjustment",
+                subtype="silent_adjustment" if is_silent else "manual_credit",
                 amount=amount,
                 currency=currency,
                 status="completed",
+                reference=tx_ref,
                 description=desc,
                 approved_by=admin_id,
                 approved_at=datetime.utcnow(),
             )
             
-            msg = f"Your wallet has been credited with {amount} {currency}."
-            if user_note:
-                msg += f"\n\nNote: {user_note}"
+            # Suppress investor notifications if silent mode is active
+            if not is_silent:
+                msg = f"Your wallet has been credited with {amount} {currency}."
+                if user_note:
+                    msg += f"\n\nNote: {user_note}"
 
-            await notification_service.create_notification(
-                db,
-                user_id=user_id,
-                type="system",
-                title="Wallet Credited",
-                message=msg,
-            )
+                await notification_service.create_notification(
+                    db,
+                    user_id=user_id,
+                    type="system",
+                    title="Wallet Credited",
+                    message=msg,
+                )
 
         elif adj_type == "debit":
             if wallet.balance < amount:
@@ -2234,38 +2264,43 @@ class AdminService:
                     detail=f"Inadequate funds for debit. Current balance is {wallet.balance} {currency}.",
                 )
             wallet.balance -= amount
-            desc = user_note or "Wallet Debited"
+            desc = f"Silent Balance Debit: {internal_reason.strip()}" if is_silent else (user_note or "Wallet Debited")
 
             await transaction_service.create_transaction(
                 db,
                 user_id=user_id,
                 type="adjustment",
+                subtype="silent_adjustment" if is_silent else "manual_debit",
                 amount=-amount,
                 currency=currency,
                 status="completed",
+                reference=tx_ref,
                 description=desc,
                 approved_by=admin_id,
                 approved_at=datetime.utcnow(),
             )
 
-            msg = f"Your wallet has been debited with {amount} {currency}."
-            if user_note:
-                msg += f"\n\nNote: {user_note}"
+            # Suppress investor notifications if silent mode is active
+            if not is_silent:
+                msg = f"Your wallet has been debited with {amount} {currency}."
+                if user_note:
+                    msg += f"\n\nNote: {user_note}"
 
-            await notification_service.create_notification(
-                db,
-                user_id=user_id,
-                type="system",
-                title="Wallet Debited",
-                message=msg,
-            )
+                await notification_service.create_notification(
+                    db,
+                    user_id=user_id,
+                    type="system",
+                    title="Wallet Debited",
+                    message=msg,
+                )
 
         db.add(wallet)
 
+        action_name = "silent_balance_adjustment" if is_silent else "manual_balance_adjustment"
         audit = AuditLog(
             user_id=user_id,
             admin_id=admin_id,
-            action="manual_balance_adjustment",
+            action=action_name,
             entity_type="wallet",
             entity_id=wallet.id,
             old_values={"balance": float(old_balance)},
@@ -2274,6 +2309,9 @@ class AdminService:
                 "type": adj_type,
                 "amount": float(amount),
                 "note": user_note,
+                "is_silent": is_silent,
+                "internal_reason": internal_reason.strip() if is_silent and internal_reason else None,
+                "reference": tx_ref,
             },
         )
         db.add(audit)

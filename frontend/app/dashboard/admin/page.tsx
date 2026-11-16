@@ -24,6 +24,7 @@ import {
   CheckCircle2,
   Clock,
   ExternalLink,
+  Landmark,
 } from "lucide-react";
 import { api } from "@/lib/api";
 
@@ -95,12 +96,13 @@ export default function AdminOverviewPage() {
     { name: "Withdrawals", desc: "Dispatches & reinvestment actions", href: "/dashboard/admin/withdrawals", icon: ArrowUpRight, alert: data?.pending_withdrawals_count },
     { name: "Transactions", desc: "Immutable financial ledger records", href: "/dashboard/admin/transactions", icon: History, count: data?.total_transactions_count },
     { name: "Active Deposits", desc: "Unexpired contracts & maturity", href: "/dashboard/admin/active-deposits", icon: Layers, count: data?.active_investments_count },
+    { name: "Loans", desc: "Credit facility tiers (≤ 14d), reviews & disbursements", href: "/dashboard/admin/loans", icon: Landmark },
     { name: "Referrals", desc: "Commission network & top referrers", href: "/dashboard/admin/referrals", icon: Share2 },
+    { name: "Investment Plans", desc: "Plan tiers, duration governance (≤ 14d) & ROI", href: "/dashboard/admin/plans", icon: TrendingUp },
     { name: "Exchange", desc: "Market rates & bridge controls", href: "/dashboard/admin/exchange", icon: Repeat },
     { name: "Email Templates", desc: "Custom templates & previewer", href: "/dashboard/admin/email-templates", icon: Mail },
     { name: "Notifications", desc: "System alerts & user broadcast", href: "/dashboard/admin/notifications", icon: Bell },
     { name: "Audit Logs", desc: "Traceable admin & security events", href: "/dashboard/admin/audit-logs", icon: FileText },
-    { name: "Investment Plans", desc: "Plan tiers, duration governance (≤ 14d) & ROI", href: "/dashboard/admin/plans", icon: TrendingUp },
     { name: "Security & Controls", desc: "Maintenance mode & login rules", href: "/dashboard/admin/security", icon: Lock },
     { name: "Platform Settings", desc: "Global parameters & auto-withdrawal", href: "/dashboard/admin/settings", icon: Settings },
   ];
