@@ -5,6 +5,7 @@ import { LanguageProvider } from "@/lib/language-context";
 import NavigationProgress from "@/app/components/NavigationProgress";
 import ServerKeepAlive from "@/app/components/ServerKeepAlive";
 import SmartsuppChat from "@/app/components/SmartsuppChat";
+import FloatingSupportWidget from "@/app/components/FloatingSupportWidget";
 import ReferralCapture from "@/app/components/ReferralCapture";
 
 export const viewport: Viewport = {
@@ -50,6 +51,7 @@ export default function RootLayout({
         <ServerKeepAlive />
         <NavigationProgress />
         <SmartsuppChat />
+        <FloatingSupportWidget />
         <LanguageProvider>{children}</LanguageProvider>
       </body>
     </html>

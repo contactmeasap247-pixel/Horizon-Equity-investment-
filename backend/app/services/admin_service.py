@@ -1357,6 +1357,69 @@ class AdminService:
                     },
                     description="Security enforcement policies and maintenance mode",
                 ),
+                SiteSetting(
+                    key="support_widget_settings",
+                    group_name="support",
+                    value={
+                        "enabled": True,
+                        "title": "Horizon Concierge Support",
+                        "welcome_message": "How can our client desk assist your portfolio today?",
+                        "position": "bottom-right",
+                        "offset_x": 24,
+                        "offset_y": 24,
+                        "mobile_position": "bottom-right",
+                        "mobile_offset_x": 16,
+                        "mobile_offset_y": 16,
+                        "show_on_mobile": True,
+                        "show_on_desktop": True,
+                        "draggable": True,
+                        "visibility_scope": "both",
+                        "channels": [
+                            {
+                                "id": "whatsapp-1",
+                                "type": "whatsapp",
+                                "name": "WhatsApp VIP Desk",
+                                "value": "+447451278960",
+                                "country_code": "+44",
+                                "description": "Instant 24/7 private concierge",
+                                "prefilled_message": "Hello Horizon Equity desk, I need assistance with my portfolio account.",
+                                "enabled": True,
+                                "order": 1,
+                            },
+                            {
+                                "id": "telegram-1",
+                                "type": "telegram",
+                                "name": "Telegram Priority Desk",
+                                "value": "HorizonEquitySupport",
+                                "description": "Encrypted institutional support",
+                                "prefilled_message": None,
+                                "enabled": True,
+                                "order": 2,
+                            },
+                            {
+                                "id": "email-1",
+                                "type": "email",
+                                "name": "Executive Email Desk",
+                                "value": "support@horizon-equity.net",
+                                "description": "Formal institutional inquiries",
+                                "prefilled_message": "Account Support Request",
+                                "enabled": True,
+                                "order": 3,
+                            },
+                            {
+                                "id": "ticket-1",
+                                "type": "custom",
+                                "name": "Support Ticket Portal",
+                                "value": "/dashboard/tickets",
+                                "description": "Submit and track verified internal tickets",
+                                "prefilled_message": None,
+                                "enabled": True,
+                                "order": 4,
+                            },
+                        ],
+                    },
+                    description="Centralized floating customer support widget configuration",
+                ),
             ]
             for s in defaults:
                 db.add(s)
@@ -1425,6 +1488,127 @@ class AdminService:
             "group_name": setting.group_name,
             "updated_at": setting.updated_at,
         }
+
+    @staticmethod
+    async def get_support_widget_config(db: AsyncSession) -> Dict[str, Any]:
+        """Fetch active support widget configuration or initialize standard defaults."""
+        result = await db.execute(select(SiteSetting).filter(SiteSetting.key == "support_widget_settings"))
+        setting = result.scalars().first()
+
+        default_config = {
+            "enabled": True,
+            "title": "Horizon Concierge Support",
+            "welcome_message": "How can our client desk assist your portfolio today?",
+            "position": "bottom-right",
+            "offset_x": 24,
+            "offset_y": 24,
+            "mobile_position": "bottom-right",
+            "mobile_offset_x": 16,
+            "mobile_offset_y": 16,
+            "show_on_mobile": True,
+            "show_on_desktop": True,
+            "draggable": True,
+            "visibility_scope": "both",
+            "channels": [
+                {
+                    "id": "whatsapp-1",
+                    "type": "whatsapp",
+                    "name": "WhatsApp VIP Desk",
+                    "value": "+447451278960",
+                    "country_code": "+44",
+                    "description": "Instant 24/7 private concierge",
+                    "prefilled_message": "Hello Horizon Equity desk, I need assistance with my portfolio account.",
+                    "enabled": True,
+                    "order": 1,
+                },
+                {
+                    "id": "telegram-1",
+                    "type": "telegram",
+                    "name": "Telegram Priority Desk",
+                    "value": "HorizonEquitySupport",
+                    "description": "Encrypted institutional support",
+                    "prefilled_message": None,
+                    "enabled": True,
+                    "order": 2,
+                },
+                {
+                    "id": "email-1",
+                    "type": "email",
+                    "name": "Executive Email Desk",
+                    "value": "support@horizon-equity.net",
+                    "description": "Formal institutional inquiries",
+                    "prefilled_message": "Account Support Request",
+                    "enabled": True,
+                    "order": 3,
+                },
+                {
+                    "id": "ticket-1",
+                    "type": "custom",
+                    "name": "Support Ticket Portal",
+                    "value": "/dashboard/tickets",
+                    "description": "Submit and track verified internal tickets",
+                    "prefilled_message": None,
+                    "enabled": True,
+                    "order": 4,
+                },
+            ],
+        }
+
+        if not setting:
+            setting = SiteSetting(
+                key="support_widget_settings",
+                group_name="support",
+                value=default_config,
+                description="Centralized floating customer support widget configuration",
+            )
+            db.add(setting)
+            await db.commit()
+            await db.refresh(setting)
+            return default_config
+
+        if not setting.value:
+            setting.value = default_config
+            await db.commit()
+            await db.refresh(setting)
+            return default_config
+
+        return setting.value
+
+    @staticmethod
+    async def update_support_widget_config(
+        db: AsyncSession,
+        config: Dict[str, Any],
+        admin_id: uuid.UUID,
+    ) -> Dict[str, Any]:
+        """Validate and persist support widget configuration with complete audit logging."""
+        result = await db.execute(select(SiteSetting).filter(SiteSetting.key == "support_widget_settings"))
+        setting = result.scalars().first()
+
+        old_val = setting.value if setting else None
+        if not setting:
+            setting = SiteSetting(
+                key="support_widget_settings",
+                group_name="support",
+                value=config,
+                description="Centralized floating customer support widget configuration",
+            )
+            db.add(setting)
+        else:
+            setting.value = config
+            setting.updated_at = datetime.utcnow()
+            db.add(setting)
+
+        audit = AuditLog(
+            admin_id=admin_id,
+            action="support_widget_settings_updated",
+            entity_type="site_setting",
+            old_values={"config": old_val},
+            new_values={"config": config},
+        )
+        db.add(audit)
+        await db.commit()
+        await db.refresh(setting)
+        return setting.value
 
     # ========================================================
     # 8. EMAIL TEMPLATES MANAGEMENT

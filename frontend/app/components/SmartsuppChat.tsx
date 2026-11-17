@@ -53,6 +53,7 @@ export default function SmartsuppChat() {
           __html: `
             var _smartsupp = _smartsupp || {};
             _smartsupp.key = '${smartsuppKey}';
+            _smartsupp.hideWidget = true;
             window.smartsupp||(function(d) {
               var s,c,o=smartsupp=function(){ o._.push(arguments)};o._=[];
               s=d.getElementsByTagName('script')[0];c=d.createElement('script');

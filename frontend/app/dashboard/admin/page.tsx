@@ -25,6 +25,7 @@ import {
   Clock,
   ExternalLink,
   Landmark,
+  Headphones,
 } from "lucide-react";
 import { api } from "@/lib/api";
 
@@ -105,6 +106,7 @@ export default function AdminOverviewPage() {
     { name: "Audit Logs", desc: "Traceable admin & security events", href: "/dashboard/admin/audit-logs", icon: FileText },
     { name: "Security & Controls", desc: "Maintenance mode & login rules", href: "/dashboard/admin/security", icon: Lock },
     { name: "Platform Settings", desc: "Global parameters & auto-withdrawal", href: "/dashboard/admin/settings", icon: Settings },
+    { name: "Support Desk Widget", desc: "Multi-channel floating launcher & contacts", href: "/dashboard/admin/settings?tab=support_widget", icon: Headphones },
   ];
 
   return (

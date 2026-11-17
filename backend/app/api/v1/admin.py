@@ -43,6 +43,7 @@ from app.schemas.admin import (
 from app.schemas.loan import LoanProductResponse
 from app.schemas.user import UserResponse
 from app.schemas.wallet import DepositRequestResponse, WithdrawalRequestResponse, WalletResponse
+from app.schemas.support_widget import SupportWidgetConfig, SupportWidgetUpdateRequest
 from app.schemas.ticket import SupportTicketResponse
 from app.schemas.investment import InvestmentPlanCreate, InvestmentPlanUpdate, InvestmentPlanResponse
 from app.services.admin_service import admin_service
@@ -940,4 +941,32 @@ async def list_kyc_submissions(
         }
         for u in users
     ]
+
+
+# ----------------------------------------------------
+# 15. SUPPORT WIDGET CONFIGURATION
+# ----------------------------------------------------
+
+@router.get("/support-widget", response_model=Dict[str, Any])
+async def get_admin_support_widget_configuration(
+    current_admin: User = Depends(get_admin_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Retrieve full support widget configuration for administrator management."""
+    return await admin_service.get_support_widget_config(db)
+
+
+@router.put("/support-widget", response_model=Dict[str, Any])
+async def update_admin_support_widget_configuration(
+    payload: SupportWidgetUpdateRequest,
+    current_admin: User = Depends(get_admin_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Update support widget parameters, positions, and multi-channel contacts with audit logging."""
+    clean_config = payload.config.model_dump()
+    return await admin_service.update_support_widget_config(
+        db,
+        config=clean_config,
+        admin_id=current_admin.id,
+    )
 

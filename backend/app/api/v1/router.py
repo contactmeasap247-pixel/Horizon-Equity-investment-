@@ -16,6 +16,7 @@ from app.api.v1 import (
     admin_wallets,
     loans,
     webhooks,
+    support,
 )
 
 api_router = APIRouter()
@@ -31,5 +32,6 @@ api_router.include_router(tickets.router, prefix="/tickets", tags=["Support Tick
 api_router.include_router(admin.router, prefix="/admin", tags=["Admin Operations"])
 api_router.include_router(admin_wallets.router, prefix="/admin/wallets", tags=["Admin Wallets Management"])
 api_router.include_router(loans.router, prefix="/loans", tags=["Loans"])
+api_router.include_router(support.router, prefix="/support", tags=["Customer Support"])
 api_router.include_router(webhooks.router, prefix="/webhooks", tags=["Webhooks"])
 
