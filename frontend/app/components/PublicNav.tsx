@@ -3,14 +3,16 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Menu, X, ArrowRight } from "lucide-react";
+import { Menu, X, ArrowRight, Download } from "lucide-react";
 import BrandLogo from "./BrandLogo";
 import LanguageSelector from "./LanguageSelector";
 import { useLanguage } from "@/lib/language-context";
 import { warmUpBackend } from "@/lib/api";
+import { usePwa } from "@/lib/pwa-context";
 
 export default function PublicNav() {
   const { t } = useLanguage();
+  const { isInstalled, promptInstall } = usePwa();
   const pathname = usePathname();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
@@ -78,7 +80,18 @@ export default function PublicNav() {
         </nav>
 
         {/* Right Side Actions */}
-        <div className="hidden sm:flex items-center gap-3">
+        <div className="hidden sm:flex items-center gap-2.5">
+          {/* Get App Button */}
+          <button
+            type="button"
+            onClick={() => promptInstall()}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#C5A059]/40 bg-[#C5A059]/10 hover:bg-[#C5A059]/20 text-[#E5C378] hover:text-[#F3D796] transition-all text-xs font-semibold shadow-sm cursor-pointer hover:scale-[1.02] active:scale-[0.98]"
+            title="Install Horizon Equity as Progressive Web App"
+          >
+            <Download className="h-3.5 w-3.5 text-[#C5A059]" />
+            <span>{isInstalled ? "App Installed" : "Get App"}</span>
+          </button>
+
           <LanguageSelector compact />
 
           <Link
@@ -140,6 +153,19 @@ export default function PublicNav() {
           </nav>
 
           <div className="pt-4 border-t border-white/10 flex flex-col gap-2.5">
+            {/* Mobile Get App Button */}
+            <button
+              type="button"
+              onClick={() => {
+                setMobileMenuOpen(false);
+                promptInstall();
+              }}
+              className="btn btn-secondary w-full justify-center text-sm font-semibold flex items-center gap-2 border-[#C5A059]/40 text-[#E5C378]"
+            >
+              <Download className="w-4 h-4 text-[#C5A059]" />
+              <span>{isInstalled ? "Horizon Equity Installed" : "Get Horizon Equity App"}</span>
+            </button>
+
             <Link
               href="/login"
               className="btn btn-secondary w-full justify-center text-sm font-semibold"

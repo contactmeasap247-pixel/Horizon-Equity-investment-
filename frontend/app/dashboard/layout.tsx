@@ -29,12 +29,14 @@ import {
   Landmark,
   Briefcase,
   ReceiptText,
+  Download,
 } from "lucide-react";
 import { useAuthStore } from "@/lib/auth-store";
 import { api } from "@/lib/api";
 import BrandLogo from "@/app/components/BrandLogo";
 import LanguageSelector from "@/app/components/LanguageSelector";
 import { useLanguage } from "@/lib/language-context";
+import { usePwa } from "@/lib/pwa-context";
 
 interface NotificationItem {
   id: string;
@@ -49,6 +51,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const pathname = usePathname();
   const { user, isAuthenticated, isInitialized, initialize, logout } = useAuthStore();
   const { t, dir, formatDate } = useLanguage();
+  const { isInstalled, promptInstall } = usePwa();
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [notifDropdownOpen, setNotifDropdownOpen] = useState(false);
@@ -243,6 +246,29 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 })}
               </>
             )}
+
+            {/* PWA Installation Option in Member Nav */}
+            <div className="pt-2 mt-2 border-t border-white/5">
+              <button
+                type="button"
+                onClick={() => {
+                  setMobileMenuOpen(false);
+                  promptInstall();
+                }}
+                className="side-link w-full flex items-center justify-between text-left border border-[#C5A059]/25 bg-[#C5A059]/5 hover:bg-[#C5A059]/15 text-[#E5C378] hover:text-[#F3D796] transition-colors rounded-lg px-2.5 py-2 cursor-pointer"
+                title="Install Horizon Equity as Native PWA"
+              >
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <Download className="h-4 w-4 shrink-0 text-[#C5A059]" />
+                  <span className="truncate text-xs font-semibold">
+                    {isInstalled ? "Horizon Equity Installed" : "Install Horizon Equity"}
+                  </span>
+                </div>
+                <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-[#C5A059]/20 text-[#C5A059] border border-[#C5A059]/30 tracking-wider shrink-0">
+                  PWA
+                </span>
+              </button>
+            </div>
           </nav>
         </div>
 

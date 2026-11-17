@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0B131E"/>
+      <stop offset="50%" stop-color="#070A0E"/>
+      <stop offset="100%" stop-color="#05070A"/>
+    </linearGradient>
+    <linearGradient id="goldGrad" x1="0%" y1="100%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#C5A059"/>
+      <stop offset="50%" stop-color="#E5C378"/>
+      <stop offset="100%" stop-color="#F3D796"/>
+    </linearGradient>
+    <linearGradient id="blueGrad" x1="0%" y1="100%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#1E3A8A"/>
+      <stop offset="50%" stop-color="#2563EB"/>
+      <stop offset="100%" stop-color="#4388F5"/>
+    </linearGradient>
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="8" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+  </defs>
+
+  <!-- Background with subtle border -->
+  <rect width="512" height="512" rx="112" fill="url(#bgGrad)"/>
+  <rect x="4" y="4" width="504" height="504" rx="108" fill="none" stroke="#C5A059" stroke-width="3" stroke-opacity="0.3"/>
+
+  <!-- Geometric Horizon Grid Rays -->
+  <g opacity="0.25">
+    <line x1="112" y1="96" x2="112" y2="416" stroke="#4388F5" stroke-width="12" stroke-linecap="round"/>
+    <line x1="208" y1="208" x2="208" y2="416" stroke="#4388F5" stroke-width="12" stroke-linecap="round"/>
+    <line x1="304" y1="288" x2="304" y2="416" stroke="#4388F5" stroke-width="12" stroke-linecap="round"/>
+    <line x1="400" y1="96" x2="400" y2="416" stroke="#4388F5" stroke-width="12" stroke-linecap="round"/>
+  </g>
+
+  <!-- Upward Ascending Horizon Growth Arc -->
+  <path d="M96 368 C192 336 288 256 416 128" stroke="url(#goldGrad)" stroke-width="24" stroke-linecap="round" filter="url(#glow)"/>
+  <path d="M320 112 H416 V208" stroke="url(#goldGrad)" stroke-width="24" stroke-linecap="round" stroke-linejoin="round" filter="url(#glow)"/>
+
+  <!-- Institutional Pillars -->
+  <rect x="112" y="256" width="48" height="160" rx="12" fill="url(#blueGrad)" fill-opacity="0.9"/>
+  <rect x="216" y="192" width="48" height="224" rx="12" fill="url(#blueGrad)"/>
+  <rect x="320" y="128" width="48" height="288" rx="12" fill="url(#goldGrad)"/>
+
+  <!-- Center Diamond Seal -->
+  <polygon points="256,96 280,128 256,160 232,128" fill="#F3D796" opacity="0.9" filter="url(#glow)"/>
+</svg>
+

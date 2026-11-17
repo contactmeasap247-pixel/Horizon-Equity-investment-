@@ -4,6 +4,7 @@ import React from "react";
 import Link from "next/link";
 import BrandLogo from "./BrandLogo";
 import { useLanguage } from "@/lib/language-context";
+import { triggerOpenCookiePreferences } from "@/lib/cookie-consent";
 
 export default function PublicFooter() {
   const { t } = useLanguage();
@@ -121,6 +122,15 @@ export default function PublicFooter() {
                 </Link>
               </li>
               <li>
+                <button
+                  type="button"
+                  onClick={triggerOpenCookiePreferences}
+                  className="hover:text-white transition-colors text-left text-xs cursor-pointer"
+                >
+                  {t("Cookie Preferences")}
+                </button>
+              </li>
+              <li>
                 <Link href="/risk" className="hover:text-[#F16B75] transition-colors">
                   {t("Risk Disclosure")}
                 </Link>
@@ -137,6 +147,14 @@ export default function PublicFooter() {
               <Link href="/terms" className="hover:text-white transition-colors">{t("Terms")}</Link>
               <span>•</span>
               <Link href="/privacy" className="hover:text-white transition-colors">{t("Privacy")}</Link>
+              <span>•</span>
+              <button
+                type="button"
+                onClick={triggerOpenCookiePreferences}
+                className="hover:text-white transition-colors cursor-pointer"
+              >
+                {t("Cookies")}
+              </button>
               <span>•</span>
               <Link href="/risk" className="hover:text-white transition-colors">{t("Risk")}</Link>
               <span>•</span>
