@@ -39,6 +39,15 @@ async def get_support_widget_configuration(
             "show_on_desktop": raw_config.get("show_on_desktop", True),
             "draggable": raw_config.get("draggable", True),
             "visibility_scope": raw_config.get("visibility_scope", "both"),
+            "proactive_enabled": False,
+            "proactive_delay_seconds": raw_config.get("proactive_delay_seconds", 10),
+            "proactive_heading": raw_config.get("proactive_heading", "Need Assistance?"),
+            "proactive_description": raw_config.get("proactive_description", "Have questions about Horizon Equity? Our support team is available to help you. Reach out to us and we'll be happy to assist."),
+            "proactive_show_telegram": raw_config.get("proactive_show_telegram", True),
+            "proactive_show_email": raw_config.get("proactive_show_email", True),
+            "proactive_cooldown_hours": raw_config.get("proactive_cooldown_hours", 24),
+            "proactive_show_on_desktop": raw_config.get("proactive_show_on_desktop", True),
+            "proactive_show_on_mobile": raw_config.get("proactive_show_on_mobile", True),
             "channels": [],
         }
 
@@ -61,6 +70,15 @@ async def get_support_widget_configuration(
         "show_on_desktop": raw_config.get("show_on_desktop", True),
         "draggable": raw_config.get("draggable", True),
         "visibility_scope": raw_config.get("visibility_scope", "both"),
+        "proactive_enabled": raw_config.get("proactive_enabled", True),
+        "proactive_delay_seconds": raw_config.get("proactive_delay_seconds", 10),
+        "proactive_heading": raw_config.get("proactive_heading", "Need Assistance?"),
+        "proactive_description": raw_config.get("proactive_description", "Have questions about Horizon Equity? Our support team is available to help you. Reach out to us and we'll be happy to assist."),
+        "proactive_show_telegram": raw_config.get("proactive_show_telegram", True),
+        "proactive_show_email": raw_config.get("proactive_show_email", True),
+        "proactive_cooldown_hours": raw_config.get("proactive_cooldown_hours", 24),
+        "proactive_show_on_desktop": raw_config.get("proactive_show_on_desktop", True),
+        "proactive_show_on_mobile": raw_config.get("proactive_show_on_mobile", True),
         "channels": active_channels,
     }
 

@@ -1509,6 +1509,15 @@ class AdminService:
             "show_on_desktop": True,
             "draggable": True,
             "visibility_scope": "both",
+            "proactive_enabled": True,
+            "proactive_delay_seconds": 10,
+            "proactive_heading": "Need Assistance?",
+            "proactive_description": "Have questions about Horizon Equity? Our support team is available to help you. Reach out to us and we'll be happy to assist.",
+            "proactive_show_telegram": True,
+            "proactive_show_email": True,
+            "proactive_cooldown_hours": 24,
+            "proactive_show_on_desktop": True,
+            "proactive_show_on_mobile": True,
             "channels": [
                 {
                     "id": "whatsapp-1",

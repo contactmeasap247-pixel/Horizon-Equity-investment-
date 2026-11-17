@@ -36,6 +36,7 @@ import {
   ShieldCheck,
   Check,
   Eye,
+  Sparkles,
 } from "lucide-react";
 import { api } from "@/lib/api";
 import { SupportChannel, SupportWidgetConfig } from "@/app/components/FloatingSupportWidget";
@@ -105,6 +106,16 @@ export default function AdminSettingsPage() {
     show_on_desktop: true,
     draggable: true,
     visibility_scope: "both",
+    proactive_enabled: true,
+    proactive_delay_seconds: 10,
+    proactive_heading: "Need Assistance?",
+    proactive_description:
+      "Have questions about Horizon Equity? Our support team is available to help you. Reach out to us and we'll be happy to assist.",
+    proactive_show_telegram: true,
+    proactive_show_email: true,
+    proactive_cooldown_hours: 24,
+    proactive_show_on_desktop: true,
+    proactive_show_on_mobile: true,
     channels: [],
   });
 
@@ -1260,6 +1271,246 @@ export default function AdminSettingsPage() {
                           ))}
                         </div>
                       )}
+                    </div>
+
+                    {/* Proactive Support Invitation Card */}
+                    <div className="p-5 rounded-xl bg-[#0B0F14] border border-white/10 space-y-4">
+                      <div className="border-b border-white/5 pb-3">
+                        <div className="flex items-center justify-between">
+                          <h4 className="text-xs font-bold uppercase tracking-wider text-[#A6B0BE] flex items-center gap-1.5">
+                            <Sparkles className="h-3.5 w-3.5 text-[#C5A059]" />
+                            3. Proactive Support Invitation Popup
+                          </h4>
+                          <span
+                            className={`px-2 py-0.5 rounded text-[10px] font-semibold border ${
+                              supportWidgetData.proactive_enabled !== false
+                                ? "bg-[#27C58B]/10 text-[#27C58B] border-[#27C58B]/30"
+                                : "bg-white/5 text-[#7D8998] border-white/10"
+                            }`}
+                          >
+                            {supportWidgetData.proactive_enabled !== false ? "Enabled" : "Disabled"}
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-[#7D8998] mt-0.5">
+                          Automatically invites visitors to connect with the Telegram Priority Desk or Email after browsing for a few seconds. Reuses centralized contact destinations.
+                        </p>
+                      </div>
+
+                      {/* Enable Proactive Popup Toggle */}
+                      <div className="flex items-center justify-between p-3 rounded-lg bg-[#111821] border border-white/5">
+                        <div>
+                          <span className="font-semibold text-white block text-xs">Enable Proactive Invitation</span>
+                          <span className="text-[11px] text-[#7D8998]">
+                            Displays an elegant support invitation card after visitor delay
+                          </span>
+                        </div>
+                        <input
+                          type="checkbox"
+                          checked={supportWidgetData.proactive_enabled !== false}
+                          onChange={(e) =>
+                            setSupportWidgetData({
+                              ...supportWidgetData,
+                              proactive_enabled: e.target.checked,
+                            })
+                          }
+                          className="h-4 w-4 rounded accent-[#4388F5] cursor-pointer"
+                        />
+                      </div>
+
+                      {/* Timing & Cooldown Grid */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                          <label className="text-xs font-semibold text-[#A6B0BE] block mb-1">
+                            Popup Delay (Seconds)
+                          </label>
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="number"
+                              min={5}
+                              max={60}
+                              value={supportWidgetData.proactive_delay_seconds ?? 10}
+                              onChange={(e) =>
+                                setSupportWidgetData({
+                                  ...supportWidgetData,
+                                  proactive_delay_seconds: parseInt(e.target.value) || 10,
+                                })
+                              }
+                              className="w-full px-3 py-2 text-xs rounded-lg bg-[#111821] border border-white/10 text-white focus:outline-none focus:border-[#4388F5]"
+                            />
+                            <span className="text-xs text-[#7D8998] shrink-0 font-mono">seconds</span>
+                          </div>
+                          <span className="text-[10px] text-[#64748B] block mt-1">Recommended: 8–12 seconds</span>
+                        </div>
+
+                        <div>
+                          <label className="text-xs font-semibold text-[#A6B0BE] block mb-1">
+                            Dismissal Cooldown (Hours)
+                          </label>
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="number"
+                              min={1}
+                              max={720}
+                              value={supportWidgetData.proactive_cooldown_hours ?? 24}
+                              onChange={(e) =>
+                                setSupportWidgetData({
+                                  ...supportWidgetData,
+                                  proactive_cooldown_hours: parseInt(e.target.value) || 24,
+                                })
+                              }
+                              className="w-full px-3 py-2 text-xs rounded-lg bg-[#111821] border border-white/10 text-white focus:outline-none focus:border-[#4388F5]"
+                            />
+                            <span className="text-xs text-[#7D8998] shrink-0 font-mono">hours</span>
+                          </div>
+                          <span className="text-[10px] text-[#64748B] block mt-1">Suppresses repeat popups across visits</span>
+                        </div>
+                      </div>
+
+                      {/* Content Customization */}
+                      <div className="space-y-3 pt-2 border-t border-white/5">
+                        <div>
+                          <label className="text-xs font-semibold text-[#A6B0BE] block mb-1">
+                            Popup Heading Title
+                          </label>
+                          <input
+                            type="text"
+                            value={supportWidgetData.proactive_heading ?? "Need Assistance?"}
+                            onChange={(e) =>
+                              setSupportWidgetData({
+                                ...supportWidgetData,
+                                proactive_heading: e.target.value,
+                              })
+                            }
+                            placeholder="e.g. Need Assistance?"
+                            className="w-full px-3 py-2 text-xs rounded-lg bg-[#111821] border border-white/10 text-white focus:outline-none focus:border-[#4388F5]"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="text-xs font-semibold text-[#A6B0BE] block mb-1">
+                            Invitation Description
+                          </label>
+                          <textarea
+                            rows={2}
+                            value={
+                              supportWidgetData.proactive_description ??
+                              "Have questions about Horizon Equity? Our support team is available to help you. Reach out to us and we'll be happy to assist."
+                            }
+                            onChange={(e) =>
+                              setSupportWidgetData({
+                                ...supportWidgetData,
+                                proactive_description: e.target.value,
+                              })
+                            }
+                            placeholder="Brief message inviting client inquiries"
+                            className="w-full px-3 py-2 text-xs rounded-lg bg-[#111821] border border-white/10 text-white focus:outline-none focus:border-[#4388F5]"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Channel Buttons & Device Visibility */}
+                      <div className="pt-2 border-t border-white/5 grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        <label className="flex items-center justify-between p-2.5 rounded bg-[#111821] border border-white/5 text-xs text-[#A6B0BE] cursor-pointer">
+                          <span className="flex items-center gap-1.5 font-medium text-white">
+                            <span>Telegram Action Button</span>
+                          </span>
+                          <input
+                            type="checkbox"
+                            checked={supportWidgetData.proactive_show_telegram !== false}
+                            onChange={(e) =>
+                              setSupportWidgetData({
+                                ...supportWidgetData,
+                                proactive_show_telegram: e.target.checked,
+                              })
+                            }
+                            className="h-3.5 w-3.5 rounded accent-[#4388F5]"
+                          />
+                        </label>
+
+                        <label className="flex items-center justify-between p-2.5 rounded bg-[#111821] border border-white/5 text-xs text-[#A6B0BE] cursor-pointer">
+                          <span className="flex items-center gap-1.5 font-medium text-white">
+                            <span>Email Action Button</span>
+                          </span>
+                          <input
+                            type="checkbox"
+                            checked={supportWidgetData.proactive_show_email !== false}
+                            onChange={(e) =>
+                              setSupportWidgetData({
+                                ...supportWidgetData,
+                                proactive_show_email: e.target.checked,
+                              })
+                            }
+                            className="h-3.5 w-3.5 rounded accent-[#4388F5]"
+                          />
+                        </label>
+
+                        <label className="flex items-center justify-between p-2.5 rounded bg-[#111821] border border-white/5 text-xs text-[#A6B0BE] cursor-pointer">
+                          <span>Show on Desktop</span>
+                          <input
+                            type="checkbox"
+                            checked={supportWidgetData.proactive_show_on_desktop !== false}
+                            onChange={(e) =>
+                              setSupportWidgetData({
+                                ...supportWidgetData,
+                                proactive_show_on_desktop: e.target.checked,
+                              })
+                            }
+                            className="h-3.5 w-3.5 rounded accent-[#4388F5]"
+                          />
+                        </label>
+
+                        <label className="flex items-center justify-between p-2.5 rounded bg-[#111821] border border-white/5 text-xs text-[#A6B0BE] cursor-pointer">
+                          <span>Show on Mobile</span>
+                          <input
+                            type="checkbox"
+                            checked={supportWidgetData.proactive_show_on_mobile !== false}
+                            onChange={(e) =>
+                              setSupportWidgetData({
+                                ...supportWidgetData,
+                                proactive_show_on_mobile: e.target.checked,
+                              })
+                            }
+                            className="h-3.5 w-3.5 rounded accent-[#4388F5]"
+                          />
+                        </label>
+                      </div>
+
+                      {/* Channel Destination Status Indicators */}
+                      <div className="p-3 rounded-lg bg-[#070A0E] border border-white/5 text-[11px] space-y-1.5">
+                        <span className="text-[#A6B0BE] font-semibold block">Connected Destinations (Single Source of Truth):</span>
+                        <div className="flex items-center justify-between text-[#7D8998]">
+                          <span>Telegram Destination:</span>
+                          <span className="font-mono text-white">
+                            {supportWidgetData.channels.find(
+                              (c) => c.type.toLowerCase().trim() === "telegram" && c.enabled
+                            )?.value ? (
+                              <span className="text-[#27C58B]">
+                                Active (@{supportWidgetData.channels.find(
+                                  (c) => c.type.toLowerCase().trim() === "telegram" && c.enabled
+                                )?.value.replace("@", "")})
+                              </span>
+                            ) : (
+                              <span className="text-[#F06464]">No active Telegram channel</span>
+                            )}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between text-[#7D8998]">
+                          <span>Email Destination:</span>
+                          <span className="font-mono text-white">
+                            {supportWidgetData.channels.find(
+                              (c) => c.type.toLowerCase().trim() === "email" && c.enabled
+                            )?.value ? (
+                              <span className="text-[#27C58B]">
+                                Active ({supportWidgetData.channels.find(
+                                  (c) => c.type.toLowerCase().trim() === "email" && c.enabled
+                                )?.value})
+                              </span>
+                            ) : (
+                              <span className="text-[#F06464]">No active Email channel</span>
+                            )}
+                          </span>
+                        </div>
+                      </div>
                     </div>
                   </div>
 

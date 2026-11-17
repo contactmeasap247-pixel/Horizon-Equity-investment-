@@ -89,6 +89,20 @@ class SupportWidgetConfig(BaseModel):
         "both",
         description="Scope where widget appears: 'both' (all), 'primary' (investor dashboard), 'secondary' (public website)",
     )
+    # Proactive Telegram & Email Support Invitation Fields
+    proactive_enabled: bool = Field(True, description="Enable or disable proactive support invitation popup")
+    proactive_delay_seconds: int = Field(10, ge=1, le=120, description="Popup delay in seconds (default 10s, typically 8-12s)")
+    proactive_heading: str = Field("Need Assistance?", max_length=100, description="Popup heading title")
+    proactive_description: str = Field(
+        "Have questions about Horizon Equity? Our support team is available to help you. Reach out to us and we'll be happy to assist.",
+        max_length=500,
+        description="Short invitation message",
+    )
+    proactive_show_telegram: bool = Field(True, description="Whether to show the primary Telegram button")
+    proactive_show_email: bool = Field(True, description="Whether to show the secondary Email button")
+    proactive_cooldown_hours: int = Field(24, ge=1, le=720, description="Invitation cooldown in hours after dismissal")
+    proactive_show_on_desktop: bool = Field(True, description="Whether proactive invitation is enabled on desktop")
+    proactive_show_on_mobile: bool = Field(True, description="Whether proactive invitation is enabled on mobile")
     channels: List[SupportChannelItem] = Field(default_factory=list, description="Configured contact channels")
 
     @field_validator("position", "mobile_position")

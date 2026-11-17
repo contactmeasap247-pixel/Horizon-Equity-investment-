@@ -184,3 +184,96 @@ def test_widget_config_constraints():
             offset_x=999,  # max is 200
         )
 
+
+def test_proactive_support_config_schema_and_validation():
+    """Verify proactive support invitation fields, defaults, and bounds validation."""
+    config = SupportWidgetConfig()
+    assert config.proactive_enabled is True
+    assert config.proactive_delay_seconds == 10
+    assert config.proactive_heading == "Need Assistance?"
+    assert "Horizon Equity" in config.proactive_description
+    assert config.proactive_show_telegram is True
+    assert config.proactive_show_email is True
+    assert config.proactive_cooldown_hours == 24
+    assert config.proactive_show_on_desktop is True
+    assert config.proactive_show_on_mobile is True
+
+    # Delay out of bounds (< 1 or > 120)
+    with pytest.raises(ValidationError):
+        SupportWidgetConfig(proactive_delay_seconds=0)
+
+    with pytest.raises(ValidationError):
+        SupportWidgetConfig(proactive_delay_seconds=300)
+
+    # Cooldown out of bounds (< 1 or > 720)
+    with pytest.raises(ValidationError):
+        SupportWidgetConfig(proactive_cooldown_hours=0)
+
+    with pytest.raises(ValidationError):
+        SupportWidgetConfig(proactive_cooldown_hours=1000)
+
+
+@pytest.mark.asyncio
+async def test_admin_update_proactive_support_settings(test_db):
+    """Verify administrator can configure proactive invitation timing and channels."""
+    admin = User(
+        id=uuid.uuid4(),
+        email="proactive_admin@horizonequity.com",
+        password_hash="hash",
+        full_name="Proactive Admin",
+        referral_code="REF-PROACT",
+        is_admin=True,
+        is_active=True,
+    )
+    test_db.add(admin)
+    await test_db.commit()
+
+    custom_payload = {
+        "enabled": True,
+        "title": "Horizon Concierge Support",
+        "welcome_message": "Need help?",
+        "position": "bottom-right",
+        "offset_x": 24,
+        "offset_y": 24,
+        "mobile_position": "bottom-right",
+        "mobile_offset_x": 16,
+        "mobile_offset_y": 16,
+        "show_on_mobile": True,
+        "show_on_desktop": True,
+        "draggable": True,
+        "visibility_scope": "both",
+        "proactive_enabled": True,
+        "proactive_delay_seconds": 12,
+        "proactive_heading": "Private Banking Desk",
+        "proactive_description": "Connect with our Telegram desk for immediate portfolio queries.",
+        "proactive_show_telegram": True,
+        "proactive_show_email": False,
+        "proactive_cooldown_hours": 48,
+        "proactive_show_on_desktop": True,
+        "proactive_show_on_mobile": False,
+        "channels": [
+            {
+                "id": "tg-1",
+                "type": "telegram",
+                "name": "Telegram Priority Desk",
+                "value": "HorizonEquitySupport",
+                "enabled": True,
+                "order": 1,
+            }
+        ],
+    }
+
+    result = await admin_service.update_support_widget_config(
+        test_db,
+        config=custom_payload,
+        admin_id=admin.id,
+    )
+
+    assert result["proactive_enabled"] is True
+    assert result["proactive_delay_seconds"] == 12
+    assert result["proactive_heading"] == "Private Banking Desk"
+    assert result["proactive_show_email"] is False
+    assert result["proactive_cooldown_hours"] == 48
+    assert result["proactive_show_on_mobile"] is False
+
+

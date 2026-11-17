@@ -14,6 +14,7 @@ import {
   MessageCircle,
 } from "lucide-react";
 import { api } from "@/lib/api";
+import ProactiveSupportPopup from "./ProactiveSupportPopup";
 
 export interface SupportChannel {
   id: string;
@@ -42,6 +43,15 @@ export interface SupportWidgetConfig {
   show_on_desktop: boolean;
   draggable: boolean;
   visibility_scope: "both" | "primary" | "secondary";
+  proactive_enabled?: boolean;
+  proactive_delay_seconds?: number;
+  proactive_heading?: string;
+  proactive_description?: string;
+  proactive_show_telegram?: boolean;
+  proactive_show_email?: boolean;
+  proactive_cooldown_hours?: number;
+  proactive_show_on_desktop?: boolean;
+  proactive_show_on_mobile?: boolean;
   channels: SupportChannel[];
 }
 
@@ -59,6 +69,16 @@ const DEFAULT_CONFIG: SupportWidgetConfig = {
   show_on_desktop: true,
   draggable: true,
   visibility_scope: "both",
+  proactive_enabled: true,
+  proactive_delay_seconds: 10,
+  proactive_heading: "Need Assistance?",
+  proactive_description:
+    "Have questions about Horizon Equity? Our support team is available to help you. Reach out to us and we'll be happy to assist.",
+  proactive_show_telegram: true,
+  proactive_show_email: true,
+  proactive_cooldown_hours: 24,
+  proactive_show_on_desktop: true,
+  proactive_show_on_mobile: true,
   channels: [
     {
       id: "whatsapp-1",
@@ -413,6 +433,12 @@ export default function FloatingSupportWidget() {
   // Channel Click Handler
   const handleChannelClick = (channel: SupportChannel) => {
     setIsOpen(false);
+    try {
+      sessionStorage.setItem("he_support_contacted_session", "true");
+      window.dispatchEvent(new CustomEvent("support-channel-contacted"));
+    } catch {
+      // ignore
+    }
 
     const type = channel.type.toLowerCase().trim();
     const val = channel.value.trim();
@@ -502,7 +528,18 @@ export default function FloatingSupportWidget() {
         onClick={() => {
           // Only trigger open if the user didn't intentionally drag the launcher
           if (!dragStartRef.current.moved) {
-            setIsOpen((prev) => !prev);
+            setIsOpen((prev) => {
+              const next = !prev;
+              if (next) {
+                try {
+                  sessionStorage.setItem("he_support_contacted_session", "true");
+                  window.dispatchEvent(new CustomEvent("support-channel-contacted"));
+                } catch {
+                  // ignore
+                }
+              }
+              return next;
+            });
           }
         }}
         onMouseDown={(e) => {
@@ -651,6 +688,15 @@ export default function FloatingSupportWidget() {
           </div>
         </div>
       )}
+
+      {/* 3. PROACTIVE TELEGRAM & EMAIL SUPPORT INVITATION POPUP */}
+      <ProactiveSupportPopup
+        config={config}
+        launcherOpen={isOpen}
+        activePosition={activePosition}
+        activeOffsetX={activeOffsetX}
+        activeOffsetY={activeOffsetY}
+      />
     </>
   );
 }
